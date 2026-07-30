@@ -1,0 +1,11 @@
+package com.insurance.demo.enums;
+
+public enum ClaimStatus {
+
+	SUBMITTED, 
+	UNDER_REVIEW, 
+	RECOMMENDED_FOR_APPROVAL, 
+	RECOMMENDED_FOR_REJECTION, 
+	APPROVED, 
+	REJECTED
+}

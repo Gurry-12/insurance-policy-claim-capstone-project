@@ -1,0 +1,20 @@
+package com.insurance.demo.dto.response;
+
+import java.util.List;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class PlanWizardResponseDTO {
+	
+	private Long policyPlanId;
+	private String planName;
+	
+	private List<Long> coverageOptionIds;
+	
+	private Long pricingRuleId;
+}

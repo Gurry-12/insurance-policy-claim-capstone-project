@@ -1,0 +1,16 @@
+package com.insurance.demo.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuotePurchaseRequest {
+
+	@NotNull(message = "Quote ID is required")
+	private Long quoteId;
+
+}

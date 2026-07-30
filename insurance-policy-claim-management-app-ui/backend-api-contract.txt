@@ -1,0 +1,289 @@
+Advanced API Contract Specification
+This document provides the full, advanced schema definitions and API contracts for the Insurance Policy Claim Management System backend. It is designed to act as a comprehensive integration guide for the frontend team.
+
+1. System Envelopes & Base Responses
+All endpoints (except raw binary/file downloads) return a standard JSON envelope. This ensures frontend clients can write a single, global Axios/Fetch interceptor to handle responses, success notifications, and error toasts.
+
+1.1 Success Envelope (ApiResponseDTO<T>)
+Used for all 2xx responses.
+
+json
+
+{
+  "message": "string",       // User-facing success message
+  "success": true,           // Always true
+  "timeStamp": "2023-10-27T10:00:00",
+  "data": { ... }            // <T> The typed response object or array
+}
+1.2 Paginated Envelope (ApiResponseDTO<PageResponseDTO<T>>)
+Used for all paginated lists (/page endpoints).
+
+json
+
+{
+  "message": "string",
+  "success": true,
+  "timeStamp": "2023-10-27T10:00:00",
+  "data": {
+    "content": [ { ... } ],  // Array of <T> objects
+    "pageNumber": 0,         // Current page (0-indexed)
+    "pageSize": 10,          // Items per page
+    "totalRecords": 50,      // Total items across all pages
+    "totalPages": 5,         // Total pages available
+    "lastPage": false,       // True if no more pages exist
+    "sortingType": "desc"    // 'asc' or 'desc'
+  }
+}
+1.3 Standard Error Envelope (ErrorResponseDTO)
+Used for 401, 403, 404, and standard 400 business rule exceptions.
+
+json
+
+{
+  "message": "string",       // User-facing error message (e.g. "Policy not found")
+  "success": false,
+  "errorType": "NOT_FOUND",  // e.g., BAD_REQUEST, NOT_FOUND, UNAUTHORIZED
+  "statusCode": 404,
+  "timeStamp": "2023-10-27T10:00:00",
+  "requestPath": "/api/policies/99"
+}
+1.4 Validation Error Envelope (ValidationErrorResponseDTO)
+Used for 400 Bad Request when form input validation fails (e.g. @Valid failure).
+
+json
+
+{
+  "message": "Validation failed",
+  "success": false,
+  "errorType": "BAD_REQUEST",
+  "statusCode": 400,
+  "timeStamp": "2023-10-27T10:00:00",
+  "requestPath": "/api/auth/register",
+  "fieldErrors": {           // Key-value map of form field names and their specific localized error message
+    "email": "Enter valid email.",
+    "password": "Password must be at least 8 characters."
+  }
+}
+2. Request & Response DTO Schemas by Domain
+2.1 Authentication & User Management
+UserRequestDTO (Customer Registration)
+
+fullName: string (Regex: ^[a-zA-Z\s]*$, Length: 2-100)
+email: string (Valid Email)
+password: string (Length: 6-15, Regex: ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@#$%^&+=!]).{6,15}$)
+mobileNumber: string (Regex: ^\+[1-9]\d{7,14}$)
+CreateStaffRequestDTO (Staff Registration)
+
+Inherits UserRequestDTO
+productSpeciality: enum ProductType (e.g. HEALTH, AUTO, LIFE)
+LoginResponseDTO
+
+userId: long
+fullName: string
+email: string
+role: string (e.g. ROLE_CUSTOMER, ROLE_ADMIN, ROLE_INTERNAL_STAFF)
+token: string (JWT)
+tokenType: string (Bearer)
+UserResponseDTO
+
+id: long
+fullName: string
+email: string
+mobileNumber: string
+role: string
+isActive: boolean
+emailVerified: boolean
+phoneVerified: boolean
+createdDate: datetime
+updatedDate: datetime
+productSpeciality: enum (Only present for STAFF)
+2.2 Customer Profile
+CustomerRequestDTO
+
+dateOfBirth: date (Past)
+address: string
+city: string
+state: string
+pinCode: string (Regex: ^\d{5,10}$)
+nomineeName: string
+nomineeRelation: string
+CustomerResponseDTO
+
+customerId: long
+userId: long
+fullName: string
+email: string
+mobileNumber: string
+dateOfBirth: date
+address: string
+city: string
+state: string
+pinCode: string
+nomineeName: string
+nomineeRelation: string
+createdDate: datetime
+2.3 Insurance Products & Plans
+ProductRequestDTO
+
+productName: string (Regex: ^[a-zA-Z\s]*$)
+productType: enum ProductType
+description: string
+activeStatus: boolean
+ProductResponseDTO
+
+productId: long
+productName: string
+productType: string
+description: string
+isActive: boolean
+createdDate: datetime
+PlanRequestDTO
+
+productId: long (Required)
+planName: string (Regex: ^[a-zA-Z\s]*$, Required)
+allowedDurations: Set<integer> (Required, e.g. [1, 2, 3, 5])
+supportedPremiumTypes: Set<PremiumType> (Required, e.g. ["ANNUAL", "MONTHLY"])
+termsAndConditions: string (Required)
+activeStatus: boolean (Required)
+PlanResponseDTO
+
+planId: long
+productId: long
+productName: string
+planName: string
+planVersion: integer
+allowedDurations: Set<integer>
+supportedPremiumTypes: Set<PremiumType>
+coverageOptions: List<CoverageOptionResponseDTO>
+termsAndConditions: string
+isActive: boolean
+createdDate: datetime
+CoverageOptionResponseDTO
+
+id: long
+coverageAmount: decimal
+label: string (e.g. "₹5.00 Lakhs")
+displayOrder: integer
+isActive: boolean
+PricingRuleResponseDTO (Managed separately via /api/admin/pricing-rules)
+
+pricingRuleId: long
+planId: long
+planVersion: integer
+riskRate: decimal
+processingFee: decimal
+gstPercentage: decimal
+isActive: boolean
+remarks: string
+createdDate: datetime
+2.4 Policies & Premium Payments
+PolicyPurchaseRequestDTO
+
+quoteId: long (Required — generate via POST /api/premium/calculate first)
+paymentReferenceId: string (Optional)
+PolicyIssueRequestDTO (Admin/Staff only)
+
+customerId: long (Required)
+quoteId: long (Required — generate via POST /api/premium/calculate first)
+startDate: date (Past or Present, Required)
+PremiumCalculationRequest (POST /api/premium/calculate)
+
+planId: long (Required)
+coverageAmount: decimal (Required, Positive)
+duration: integer (Required, Positive — must be in plan's allowedDurations)
+premiumType: PremiumType (Required — MONTHLY, QUARTERLY, HALF_YEARLY, ANNUAL)
+PremiumQuote (Response from /api/premium/calculate)
+
+quoteId: long
+selectedCoverage: decimal
+duration: integer
+premiumType: string
+annualPremium: decimal
+processingFee: decimal
+gst: decimal
+totalPremium: decimal
+expiresAt: datetime
+status: QuoteStatus
+PolicyResponseDTO
+
+policyId: long
+policyNumber: string
+customerId: long
+customerName: string
+planId: long
+planName: string
+startDate: date
+endDate: date
+policyStatus: string (PENDING_PAYMENT, ACTIVE, CANCELLED, EXPIRED)
+totalPremiumPaid: decimal
+productType: string
+coverageAmount: decimal
+premiumAmount: decimal
+premiumType: string
+remainingClaimAmount: decimal
+createdDate: datetime
+PaymentRequestDTO
+
+policyId: long
+amount: decimal (Positive)
+paymentMode: enum (CREDIT_CARD, DEBIT_CARD, NET_BANKING, UPI)
+paymentStatus: enum (SUCCESS, FAILED)
+PaymentResponseDTO
+
+paymentId: long
+policyId: long
+policyNumber: string
+amount: decimal
+paymentMode: string
+transactionReference: string
+paymentStatus: string
+paymentDate: datetime
+2.5 Claims & Claim Processing
+ClaimRequestDTO (Requires multipart/form-data with claim blob and files array)
+
+policyId: long
+claimAmount: decimal (Positive)
+claimReason: string
+incidentDate: date (Past or Present, must be within policy boundaries)
+ClaimReviewRequestDTO
+
+recommendedStatus: enum (RECOMMENDED_FOR_APPROVAL, RECOMMENDED_FOR_REJECTION, APPROVED, REJECTED)
+remarks: string
+ClaimResponseDTO
+
+claimId: long
+claimNumber: string
+policyId: long
+policyNumber: string
+customerName: string
+claimAmount: decimal
+claimReason: string
+incidentDate: date
+claimStatus: string (SUBMITTED, UNDER_REVIEW, RECOMMENDED_FOR_APPROVAL, RECOMMENDED_FOR_REJECTION, APPROVED, REJECTED)
+staffRemarks: string
+adminRemarks: string
+assignedStaffId: long (Optional)
+assignedStaffName: string (Optional)
+documents: array of ClaimDocumentResponseDTO
+createdDate: datetime
+updatedDate: datetime
+ClaimDocumentResponseDTO
+
+id: long
+documentUrl: string
+documentName: string
+uploadedAt: datetime
+ClaimHistoryResponseDTO
+
+historyId: long
+previousStatus: string
+newStatus: string
+remarks: string
+updatedBy: string
+updatedDate: datetime
+3. Swagger / OpenAPI Integration
+The backend is configured with springdoc-openapi-ui. For real-time, interactive exploration of these contracts, frontend engineers can view the live Swagger documentation:
+
+Swagger UI: http://localhost:8081/swagger-ui.html
+OpenAPI JSON Spec: http://localhost:8081/v3/api-docs
+Use the OpenAPI JSON to auto-generate frontend TypeScript clients via openapi-typescript-codegen or swagger-typescript-api if desired.
