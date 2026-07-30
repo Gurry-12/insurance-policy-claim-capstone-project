@@ -94,7 +94,7 @@ const CustomerPlanListPage = () => {
                         <small className="text-muted d-block mb-1">Available Coverage Options</small>
                         <strong className="fs-6 text-dark text-break">
                           {plan.coverageOptions && plan.coverageOptions.length > 0 
-                            ? plan.coverageOptions.map(opt => `₹${((opt.coverageAmount || opt) / 100000)}L`).join(' • ')
+                            ? plan.coverageOptions.filter(opt => (opt.isActive ?? opt.active) !== false).map(opt => `₹${((opt.coverageAmount || opt) / 100000)}L`).join(' • ')
                             : "Configure to view"}
                         </strong>
                       </div>

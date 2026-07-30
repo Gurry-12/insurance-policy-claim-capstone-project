@@ -228,7 +228,7 @@ const PurchasePolicyPage = () => {
                   </p>
 
                   <div className="row g-3">
-                    {planDetails.coverageOptions?.map((opt, idx) => {
+                    {planDetails.coverageOptions?.filter(opt => (opt.isActive ?? opt.active) !== false).map((opt, idx) => {
                       const amount = opt.coverageAmount || opt;
                       const isSelected = selectedCoverage === String(amount);
                       return (
