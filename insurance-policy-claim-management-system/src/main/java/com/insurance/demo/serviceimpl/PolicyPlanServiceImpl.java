@@ -101,7 +101,7 @@ public class PolicyPlanServiceImpl implements PolicyPlanService {
 
 		// 3. Create Pricing Rule
 		if (requestDTO.getPricingRule() == null) {
-			requestDTO.setPricingRule(new com.insurance.demo.dto.request.PricingRuleRequestDTO());
+			throw new BadRequestException("Pricing rule is required to create a policy plan");
 		}
 		requestDTO.getPricingRule().setPlanId(planId);
 		ApiResponseDTO<PricingRuleResponseDTO> pricingResponse = pricingRuleService.createPricingRule(requestDTO.getPricingRule());
@@ -303,6 +303,7 @@ public class PolicyPlanServiceImpl implements PolicyPlanService {
 		PaginationValidator.validateSortField(sortBy,
 				Set.of("id", "planName", "createdDate"));
 
+		if (sortDirection == null) sortDirection = "asc";
 		Sort.Direction direction = sortDirection.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
 		Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(direction, sortBy));
 

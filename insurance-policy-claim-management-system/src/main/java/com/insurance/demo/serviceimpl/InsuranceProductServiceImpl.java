@@ -25,6 +25,7 @@ import com.insurance.demo.exception.ProductNotFoundException;
 import com.insurance.demo.exception.ResourceNotFoundException;
 import com.insurance.demo.model.InsuranceProduct;
 import com.insurance.demo.repository.InsuranceProductRepository;
+import com.insurance.demo.repository.PolicyPlanRepository;
 import com.insurance.demo.service.InsuranceProductService;
 import com.insurance.demo.util.MessageConstants;
 import com.insurance.demo.util.PaginationValidator;
@@ -39,6 +40,7 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 
 	private final ModelMapper modelMapper;
 	private final InsuranceProductRepository productRepository;
+	private final PolicyPlanRepository policyPlanRepository;
 
 	@Override
 	@Transactional
@@ -145,7 +147,9 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 			throw new ResourceNotFoundException(MessageConstants.Product.ACTIVE_NOT_FOUND);
 		}
 
-		List<ProductResponseDTO> productResponseDTOs = products.stream().map(product -> {
+		List<ProductResponseDTO> productResponseDTOs = products.stream()
+				.filter(product -> policyPlanRepository.findByInsuranceProductIdAndIsActiveTrue(product.getId()).size() > 0)
+				.map(product -> {
 
 			ProductResponseDTO dto = modelMapper.map(product, ProductResponseDTO.class);
 
@@ -167,6 +171,7 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 	}
 
 	@Override
+	@Transactional
 	public ApiResponseDTO<ProductResponseDTO> updateProduct(Long productId, ProductRequestDTO requestDTO) {
 
 		log.info("Updating product with ID: {}", productId);
@@ -232,6 +237,12 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 		log.info("Fetching product with id: {}", id);
 		InsuranceProduct product = productRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Product.NOT_FOUND + id));
+		org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		boolean isCustomer = auth != null
+				&& auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"));
+		if (isCustomer && !Boolean.TRUE.equals(product.getIsActive())) {
+			throw new ResourceNotFoundException(MessageConstants.Product.NOT_FOUND + id);
+		}
 		ProductResponseDTO dto = modelMapper.map(product, ProductResponseDTO.class);
 		return new ApiResponseDTO<>(MessageConstants.Product.DETAILS_RETRIEVED, true, dto, LocalDateTime.now());
 	}

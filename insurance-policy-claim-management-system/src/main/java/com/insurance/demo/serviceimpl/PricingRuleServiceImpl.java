@@ -301,9 +301,36 @@ public class PricingRuleServiceImpl implements PricingRuleService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public ApiResponseDTO<PremiumQuote> previewPremium(PricingPreviewRequestDTO dto) {
-		// Mock preview for admin - simple lookup
-		throw new UnsupportedOperationException("Not implemented - preview should call quote service directly.");
+		PricingRule rule = pricingRuleRepository.findById(dto.getPricingRuleId())
+				.orElseThrow(() -> new ResourceNotFoundException("Pricing rule not found"));
+
+		if (rule.getStatus() != PricingRuleStatus.ACTIVE) {
+			throw new BadRequestException("Pricing rule is not active");
+		}
+
+		BigDecimal basePremium = dto.getCoverageAmount().multiply(rule.getBaseRiskRate());
+		BigDecimal processingFee = rule.getProcessingFee() != null ? rule.getProcessingFee() : BigDecimal.ZERO;
+		BigDecimal gst = processingFee.multiply(
+				rule.getGst() != null ? rule.getGst() : new BigDecimal("0.18"));
+		BigDecimal annualPremium = PremiumType.ONE_TIME.equals(dto.getPremiumType())
+				? basePremium.add(processingFee).add(gst)
+				: basePremium.multiply(BigDecimal.valueOf(dto.getDuration()))
+					.add(processingFee).add(gst);
+
+		PremiumQuote quote = PremiumQuote.builder()
+				.selectedCoverage(dto.getCoverageAmount())
+				.duration(dto.getDuration())
+				.premiumType(dto.getPremiumType())
+				.basePremium(basePremium)
+				.annualPremium(basePremium)
+				.processingFee(processingFee)
+				.gst(gst)
+				.totalPremium(annualPremium)
+				.build();
+
+		return new ApiResponseDTO<>("Premium preview computed successfully", true, quote, LocalDateTime.now());
 	}
 
 	private void recordAuditLog(PricingRule rule, String remarks, String changedBy) {

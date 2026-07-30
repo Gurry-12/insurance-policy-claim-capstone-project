@@ -9,10 +9,8 @@ import org.springframework.stereotype.Repository;
 import com.insurance.demo.model.Claim;
 import com.insurance.demo.model.ClaimDocument;
 @Repository
-public interface ClaimDocumentRepository extends JpaRepository<ClaimDocument, Integer>{
+public interface ClaimDocumentRepository extends JpaRepository<ClaimDocument, Long>{
 
 	List<ClaimDocument> findByClaimId(Long claimId);
-
-	Optional<ClaimDocument> findById(Long documentId);
 
 }
