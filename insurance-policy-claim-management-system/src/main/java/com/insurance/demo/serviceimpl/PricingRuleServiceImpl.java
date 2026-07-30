@@ -24,6 +24,7 @@ import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.PageResponseDTO;
 import com.insurance.demo.dto.response.PricingRuleResponseDTO;
 import com.insurance.demo.dto.PremiumQuote;
+import com.insurance.demo.enums.PremiumType;
 import com.insurance.demo.enums.PricingRuleStatus;
 import com.insurance.demo.enums.ProductType;
 import com.insurance.demo.exception.BadRequestException;

@@ -256,6 +256,7 @@ public class PolicyServiceImpl implements PolicyService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>> getAllPolicies(int pageNumber, int pageSize, String sortBy,
 			String sortDirection, Long customerId, String status, String policyNumber) {
 
@@ -310,6 +311,7 @@ public class PolicyServiceImpl implements PolicyService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>> getCustomerPolicies(String email, int pageNumber, int pageSize, String sortBy,
 			String sortDirection) {
 
@@ -334,6 +336,7 @@ public class PolicyServiceImpl implements PolicyService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>> getPoliciesByCustomer(Long customerId, int pageNumber, int pageSize, String sortBy,
 			String sortDirection) {
 

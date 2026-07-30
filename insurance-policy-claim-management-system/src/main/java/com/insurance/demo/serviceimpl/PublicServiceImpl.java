@@ -29,10 +29,10 @@ public class PublicServiceImpl implements PublicService {
     @Override
     @Transactional(readOnly = true)
     public ApiResponseDTO<PublicStatsResponseDTO> getPlatformStats() {
-        long activeProducts = 4;
-        long activePlans = 12;
-        long totalPolicies = 250;
-        long claimsProcessed = 95;
+		long activeProducts = 0;
+		long activePlans = 0;
+		long totalPolicies = 0;
+		long claimsProcessed = 0;
 
         try {
             long dbProducts = insuranceProductRepository.count();

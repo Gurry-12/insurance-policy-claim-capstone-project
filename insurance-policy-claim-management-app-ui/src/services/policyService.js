@@ -22,9 +22,9 @@ export const getPolicyById = async (policyId) => {
 };
 
 
-export const getPoliciesByCustomerId = async (customerId) => {
-  const response = await axiosInstance.get(`/policies/customer/${customerId}`);
-  return response.data;
+export const getPoliciesByCustomerId = async (customerId, params = {}) => {
+  const response = await axiosInstance.get(`/policies/customer/${customerId}`, { params });
+  return response;
 };
 
 

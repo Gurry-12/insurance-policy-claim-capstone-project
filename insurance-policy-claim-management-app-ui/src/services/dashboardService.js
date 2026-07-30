@@ -1,14 +1,24 @@
 import axiosInstance from '../api/axiosInstance';
 
 export const getAdminStats = async () => {
+  const results = await Promise.allSettled([
+    getCustomerCount(),
+    getTotalActivePolicies(),
+    getOpenClaimsCount(),
+    getActiveUsers(),
+    getTotalProducts(),
+    getRecentClaims(),
+    getRecentPolicies()
+  ]);
+
   return {
-    totalCustomers: await getCustomerCount().catch(() => 0),
-    activePolicies: await getTotalActivePolicies().catch(() => 0),
-    claims: await getOpenClaimsCount().catch(() => {}),
-    activeUsers: await getActiveUsers().catch(() => 0),
-    totalProducts: await getTotalProducts().catch(() => 0),
-    recentClaims: await getRecentClaims().catch(() => []),
-    recentPolicies: await getRecentPolicies().catch(() => [])
+    totalCustomers: results[0].status === 'fulfilled' ? results[0].value : 0,
+    activePolicies: results[1].status === 'fulfilled' ? results[1].value : 0,
+    claims: results[2].status === 'fulfilled' ? results[2].value : { pendingClaims: 0, reviewedClaims: 0 },
+    activeUsers: results[3].status === 'fulfilled' ? results[3].value : 0,
+    totalProducts: results[4].status === 'fulfilled' ? results[4].value : 0,
+    recentClaims: results[5].status === 'fulfilled' ? results[5].value : [],
+    recentPolicies: results[6].status === 'fulfilled' ? results[6].value : []
   };
 };
 
