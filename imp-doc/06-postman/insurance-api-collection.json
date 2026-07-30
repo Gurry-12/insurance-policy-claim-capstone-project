@@ -1,0 +1,1591 @@
+{
+  "info": {
+    "_postman_id": "2ef6054c-bc3e-4b4a-9de2-813395f1f339",
+    "name": "Insurance Policy & Claim Management System (UPDATED)",
+    "description": "Updated Postman collection generated from actual source code. Base URL: http://localhost:8080. Set `baseUrl` variable. Login scripts auto-save token to `token` variable.\n\n**Roles:** ADMIN | AGENT | CUSTOMER\n**Auth:** JWT Bearer Token (auto-saved on login)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47099666",
+    "_collection_link": "https://go.postman.co/collection/47099666-2ef6054c-bc3e-4b4a-9de2-813395f1f339?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Register (Customer)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Gurpreet Singh\",\n  \"email\": \"test.gurpreetsw@yopmail.com\",\n  \"password\": \"Password123!\",\n  \"mobileNumber\": \"+919376847944\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const jwt = res.token || (res.data && res.data.token);",
+                  "    if (jwt) pm.collectionVariables.set('token', jwt);",
+                  "    console.log('Admin token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@insurance.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Agent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const jwt = res.token || (res.data && res.data.token);",
+                  "    if (jwt) pm.collectionVariables.set('token', jwt);",
+                  "    console.log('Agent token saved');",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rahul.agent@insurance.com\",\n  \"password\": \"Agent@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const jwt = res.token || (res.data && res.data.token);",
+                  "    if (jwt) pm.collectionVariables.set('token', jwt);",
+                  "    console.log('Customer token saved');",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test.gurpreetsw@yopmail.com\",\n  \"password\": \"Password123!\"\n  }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "verify user",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\" : \"test.gurpreetsw@yopmail.com\",\r\n    \"emailOtp\": \"307728\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Users (ADMIN only)",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "page"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ram Agent\",\n  \"email\": \"ram.agent@yopmail.com\",\n  \"password\": \"Agent@123\",\n  \"mobileNumber\": \"+919232567654\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/agent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "agent"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}",
+                "activate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}",
+                "deactivate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Customers",
+      "item": [
+        {
+          "name": "Create Customer Profile (CUSTOMER — userId in path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateOfBirth\": \"2004-06-15\",\n  \"address\": \"123 MG Road\",\n  \"city\": \"Jaipur\",\n  \"state\": \"Rajasthan\",\n  \"pinCode\": \"302000\",\n  \"nomineeName\": \"Harpreet Singh\",\n  \"nomineeRelation\": \"Brother\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer Profile (CUSTOMER — own profile)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer by ID (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "{{customerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Customers (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customers (Paginated) (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "page"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customer (CUSTOMER)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateOfBirth\": \"1995-06-15\",\n  \"address\": \"456 New Road\",\n  \"city\": \"Jaipur\",\n  \"state\": \"Rajasthan\",\n  \"pinCode\": \"3020001\",\n  \"nomineeName\": \"Harpreet Singh\",\n  \"nomineeRelation\": \"Brother\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Insurance Products (ADMIN)",
+      "item": [
+        {
+          "name": "Create Product (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productName\": \"Drive Safe\",\n  \"productType\": \"MOTOR\",\n  \"description\": \"Vehicle protection insurance\",\n  \"activeStatus\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productName\": \"Health Shield Pro\",\n  \"productType\": \"HEALTH\",\n  \"description\": \"Updated description for the health shield product\",\n  \"activeStatus\": \"false\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Product (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Product (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "deactivate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Products (ALL ROLES)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Products (Paginated) (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "page"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Policy Plans",
+      "item": [
+        {
+          "name": "Create Plan (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"planName\": \"Life Premium\",\n  \"coverageAmount\": 2500000,\n  \"premiumAmount\": 22000,\n  \"premiumType\": \"ANNUAL\",\n  \"duration\": 20,\n  \"termsAndConditions\": \"Enhanced life protection\",\n  \"activeStatus\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Plan (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"planName\": \"Gold Plan Updated\",\n  \"coverageAmount\": 600000.00,\n  \"premiumAmount\": 15000.00,\n  \"premiumType\": \"ANNUAL\",\n  \"duration\": 5,\n  \"termsAndConditions\": \"Updated terms and conditions for the gold plan.\",\n  \"activeStatus\" : \"true\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "{{planId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Plan (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/{{planId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "{{planId}}",
+                "deactivate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Plan (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/{{planId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "{{planId}}",
+                "activate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Active Plans (ALL ROLES)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Plans by Product (ALL ROLES)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/{{productId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "{{productId}}",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plan by ID (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/{{planId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "{{planId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plans (Paginated) (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/plans/page?pageNumber=0&pageSize=10&sortBy=createdDate&sortDirection=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "plans",
+                "page"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdDate"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "desc"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Policies",
+      "item": [
+        {
+          "name": "Purchase Policy (CUSTOMER — self-service)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": 1,\n  \"startDate\": \"2026-06-09\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/policies/purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "purchase"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Issue Policy (ADMIN/AGENT — for a customer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1,\n  \"planId\": 1,\n  \"startDate\": \"2026-06-10\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/policies/issue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "issue"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "My Policies (CUSTOMER)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies/my-policies?page=0&size=10&sortBy=id&direction=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "my-policies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "direction",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Policies by Customer ID (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies/customer/{{policyId}}?page=0&size=10&sortBy=id&direction=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "customer",
+                "{{policyId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "direction",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Policies (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?page=0&size=10&sortBy=id&direction=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "direction",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Policy (ADMIN/AGENT)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies/{{policyId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "policies",
+                "{{policyId}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Premium Payments",
+      "item": [
+        {
+          "name": "Make Payment (CUSTOMER) success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": 1,\n  \"amount\": 22000.00,\n  \"paymentMode\": \"UPI\",\n  \"transactionReference\": \"TXN27260609401\",\n  \"paymentStatus\": \"SUCCESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Make Payment (CUSTOMER) Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": 2,\n  \"amount\": 15000.00,\n  \"paymentMode\": \"UPI\",\n  \"transactionReference\": \"TXN20660609001\",\n  \"paymentStatus\": \"FAILED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payments by Policy ID (ADMIN/ AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/policy/{{policyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "policy",
+                "{{policyId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Payments (Paginated) (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "page"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "id"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Claims",
+      "item": [
+        {
+          "name": "Raise Claim (CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "claim",
+                  "value": "{\n  \"policyId\": 1,\n  \"claimAmount\": 50000.00,\n  \"claimReason\": \"Hospitalization due to fever and infection\",\n  \"incidentDate\": \"2026-05-20\"\n}",
+                  "type": "text",
+                  "uuid": "6cfd1a49-2ad3-4768-a1bd-7bc68afd13f7",
+                  "contentType": "application/json"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "uuid": "52cd136f-ce89-4be3-8185-eeda3b969633",
+                  "src": "/C:/Users/singh/Download/instagram-splits/row-1-column-1.png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/raise",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "raise"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "My Claims (CUSTOMER)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/my-claims",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "my-claims"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Claims (Paginated) (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/claims?pageNumber=0&pageSize=10&sortBy=createdDate&sortDirection=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdDate"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "desc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Claim by ID (ADMIN/AGENT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Claim History (ALL ROLES)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Move to Under Review (AGENT)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/under-review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "under-review"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agent Review — Recommend Approval (AGENT)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendedStatus\": \"RECOMMENDED_FOR_APPROVAL\",\n  \"remarks\": \"All documents verified. Claim is legitimate and within coverage limit.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "review"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agent Review — Recommend Rejection (AGENT)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendedStatus\": \"RECOMMENDED_FOR_REJECTION\",\n  \"remarks\": \"Incident date does not match medical records provided.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "review"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Final Decision — Approve (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendedStatus\": \"APPROVED\",\n  \"remarks\": \"Claim approved after final review. Amount will be disbursed within 7 working days.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/final-decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "final-decision"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Final Decision — Reject (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendedStatus\": \"REJECTED\",\n  \"remarks\": \"Claim rejected due to insufficient documentation.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/claims/{{claimId}}/final-decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "claims",
+                "{{claimId}}",
+                "final-decision"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Documents to Claim (CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "uuid": "1b7d64d8-b3dc-4941-bab8-b3cc3e4558a1",
+                  "value": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/document/upload{{claimId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "document",
+                "upload{{claimId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "planId",
+      "value": ""
+    },
+    {
+      "key": "policyId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "claimId",
+      "value": ""
+    }
+  ]
+}
