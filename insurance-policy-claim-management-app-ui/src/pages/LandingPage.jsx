@@ -3,14 +3,20 @@ import { Link } from "react-router-dom";
 import logoSrc from "../assets/logo/insurance-vector.png";
 import heroImg from "../assets/logo/insurance-heart-vector.png";
 import "../pages/css/LandingPage.css";
+import { getPlatformStats } from "../services/publicService";
 
 const LandingPage = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    getPlatformStats().then(setStats).catch(() => {});
   }, []);
 
   const features = [
@@ -172,17 +178,23 @@ const LandingPage = () => {
               </div>
               <div className="lp-hero-stats">
                 <div>
-                  <div className="lp-hero-stat-val">4 Types</div>
+                  <div className="lp-hero-stat-val">
+                    {stats ? `${stats.activeProducts} Types` : "4 Types"}
+                  </div>
                   <div className="lp-hero-stat-label">Insurance Products</div>
                 </div>
                 <div>
-                  <div className="lp-hero-stat-val">6 Stages</div>
-                  <div className="lp-hero-stat-label">Claim Lifecycle</div>
+                  <div className="lp-hero-stat-val">
+                    {stats ? `${stats.activePlans}+` : "12+"}
+                  </div>
+                  <div className="lp-hero-stat-label">Active Plans</div>
                 </div>
                 <div>
-                  <div className="lp-hero-stat-val">3 Portals</div>
+                  <div className="lp-hero-stat-val">
+                    {stats ? `${stats.totalPolicies}+` : "250+"}
+                  </div>
                   <div className="lp-hero-stat-label">
-                    Admin · Staff · Customer
+                    Policies Issued
                   </div>
                 </div>
               </div>
