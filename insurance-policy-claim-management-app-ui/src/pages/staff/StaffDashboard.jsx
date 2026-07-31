@@ -12,6 +12,7 @@ import ErrorAlert from "../../components/ui/ErrorAlert";
 import PageHeader from "../../components/common/PageHeader";
 import BentoCard from "../../common/BentoCard";
 import DataTable from "../../components/tables/DataTable";
+import { formatINR } from "../../utils/formatters";
 
 const StatTile = ({ icon, label, value, color }) => (
   <BentoCard className="ip-bento-stat-tile">
@@ -391,7 +392,7 @@ const StaffDashboard = () => {
                     { header: 'Sr No.', accessor: 'policyId', cell: (_, i) => <span style={{ fontWeight: 600 }}>{i + 1}</span> },
                     { header: 'Customer', accessor: 'customerName', cell: (p) => p.customerName || "Customer" },
                     { header: 'Product', accessor: 'productName', cell: (p) => <span style={{ color: 'var(--ip-text-muted)' }}>{p.productName || "Standard Plan"}</span> },
-                    { header: 'Premium', accessor: 'calculatedPremium', cell: (p) => <span style={{ fontWeight: 600 }}>₹{Number(p.calculatedPremium || p.premium || 0).toLocaleString("en-IN")}</span> },
+                    { header: 'Premium', accessor: 'calculatedPremium', cell: (p) => <span style={{ fontWeight: 600 }}>{formatINR(p.calculatedPremium || p.premium)}</span> },
                     { header: 'Status', accessor: 'policyStatus', cell: (p) => <StatusBadge status={p.policyStatus || p.status} /> },
                     { header: 'Start Date', accessor: 'startDate', cell: (p) => <span style={{ color: 'var(--ip-text-muted)' }}>{p.startDate || "-"}</span> }
                   ]}

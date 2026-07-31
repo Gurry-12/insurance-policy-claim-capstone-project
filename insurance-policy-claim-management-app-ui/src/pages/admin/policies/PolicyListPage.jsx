@@ -13,6 +13,7 @@ import SortableHeader from '../../../components/tables/SortableHeader';
 import useDebounceFilters from '../../../hooks/useDebounceFilters';
 import ExportButton from '../../../components/common/ExportButton';
 import { POLICY_STATUS_OPTIONS } from '../../../utils/options';
+import { formatINR } from '../../../utils/formatters';
 
 const FILTER_FIELDS = [
   { type: 'select', name: 'status', label: 'Policy Status',
@@ -72,7 +73,7 @@ const PolicyListPage = () => {
     { header: "Plan", accessor: "planName" },
     {
       header: "Premium (₹)",
-      cell: (row) => `₹${(row.calculatedPremium || 0).toLocaleString("en-IN")}`,
+      cell: (row) => formatINR(row.calculatedPremium),
     },
     { header: "Start Date", accessor: "startDate" },
     { header: "Expiry Date", accessor: "endDate" },

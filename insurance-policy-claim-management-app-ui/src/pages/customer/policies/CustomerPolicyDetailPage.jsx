@@ -7,6 +7,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import { Shield, ArrowLeft, CreditCard, History, Download } from "lucide-react";
 import usePolicyPdf from "../../../hooks/PdfDownload/usePolicyPdf";
+import { formatINR } from "../../../utils/formatters";
 
 const CustomerPolicyDetailPage = () => {
   const { policyId } = useParams();
@@ -115,7 +116,7 @@ const showPayButton =
               <div className="text-start mb-4">
                 <div className="mb-3">
                   <small className="text-muted d-block fw-bold">Premium Amount</small>
-                  <span className="fs-5 fw-bold text-dark">₹{policy.calculatedPremium?.toLocaleString()}</span>
+                  <span className="fs-5 fw-bold text-dark">{formatINR(policy.calculatedPremium)}</span>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted d-block fw-bold">Start Date</small>
@@ -163,15 +164,15 @@ const showPayButton =
                 </div>
                 <div className="col-sm-6">
                   <div className="text-muted small mb-1">Coverage Amount</div>
-                  <div className="fw-semibold">₹{policy.selectedCoverage?.toLocaleString()}</div>
+                  <div className="fw-semibold">{formatINR(policy.selectedCoverage)}</div>
                 </div>
                 <div className="col-sm-6">
                   <div className="text-muted small mb-1">Remaining Claim Amount</div>
-                  <div className="fw-semibold text-success">₹{policy.remainingClaimAmount?.toLocaleString() ?? policy.selectedCoverage?.toLocaleString()}</div>
+                  <div className="fw-semibold text-success">{formatINR(policy.remainingClaimAmount ?? policy.selectedCoverage)}</div>
                 </div>
                 <div className="col-sm-6">
                   <div className="text-muted small mb-1">Total Premium Paid</div>
-                  <div className="fw-semibold">₹{policy.totalPremiumPaid?.toLocaleString()}</div>
+                  <div className="fw-semibold">{formatINR(policy.totalPremiumPaid)}</div>
                 </div>
                 <div className="col-sm-6">
                   <div className="text-muted small mb-1">Created Date</div>

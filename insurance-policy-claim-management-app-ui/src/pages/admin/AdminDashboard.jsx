@@ -9,6 +9,7 @@ import ErrorAlert  from '../../components/ui/ErrorAlert';
 import PageHeader  from '../../components/common/PageHeader';
 import BentoCard   from '../../common/BentoCard';
 import DataTable   from '../../components/tables/DataTable';
+import { formatINR } from '../../utils/formatters';
 
 const StatTile = ({ icon, label, value, color }) => (
   <BentoCard className="ip-bento-stat-tile">
@@ -159,7 +160,7 @@ const AdminDashboard = () => {
                 { header: 'Sr No.', accessor: 'id', cell: (_, i) => <span style={{ fontWeight: 600 }}>{i + 1}</span> },
                 { header: 'Customer', accessor: 'customerName' },
                 { header: 'Product', accessor: 'productName', cell: (p) => <span style={{ color: 'var(--ip-text-muted)' }}>{p.productName}</span> },
-                { header: 'Premium', accessor: 'premium', cell: (p) => <span style={{ fontWeight: 600 }}>₹{Number(p.premium).toLocaleString('en-IN')}</span> },
+                { header: 'Premium', accessor: 'premium', cell: (p) => <span style={{ fontWeight: 600 }}>{formatINR(p.premium)}</span> },
                 { header: 'Status', accessor: 'status', cell: (p) => <StatusBadge status={p.status} /> },
                 { header: 'Start Date', accessor: 'startDate', cell: (p) => <span style={{ color: 'var(--ip-text-muted)' }}>{p.startDate}</span> }
               ]}

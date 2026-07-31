@@ -19,30 +19,30 @@ public class OneTimePremiumCalculator implements PremiumCalculator {
 
 		// 1. Base Annual Risk Premium
 		BigDecimal riskRate = rule.getBaseRiskRate();
-		BigDecimal basePremium = coverageAmount.multiply(riskRate).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal basePremium = coverageAmount.multiply(riskRate).setScale(0, RoundingMode.HALF_UP);
 
 		// 2. Processing Fee
-		BigDecimal processingFee = rule.getProcessingFee();
+		BigDecimal processingFee = rule.getProcessingFee().setScale(0, RoundingMode.HALF_UP);
 
 		// 3. Taxable Amount (per year)
 		BigDecimal taxableAmount = basePremium.add(processingFee);
 
 		// 4. GST (per year)
 		BigDecimal gstPercentage = rule.getGst();
-		BigDecimal gstAmount = taxableAmount.multiply(gstPercentage).divide(new BigDecimal("100.00"), 2, RoundingMode.HALF_UP);
+		BigDecimal gstAmount = taxableAmount.multiply(gstPercentage).divide(new BigDecimal("100.00"), 0, RoundingMode.HALF_UP);
 
 		// 5. Annual Premium (cost per year, used for total commitment calculation)
 		BigDecimal annualPremium = taxableAmount.add(gstAmount);
 
 		// 6. Total Commitment over full duration (before discount)
-		BigDecimal totalCommitment = annualPremium.multiply(BigDecimal.valueOf(duration)).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal totalCommitment = annualPremium.multiply(BigDecimal.valueOf(duration)).setScale(0, RoundingMode.HALF_UP);
 
 		// 7. Duration-based discount for upfront one-time payment
 		BigDecimal discountRate = getDurationDiscountRate(duration);
-		BigDecimal discountAmount = totalCommitment.multiply(discountRate).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal discountAmount = totalCommitment.multiply(discountRate).setScale(0, RoundingMode.HALF_UP);
 
 		// 8. Final one-time premium after discount
-		BigDecimal totalPremium = totalCommitment.subtract(discountAmount).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal totalPremium = totalCommitment.subtract(discountAmount).setScale(0, RoundingMode.HALF_UP);
 
 		return PremiumQuote.builder()
 				.selectedCoverage(coverageAmount)

@@ -7,6 +7,7 @@ import { Shield, ArrowRight, IndianRupee, Calendar, PlusCircle } from "lucide-re
 import useTableState from "../../../hooks/useTableState";
 import PaginationBar from "../../../components/tables/PaginationBar";
 import ExportButton from "../../../components/common/ExportButton";
+import { formatINR } from "../../../utils/formatters";
 
 const CustomerPolicyListPage = () => {
   const [policies, setPolicies] = useState([]);
@@ -127,13 +128,13 @@ const CustomerPolicyListPage = () => {
                           <div className="text-muted small mb-1 d-flex align-items-center">
                             <IndianRupee size={14} className="me-1" /> Premium
                           </div>
-                          <div className="fw-bold text-dark fs-5">₹{policy.calculatedPremium?.toLocaleString()}</div>
+                          <div className="fw-bold text-dark fs-5">{formatINR(policy.calculatedPremium)}</div>
                         </div>
                         <div className="col-6 border-start">
                           <div className="text-muted small mb-1 ps-2 d-flex align-items-center">
                             <Shield size={14} className="me-1" /> Coverage
                           </div>
-                          <div className="fw-bold text-dark fs-5 ps-2">₹{policy.selectedCoverage?.toLocaleString()}</div>
+                          <div className="fw-bold text-dark fs-5 ps-2">{formatINR(policy.selectedCoverage)}</div>
                         </div>
                       </div>
                     </div>

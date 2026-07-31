@@ -12,6 +12,7 @@ import FilterChips from "../../../components/ui/FilterChips";
 import SortableHeader from "../../../components/tables/SortableHeader";
 import useDebounceFilters from "../../../hooks/useDebounceFilters";
 import { POLICY_STATUS_OPTIONS } from "../../../utils/options";
+import { formatINR } from "../../../utils/formatters";
 
 const FILTER_FIELDS = [
   {
@@ -85,7 +86,7 @@ const StaffPolicyListPage = () => {
     { header: "Plan Name", accessor: "planName" },
     {
       header: "Premium Amount (₹)",
-      cell: (row) => <span className="fw-semibold">₹{row.calculatedPremium?.toLocaleString("en-IN") || 0}</span>,
+      cell: (row) => <span className="fw-semibold">{formatINR(row.calculatedPremium)}</span>,
     },
     { header: "Start Date", accessor: "startDate" },
     { header: "Expiry Date", accessor: "endDate" },

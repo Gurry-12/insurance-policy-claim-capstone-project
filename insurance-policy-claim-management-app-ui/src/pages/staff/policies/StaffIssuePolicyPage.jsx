@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import { notify } from '../../../utils/notificationService';
+import { formatINR } from '../../../utils/formatters';
 import { getAllCustomers } from '../../../services/customerService';
 import { getAllPlans } from '../../../services/planService';
 import { generateQuoteAsAdmin } from '../../../services/quoteService';
@@ -325,7 +326,7 @@ const StaffIssuePolicyPage = () => {
                     >
                       <div className="text-muted" style={{ fontSize: '0.72rem' }}>{item.label}</div>
                       <div className="fw-bold" style={{ color: 'var(--ip-brand)', fontSize: '1.05rem' }}>
-                        ₹{Number(item.value).toLocaleString('en-IN')}
+                        {formatINR(item.value)}
                       </div>
                     </div>
                   </div>
@@ -337,7 +338,7 @@ const StaffIssuePolicyPage = () => {
                   >
                     <div className="text-muted" style={{ fontSize: '0.72rem' }}>Total</div>
                     <div className="fw-bold" style={{ color: 'var(--ip-success)', fontSize: '1.15rem' }}>
-                      ₹{Number(quote.totalPremium).toLocaleString('en-IN')}
+                      {formatINR(quote.totalPremium)}
                     </div>
                   </div>
                 </div>

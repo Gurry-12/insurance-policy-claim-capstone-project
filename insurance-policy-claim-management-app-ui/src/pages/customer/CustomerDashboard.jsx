@@ -10,6 +10,7 @@ import ErrorAlert  from "../../components/ui/ErrorAlert";
 import PageHeader  from "../../components/common/PageHeader";
 import BentoCard   from "../../common/BentoCard";
 import DataTable   from "../../components/tables/DataTable";
+import { formatINR } from "../../utils/formatters";
 import { POLICY_STATUS } from '../../utils/statuses';
 import { EMPTY_STATES } from '../../utils/labels';
 
@@ -205,7 +206,7 @@ const CustomerDashboard = () => {
                   <div className="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
                     <div>
                       <div className="text-muted" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Premium</div>
-                      <div className="fw-bold" style={{ fontSize: '0.85rem' }}>₹{Number(p.calculatedPremium || p.premium || 0).toLocaleString('en-IN')}</div>
+                      <div className="fw-bold" style={{ fontSize: '0.85rem' }}>{formatINR(p.calculatedPremium || p.premium)}</div>
                     </div>
                     <div>
                       {p.policyStatus === POLICY_STATUS.PENDING_PAYMENT ? (

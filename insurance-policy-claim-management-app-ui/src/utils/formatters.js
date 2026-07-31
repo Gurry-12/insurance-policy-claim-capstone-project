@@ -14,4 +14,11 @@ export const formatCurrency = (amount) => {
     currency: 'INR',
     maximumFractionDigits: 0
   }).format(amount);
+};
+
+// Formats a monetary value in Indian rupees, rounded to whole rupees (no paise).
+export const formatINR = (amount) => {
+  const value = Number(amount ?? 0);
+  if (!Number.isFinite(value)) return "₹0";
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
 };

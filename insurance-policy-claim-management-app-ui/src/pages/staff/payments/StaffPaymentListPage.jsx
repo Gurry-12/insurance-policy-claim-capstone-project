@@ -12,6 +12,7 @@ import FilterChips from "../../../components/ui/FilterChips";
 import SortableHeader from "../../../components/tables/SortableHeader";
 import useDebounceFilters from "../../../hooks/useDebounceFilters";
 import { PAYMENT_STATUS_OPTIONS } from "../../../utils/options";
+import { formatINR } from "../../../utils/formatters";
 
 const FILTER_FIELDS = [
   {
@@ -78,7 +79,7 @@ const StaffPaymentListPage = () => {
     { header: "Policy Number", accessor: "policyNumber" },
     {
       header: renderHeader("Amount (₹)", "amount"),
-      cell: (row) => <span className="fw-semibold">₹{row.amount?.toLocaleString("en-IN") || 0}</span>,
+      cell: (row) => <span className="fw-semibold">{formatINR(row.amount)}</span>,
     },
     { header: renderHeader("Payment Mode", "paymentMode"), accessor: "paymentMode" },
     { header: "Transaction Ref", accessor: "transactionReference" },

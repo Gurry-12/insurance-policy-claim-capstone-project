@@ -8,6 +8,7 @@ import { getPolicyById, getClaimsByPolicy } from '../../../services/policyServic
 import { getAllPaymentsPaginated } from '../../../services/paymentService';
 import usePolicyPdf from '../../../hooks/PdfDownload/usePolicyPdf';
 import { CreditCard } from "lucide-react";
+import { formatINR } from '../../../utils/formatters';
 
 const StaffPolicyDetailPage = () => {
   const { policyId } = useParams();
@@ -68,8 +69,8 @@ const StaffPolicyDetailPage = () => {
   const coverageDetails = (Array.isArray(policy.coverageDetails) && policy.coverageDetails.length > 0) 
     ? policy.coverageDetails 
     : [
-        { benefit: 'Coverage Amount', detail: `₹${coverageAmount.toLocaleString('en-IN')}` },
-        { benefit: 'Remaining Claim Amount', detail: `₹${Number(policy.remainingClaimAmount ?? coverageAmount).toLocaleString('en-IN')}` },
+        { benefit: 'Coverage Amount', detail: formatINR(coverageAmount) },
+        { benefit: 'Remaining Claim Amount', detail: formatINR(policy.remainingClaimAmount ?? coverageAmount) },
         { benefit: 'Premium Term', detail: premiumType },
         { benefit: 'Product Category', detail: productType }
       ];
@@ -125,7 +126,7 @@ const StaffPolicyDetailPage = () => {
               <div className="text-start mb-4">
                 <div className="mb-3">
                   <small className="text-muted d-block fw-bold">Premium Amount</small>
-                  <span className="fs-5 fw-bold text-dark">₹{premium.toLocaleString('en-IN')}</span>
+                  <span className="fs-5 fw-bold text-dark">{formatINR(premium)}</span>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted d-block fw-bold">Start Date</small>

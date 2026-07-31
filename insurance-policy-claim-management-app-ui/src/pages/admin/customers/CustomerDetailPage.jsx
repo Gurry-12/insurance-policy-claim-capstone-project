@@ -7,6 +7,9 @@ import ErrorAlert from "../../../components/ui/ErrorAlert";
 import { getCustomerById } from "../../../services/customerService";
 import { getPoliciesByCustomerId } from "../../../services/policyService";
 import useCustomerPdf from "../../../hooks/PdfDownload/useCustomerPdf";
+import useTableState from "../../../hooks/useTableState";
+import PaginationBar from "../../../components/tables/PaginationBar";
+import { formatINR } from "../../../utils/formatters";
 
 const CustomerDetailPage = () => {
   const { id } = useParams();
@@ -17,32 +20,45 @@ const CustomerDetailPage = () => {
   const [error, setError] = useState("");
   const [policies, setPolicies] = useState([]);
 
+  const tableState = useTableState({ initialSortBy: "id" });
+  const { getQueryParams, setTotalPages, setTotalElements, setCurrentPage } = tableState;
+
   useEffect(() => {
-    
+    setCurrentPage(1);
     setLoading(true);
     setError("");
 
-    Promise.all([
-      getCustomerById(id).catch(err => {
-        console.error("Profile load failed:", err);
-        return null;
-      }),
-      getPoliciesByCustomerId(id).catch(err => {
-        console.error("Policies load failed:", err);
-        return [];
+    getCustomerById(id)
+      .then((customerData) => {
+        if (!customerData) {
+          setError("Could not load customer profile details.");
+        } else {
+          setCustomer(customerData);
+        }
       })
-
-    ]).then(([customerData, policiesData]) => {
-      if (!customerData) {
+      .catch((err) => {
+        console.error("Profile load failed:", err);
         setError("Could not load customer profile details.");
-      } else {
-        setCustomer(customerData);
-        setPolicies(policiesData || []);
-      }
-    }).finally(() => {
-      setLoading(false);
-    });
-  }, [id]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [id, setCurrentPage]);
+
+  useEffect(() => {
+    setPolicies([]);
+
+    getPoliciesByCustomerId(id, getQueryParams())
+      .then((response) => {
+        setPolicies(response.content || []);
+        setTotalPages(response.totalPages || 1);
+        setTotalElements(response.totalElements || response.totalRecords || 0);
+      })
+      .catch((err) => {
+        console.error("Policies load failed:", err);
+        setPolicies([]);
+      });
+  }, [id, getQueryParams, setTotalPages, setTotalElements]);
 
   if (loading) {
     return <LoadingSpinner text="Loading customer details..." />;
@@ -168,45 +184,57 @@ const CustomerDetailPage = () => {
             style={{ borderRadius: 16, boxShadow: "var(--ip-shadow-md)" }}
           >
             <div className="card-body p-4">
-              <h6 className="fw-bold mb-4">Active & Past Policies</h6>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h6 className="fw-bold mb-0">Active & Past Policies</h6>
+                {tableState.totalElements > 0 && (
+                  <span className="ip-total-badge">{tableState.totalElements} total</span>
+                )}
+              </div>
               {policies.length > 0 ? (
-                <div className="table-responsive">
-                  <table
-                    className="table table-hover align-middle mb-0"
-                    style={{ fontSize: "0.875rem" }}
-                  >
-                    <thead>
-                      <tr
-                        className="text-muted"
-                        style={{
-                          fontSize: "0.75rem",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        <th className="border-0">Policy #</th>
-                        <th className="border-0">Plan</th>
-                        <th className="border-0">Coverage</th>
-                        <th className="border-0">Premium</th>
-                        <th className="border-0">Expiry Date</th>
-                        <th className="border-0">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {policies.map((p) => (
-                        <tr key={p.policyId}>
-                          <td className="fw-bold">{p.policyNumber}</td>
-                          <td>{p.planName}</td>
-                          <td>₹{Number(p.selectedCoverage || 0).toLocaleString("en-IN")}</td>
-                          <td>₹{Number(p.calculatedPremium || p.totalPremiumPaid || p.premium || 0).toLocaleString("en-IN")}</td>
-                          <td>{p.endDate}</td>
-                          <td>
-                            <StatusBadge status={p.policyStatus} />
-                          </td>
+                <>
+                  <div className="table-responsive">
+                    <table
+                      className="table table-hover align-middle mb-0"
+                      style={{ fontSize: "0.875rem" }}
+                    >
+                      <thead>
+                        <tr
+                          className="text-muted"
+                          style={{
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <th className="border-0">Policy #</th>
+                          <th className="border-0">Plan</th>
+                          <th className="border-0">Coverage</th>
+                          <th className="border-0">Premium</th>
+                          <th className="border-0">Expiry Date</th>
+                          <th className="border-0">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {policies.map((p) => (
+                          <tr key={p.policyId}>
+                            <td className="fw-bold">{p.policyNumber}</td>
+                            <td>{p.planName}</td>
+                            <td>{formatINR(p.selectedCoverage)}</td>
+                            <td>{formatINR(p.calculatedPremium || p.totalPremiumPaid || p.premium)}</td>
+                            <td>{p.endDate}</td>
+                            <td>
+                              <StatusBadge status={p.policyStatus} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <PaginationBar
+                    currentPage={tableState.currentPage}
+                    totalPages={tableState.totalPages}
+                    onPageChange={tableState.setCurrentPage}
+                  />
+                </>
               ) : (
                 <p className="text-muted text-center my-4">
                   No policies found for this customer.

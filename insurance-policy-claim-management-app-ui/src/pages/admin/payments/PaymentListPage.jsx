@@ -12,6 +12,7 @@ import SortableHeader from '../../../components/tables/SortableHeader';
 import useDebounceFilters from '../../../hooks/useDebounceFilters';
 import ExportButton from '../../../components/common/ExportButton';
 import { PAYMENT_STATUS_OPTIONS } from '../../../utils/options';
+import { formatINR } from '../../../utils/formatters';
 
 const FILTER_FIELDS = [
   { type: 'select', name: 'paymentStatus', label: 'Payment Status',
@@ -84,7 +85,7 @@ const PaymentListPage = () => {
     { header: "Policy #", accessor: "policyNumber" },
     {
       header: renderHeader("Amount (₹)", "amount"),
-      cell: (row) => `₹${row.amount.toLocaleString("en-IN")}`,
+      cell: (row) => formatINR(row.amount),
     },
     { header: renderHeader("Payment Method", "paymentMode"), accessor: "paymentMode" },
     { header: renderHeader("Date", "paymentDate"), accessor: "paymentDate", cell: (row) => new Date(row.paymentDate).toLocaleDateString() },

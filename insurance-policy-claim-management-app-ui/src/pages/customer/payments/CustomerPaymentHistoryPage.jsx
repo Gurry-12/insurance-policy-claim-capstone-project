@@ -5,6 +5,7 @@ import StatusBadge from "../../../components/ui/StatusBadge";
 import { FileText } from "lucide-react";
 import ExportButton from "../../../components/common/ExportButton";
 import DataTable from "../../../components/tables/DataTable";
+import { formatINR } from "../../../utils/formatters";
 
 const CustomerPaymentHistoryPage = () => {
   const [payments, setPayments] = useState([]);
@@ -37,7 +38,7 @@ const CustomerPaymentHistoryPage = () => {
     { header: "Policy Number", cell: (row) => <span className="fw-semibold">{row.policyNumber}</span> },
     {
       header: "Amount (₹)",
-      cell: (row) => <span className="fw-semibold">₹{row.amount?.toLocaleString("en-IN") || 0}</span>,
+      cell: (row) => <span className="fw-semibold">{formatINR(row.amount)}</span>,
     },
     { header: "Payment Mode", accessor: "paymentMode" },
     { header: "Transaction Ref", accessor: "transactionReference" },
