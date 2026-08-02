@@ -343,6 +343,6 @@ Client          AuthController   AuthServiceImpl   OtpService   EmailService   S
 
 ## Related Documents
 
-- [security/security-overview.md](../security/security-overview.md)
-- [entities/entities-overview.md](../entities/entities-overview.md)
-- [api/api-reference.md](../api/api-reference.md)
+- [security-diagrams](../07-diagrams/security-diagrams.md)
+- [database-overview](../03-database/database-overview.md)
+- [backend-api-contract](../01-api-contracts/backend-api-contract.md)

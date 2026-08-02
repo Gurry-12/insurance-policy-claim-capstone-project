@@ -59,10 +59,11 @@ src/
 │   ├── useApiTable.js          ← Paginated data fetching hook
 │   ├── useTableState.js        ← Sorting + filtering + pagination state
 │   ├── usePagination.js        ← Page/size/totalPages state
+│   ├── useClientPagination.js  ← In-memory pagination for fully-fetched lists
 │   ├── useDebounceFilters.js   ← Debounced filter inputs
-│   ├── useDebounce.js          ← Generic debounce
 │   ├── useSearch.js            ← Search state helper
-│   └── useDocumentTitle.js     ← Set <title> per page
+│   ├── useDocumentTitle.js     ← Set <title> per page
+│   └── PdfDownload/            ← useClaimPdf, useCustomerPdf, usePaymentPdf, usePolicyPdf
 │
 ├── services/
 │   ├── authService.js          ← Login, Register, OTP, Password
@@ -73,7 +74,8 @@ src/
 │   ├── policyService.js        ← Policy purchase, issue, cancel
 │   ├── paymentService.js       ← Payment recording and history
 │   ├── claimService.js         ← Raise, review, approve/reject claims
-│   └── dashboardService.js     ← Aggregated dashboard statistics
+│   ├── dashboardService.js     ← Aggregated dashboard statistics
+│   └── publicService.js        ← Public platform stats (landing page)
 │
 ├── pages/
 │   ├── auth/                   ← Login, Register, ForgotPassword, VerifyOtp
@@ -103,16 +105,20 @@ src/
 │   ├── shared/                 ← NotFound, Unauthorized
 │   └── LandingPage.jsx
 │
+├── common/                     ← BentoCard.jsx (shared bento grid card)
+│
 ├── components/
 │   ├── layouts/                ← UnifiedLayout.jsx (main shell)
 │   ├── navigation/             ← Sidebar.jsx, TopNavbar.jsx
 │   ├── common/                 ← GlobalApiHandler, GlobalToaster, LoadingSpinner, PageHeader, ExportButton
 │   ├── tables/                 ← DataTable, PaginationBar, SortableHeader, TableToolbar
 │   ├── forms/                  ← FormInput, FormSelect, FormTextarea, ModernDatePicker, ModernSelect
-│   ├── cards/                  ← DashboardCard
+│   ├── dashboard/              ← StatTile, QuickAction (shared dashboard tiles)
 │   ├── modals/                 ← ConfirmModal, AlertModal, DocumentPreviewModal
-│   ├── ui/                     ← StatusBadge, EmptyState, ErrorAlert, Modal, LoadingButton, FilterPanel, FilterChips, Drawer
-│   ├── claims/                 ← Claim-specific components
+│   ├── ui/                     ← StatusBadge, SpecialityBadge, EmptyState, ErrorAlert, Modal, LoadingButton, FilterPanel, FilterChips, Drawer, CopyToClipboard
+│   ├── claims/                 ← Claim-specific components (ClaimHistoryTimeline)
+│   ├── admin/                  ← Admin-specific components (PricingRulePanel, CoverageOptionsManager, …)
+│   ├── customer/               ← Customer-specific components (QuoteCountdownTimer, PremiumBreakdownCard)
 │   └── auth/                   ← Auth-specific components (ResendOtp)
 │
 └── utils/
@@ -120,7 +126,7 @@ src/
     ├── statuses.js             ← Status enum constants
     ├── options.js              ← Dropdown options (payment modes, policy statuses, etc.)
     ├── validators.js           ← Reusable field validators
-    ├── formatters.js           ← formatDate, formatCurrency
+    ├── formatters.js           ← formatDate, formatCurrency, formatINR (whole-rupee INR)
     ├── labels.js               ← EMPTY_STATES, TOAST_MESSAGES, FORM_LABELS
     ├── documentCategories.js   ← Document types per product type
     ├── exportUtils.js          ← CSV export utility
@@ -219,7 +225,5 @@ index.html → main.jsx
 
 ## Related Documentation
 
-- [Routing](../routing/routing.md)
-- [State Management](../contexts/state-management.md)
-- [Axios Layer](../services/axios-layer.md)
-- [Services Overview](../services/services-overview.md)
+- [Frontend Architecture (routing, state, data flow)](../../docs/architecture/04-frontend-architecture.md)
+- [Frontend API Contract](../01-api-contracts/frontend-api-contract.md)

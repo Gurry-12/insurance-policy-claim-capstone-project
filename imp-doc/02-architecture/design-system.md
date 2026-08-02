@@ -37,15 +37,15 @@ CSS custom properties change based on `[data-theme]`:
 
 ## Role-Specific Themes
 
-Each user role gets a distinct visual identity via CSS theme classes applied by `UnifiedLayout`:
+Each user role gets a distinct accent color via CSS theme classes applied on the layout wrapper by `UnifiedLayout` (`THEME_CLASS_BY_ROLE`):
 
-| Role | CSS Class | Primary Color Feel |
-|---|---|---|
-| Admin | `theme-admin` | Deep blue / authoritative |
-| Staff | `theme-Staff` | Teal / operational |
-| Customer | `theme-customer` | Sky blue / friendly |
+| Role | CSS Class | Brand Color | Accent Feel |
+|---|---|---|---|
+| Admin | `theme-admin` | `#2563eb` (blue) | Authoritative (explicit defaults) |
+| Staff | `theme-staff` | `#7c3aed` (violet) | Operational |
+| Customer | `theme-customer` | `#0d9488` (teal) | Friendly |
 
-These classes can customize sidebar gradients, accent colors, and badge colors per role.
+The classes are **accent-only overrides**: each `theme-*` block redefines `--ip-brand`, `--ip-brand-hover`, `--ip-brand-light`, `--ip-brand-muted`, `--ip-sidebar-accent`, and `--ip-border-focus` (plus dark-mode variants). They live under the `ROLE THEMES` section in `src/index.css`.
 
 ---
 
@@ -63,6 +63,21 @@ These classes can customize sidebar gradients, accent colors, and badge colors p
 | `--ip-sidebar-bg` | Sidebar background |
 | `--ip-sidebar-text` | Sidebar text |
 | `--ip-topbar-bg` | Top navbar background |
+
+### Semantic Status Tokens
+
+Status badges and pills are driven entirely by CSS variables (light + dark variants), so a single hue is reused across contexts for the same meaning.
+
+| Token Group | Meaning | Example Tokens |
+|---|---|---|
+| `--ip-claim-*` | Claim lifecycle (`submitted`, `under-review`, `rec-approval`, `rec-rejection`, `approved`, `rejected`) | `--ip-claim-approved`, `--ip-claim-approved-bg` |
+| `--ip-policy-*` | Policy lifecycle (`active`, `pending`, `expired`, `cancelled`) | `--ip-policy-expired`, `--ip-policy-expired-bg` |
+| `--ip-payment-*` | Payment status (`success`, `pending`, `failed`) | `--ip-payment-failed`, `--ip-payment-failed-bg` |
+| `--ip-role-*` | User role badges (`admin`, `staff`, `customer`) | `--ip-role-admin`, `--ip-role-admin-bg` |
+| `--ip-{success,warning,danger,info}-border` | Shared border/bg tint for each meaning | `--ip-success-border` |
+| `--ip-{success,warning,danger,info,secondary}-subtle` | Border colors consumed by badges (alias to the `*-border` tokens) | `--ip-success-subtle` |
+
+Dark mode redefines the `-bg`/`-border`/foreground variants in the `[data-theme="dark"]` block.
 
 ---
 
@@ -90,15 +105,16 @@ These classes can customize sidebar gradients, accent colors, and badge colors p
 
 ### Status Colors
 
-| Status | Color |
-|---|---|
-| Active / Success / Approved | `#22c55e` (green) |
-| Pending / Under Review | `#f59e0b` (amber) |
-| Submitted | `#3b82f6` (blue) |
-| Recommended Approval | `#06b6d4` (cyan) |
-| Recommended Rejection | `#f97316` (orange) |
-| Rejected / Failed | `#ef4444` (red) |
-| Cancelled / Expired | `#6b7280` (gray) |
+Statuses follow a **unified palette — one hue per meaning** (mapped in `STATUS_CONFIG` inside `StatusBadge.jsx`). Both light and dark themes provide matching `-bg`, foreground, and border tokens.
+
+| Meaning | Statuses | Hue |
+|---|---|---|
+| Success | Active, Approved, Success, Recommended for Approval | `#16a34a` green |
+| Warning | Pending, Under Review, Pending Payment, **Expired** | `#d97706` amber |
+| Info | Submitted, Assigned | `#0284c7` blue |
+| Caution | Recommended for Rejection | `#ea580c` orange |
+| Danger | Rejected, Cancelled, Failed | `#dc2626` red |
+| Neutral | Inactive, unknown / default | slate `#64748b` |
 
 ### Brand Colors
 
@@ -106,7 +122,7 @@ These classes can customize sidebar gradients, accent colors, and badge colors p
 |---|---|
 | Primary | `#2563eb` (blue-600) |
 | Secondary | `#1e3a8a` (blue-900) |
-| Accent | varies by role |
+| Accent | varies by role theme (blue / violet / teal) |
 
 ---
 
@@ -237,12 +253,32 @@ React Select uses custom styling to match the design system theme.
 
 ## Badges / Status Indicators
 
-`StatusBadge` renders Bootstrap badges with semantic colors:
+**`StatusBadge`** (`src/components/ui/StatusBadge.jsx`) renders pill badges using the semantic status palette. It reads from the `STATUS_CONFIG` map — each entry defines `bg`, `color`, `border`, and an icon resolved from CSS-variable tokens (with hardcoded fallbacks). Status strings are normalized (trimmed, uppercased, spaces → underscores) and fall back to a neutral `DEFAULT` style for unknown values.
 
 ```jsx
 <StatusBadge status="ACTIVE" />
-// → <span class="badge bg-success">Active</span>
+// → <span> (pill) ✓ Active</span>
 ```
+
+Supports statuses such as: `ACTIVE`, `APPROVED`, `SUCCESS`, `ASSIGNED`, `PENDING`, `UNDER_REVIEW`, `SUBMITTED`, `PENDING_PAYMENT`, `REJECTED`, `CANCELLED`, `EXPIRED`, `FAILED`, `INACTIVE`, `RECOMMENDED_FOR_APPROVAL`, `RECOMMENDED_FOR_REJECTION`.
+
+**`SpecialityBadge`** (`src/components/ui/SpecialityBadge.jsx`) renders a staff specialist pill with a per-specialty icon and color. Mapped via `SPECIALITY_META`:
+
+| Speciality | Icon | Accent |
+|---|---|---|
+| `HEALTH` | `bi-heart-pulse-fill` | Rose |
+| `LIFE` | `bi-umbrella-fill` | Green |
+| `MOTOR` | `bi-car-front-fill` | Blue |
+| `TRAVEL` | `bi-airplane-fill` | Cyan |
+| `INSURANCE` | `bi-shield-check-fill` | Violet |
+| `ALL` / unknown | `bi-grid-fill` / `bi-star-fill` | Slate (generalist) |
+
+```jsx
+<SpecialityBadge speciality="HEALTH" />
+<SpecialityBadge speciality="MOTOR" size="sm" />
+```
+
+Size variants: default, `size="sm"`, `size="lg"`. Colors come from `.ip-spec-{KEY}` classes (`--spec-color`, `--spec-bg`, `--spec-border` custom properties) with dark-mode overrides.
 
 ---
 
@@ -312,7 +348,12 @@ Bootstrap 5 spacing utilities (`m-`, `p-`, `gap-`) are used throughout.
 ## Adding to the Design System
 
 ### To add a new status badge color:
-Edit the color map inside `src/components/ui/StatusBadge.jsx`.
+1. Add the matching tokens (foreground, `-bg`, `-border`) to both `:root` and `[data-theme="dark"]` in `src/index.css` (reuse an existing hue if the meaning overlaps).
+2. Add an entry to the `STATUS_CONFIG` map in `src/components/ui/StatusBadge.jsx`.
+
+### To add a new speciality badge:
+1. Add the meta (icon + label) to `SPECIALITY_META` in `src/components/ui/SpecialityBadge.jsx`.
+2. Add an `.ip-spec-{KEY}` class with `--spec-color` / `--spec-bg` / `--spec-border` (plus a dark-mode override) in `src/index.css`.
 
 ### To add a new CSS token:
 Add to both `:root` (light) and `[data-theme="dark"]` blocks in `src/index.css`.
@@ -325,6 +366,5 @@ Add to both `:root` (light) and `[data-theme="dark"]` blocks in `src/index.css`.
 
 ## Related Documentation
 
-- [Layout Components](../components/layouts.md)
-- [UI Components](../components/ui-components.md)
-- [Developer Guide](../developer-guide.md)
+- [Frontend Architecture (layout & components)](../../docs/architecture/04-frontend-architecture.md)
+- [Developer Guide](../05-deployment/frontend-developer-guide.md)

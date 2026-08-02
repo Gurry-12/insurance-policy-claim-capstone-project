@@ -189,6 +189,6 @@ spring.config.import=file:env.properties
 
 ## Related Documents
 
-- [security/security-overview.md](../security/security-overview.md)
-- [database/database-overview.md](../database/database-overview.md)
-- [deployment/deployment-guide.md](../deployment/deployment-guide.md)
+- [security-diagrams](../07-diagrams/security-diagrams.md)
+- [database-overview](../03-database/database-overview.md)
+- [deployment-guide](../05-deployment/deployment-guide.md)

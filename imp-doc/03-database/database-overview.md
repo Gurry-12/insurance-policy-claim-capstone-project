@@ -386,5 +386,5 @@ These indexes are **Not implemented** — Hibernate's `ddl-auto=update` does not
 
 ## Related Documents
 
-- [entities/entities-overview.md](../entities/entities-overview.md)
-- [repositories/repositories-overview.md](../repositories/repositories-overview.md)
+- [er-diagrams](./er-diagrams.md)
+- [class-diagrams](../07-diagrams/class-diagrams.md)

@@ -23,6 +23,10 @@ Curated key documentation extracted from both backend and frontend modules.
 5. **Project Setup** (`05-deployment/project-setup.md`) — how to run the backend
 6. **Postman Collections** (`06-postman/`) — runnable API test scenarios
 
+## Changelog
+
+Recent feature/bugfix history is tracked in [`CHANGELOG.md`](../CHANGELOG.md) at the project root.
+
 ## Screenshots
 
 Website screenshots go in `/screenshots/` at the project root.

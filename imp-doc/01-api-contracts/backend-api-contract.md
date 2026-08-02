@@ -74,6 +74,38 @@ enum PaymentStatus { PENDING, SUCCESS, FAILED }
 
 ---
 
+## 0. Public API — `/public` (no auth)
+
+### `GET /public/stats` — PUBLIC — Get platform statistics
+
+- **Description:** Returns live platform statistics for the landing page. Falls back to zeroes if the DB is empty.
+- **Response:** `ApiResponseDTO<PublicStatsResponseDTO>`
+
+```json
+{
+  "message": "Platform statistics retrieved successfully",
+  "success": true,
+  "data": {
+    "activeProducts": 12,
+    "activePlans": 34,
+    "totalPolicies": 512,
+    "claimsProcessed": 89
+  },
+  "timeStamp": "2026-08-02T12:00:00"
+}
+```
+
+**`PublicStatsResponseDTO`**
+
+| Field | Type | Description |
+|---|---|---|
+| `activeProducts` | long | Number of products (fallback `0` if empty) |
+| `activePlans` | long | Number of plans |
+| `totalPolicies` | long | Total policy count |
+| `claimsProcessed` | long | Total claim count |
+
+---
+
 ## 1. Authentication API — `/auth`
 
 ### `POST /auth/register` — PUBLIC — Register as Customer

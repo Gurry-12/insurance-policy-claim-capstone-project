@@ -11,7 +11,7 @@
 | 1   | Project Overview (this file)      | `00_PROJECT_OVERVIEW.md`  |
 | 2   | Authentication - Login & Register | `01_AUTH_FLOW.md`         |
 | 3   | Admin Flow                        | `02_ADMIN_FLOW.md`        |
-| 4   | Agent Flow                        | `03_AGENT_FLOW.md`        |
+| 4   | Staff Flow                       | `03_STAFF_FLOW.md`        |
 | 5   | Customer Flow                     | `04_CUSTOMER_FLOW.md`     |
 | 6   | Shared / Common Components        | `05_SHARED_COMPONENTS.md` |
 | 7   | API & Services Layer              | `06_API_SERVICES.md`      |
@@ -52,7 +52,7 @@ src/
 └── pages/                ← Feature pages (render data + call services)
     ├── auth/
     ├── admin/
-    ├── agent/
+    ├── staff/
     ├── customer/
     └── shared/
 ```
@@ -61,11 +61,11 @@ src/
 
 ## 🔐 Role System
 
-| Role     | Value           | Access Level                                |
-| -------- | --------------- | ------------------------------------------- |
-| Admin    | `ROLE_ADMIN`    | Full system control                         |
-| Agent    | `ROLE_AGENT`    | Claims review, customer & policy management |
-| Customer | `ROLE_CUSTOMER` | Own data, purchase policies, raise claims   |
+| Role          | Value                  | Access Level                                |
+| --------      | ---------------------- | ------------------------------------------- |
+| Admin         | `ROLE_ADMIN`           | Full system control                         |
+| Internal Staff| `ROLE_INTERNAL_STAFF`  | Claims review, customer & policy management |
+| Customer      | `ROLE_CUSTOMER`        | Own data, purchase policies, raise claims   |
 
 Roles are decoded from the **JWT token** after login and stored in `AuthContext`.
 
@@ -117,7 +117,7 @@ Page sets state → renders DataTable / Cards
 | ----------------------- | ------------------------------------------------ |
 | `utils/constants.js`    | API base URL, pagination defaults, status values |
 | `utils/formatters.js`   | Date, currency, phone number formatting          |
-| `utils/roles.js`        | Role constants (`ADMIN`, `AGENT`, `CUSTOMER`)    |
+| `utils/roles.js`        | Role constants (`ADMIN`, `INTERNAL_STAFF`, `CUSTOMER`)    |
 | `utils/storageUtils.js` | `localStorage` get/set/remove for token & user   |
 | `utils/validators.js`   | Form field validation functions                  |
 

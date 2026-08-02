@@ -14,8 +14,8 @@ The **Admin** is the most privileged role. Admin can:
 - View all **Policies** and **Issue policies** manually
 - View all **Premium Payments**
 - Review, Approve, or Reject **Claims** (final decision)
-- Create **Agent accounts**
-- View all **Users** (Admins, Agents, Customers)
+- Create **Staff accounts**
+- View all **Users** (Admins, Staff, Customers)
 - Access **Reports & Analytics**
 
 ---
@@ -88,18 +88,18 @@ The **Admin** is the most privileged role. Admin can:
 | File                                     | Purpose                                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------------- |
 | `pages/admin/claims/ClaimListPage.jsx`   | All claims - filter by status (PENDING, UNDER_REVIEW, APPROVED, REJECTED) |
-| `pages/admin/claims/ClaimDetailPage.jsx` | Full claim detail + agent recommendation + approve/reject action          |
+| `pages/admin/claims/ClaimDetailPage.jsx` | Full claim detail + staff recommendation + approve/reject action          |
 | `services/claimService.js`               | `getAllClaims()`, `getClaimById()`, `approveClaim()`, `rejectClaim()`     |
 
 ---
 
-### 👤 Users & Agents
+### 👤 Users & Staff
 
 | File                                    | Purpose                          |
 | --------------------------------------- | -------------------------------- |
 | `pages/admin/users/UserListPage.jsx`    | All system users list            |
-| `pages/admin/users/CreateAgentPage.jsx` | Form to create an Agent account  |
-| `services/userService.js`               | `getAllUsers()`, `createAgent()` |
+| `pages/admin/users/CreateStaffPage.jsx` | Form to create a Staff account   |
+| `services/userService.js`               | `getAllUsers()`, `createStaff()` |
 
 ---
 
@@ -128,7 +128,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Customer raises Claim"] --> B["Agent reviews Claim<br/>Sets recommendation APPROVE/REJECT"]
+    A["Customer raises Claim"] --> B["Staff reviews Claim<br/>Sets recommendation APPROVE/REJECT"]
     B --> C["Admin sees Claim in ClaimListPage<br/>Status = UNDER_REVIEW"]
     C --> D["Admin opens ClaimDetailPage<br/>Sees claim info, policy info, recommendation"]
     D --> E["Admin clicks APPROVE or REJECT button<br/>calls claimService"]
@@ -191,7 +191,7 @@ flowchart TD
 | Approve claim       | PUT    | `/api/claims/{id}/approve`  |
 | Reject claim        | PUT    | `/api/claims/{id}/reject`   |
 | Get all users       | GET    | `/api/users`                |
-| Create agent        | POST   | `/api/users/agent`          |
+| Create staff      | POST   | `/api/users/staff`          |
 | Get dashboard stats | GET    | `/api/dashboard/admin`      |
 
 ---
@@ -205,7 +205,7 @@ flowchart TD
 - [ ] Policy view - List + Issue Policy page
 - [ ] Payment view - List page
 - [ ] Claims management - List + Detail + Approve/Reject
-- [ ] User management - List + Create Agent
+- [ ] User management - List + Create Staff
 - [ ] Reports page
 - [ ] All routes registered in `App.jsx` under `/admin/*`
 

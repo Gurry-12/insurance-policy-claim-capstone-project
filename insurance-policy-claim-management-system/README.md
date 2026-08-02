@@ -4,7 +4,7 @@ A Spring Boot REST API that simulates real-world insurance operations including 
 
 ## Tech Stack
 
-- **Java 17** + **Spring Boot 3.x**
+- **Java 17** + **Spring Boot 4.0.6**
 - **Spring Security** with JWT authentication
 - **Spring Data JPA** + **Hibernate** (MySQL)
 - **Lombok** for boilerplate reduction
@@ -23,14 +23,10 @@ A Spring Boot REST API that simulates real-world insurance operations including 
 ## Quick Start
 
 ```bash
-# 1. Set environment variables
-export DB_USER=your_mysql_user
-export DB_PASSWORD=your_mysql_password
-export TWILIO_ACCOUNT_SID=your_twilio_sid
-export TWILIO_AUTH_TOKEN=your_twilio_token
-export CLOUDINARY_CLOUD_NAME=your_cloud_name
-export CLOUDINARY_API_KEY=your_api_key
-export CLOUDINARY_API_SECRET=your_api_secret
+# 1. Create env.properties beside the project root with these values (see application.properties):
+#    DB_USER, DB_PASSWORD, JWT_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY,
+#    CLOUDINARY_SECRET, EMAIL_USER, EMAIL_PASSWORD, TWILIO_SID, TWILIO_TOKEN, TWILIO_PHONE
+#    The backend imports it automatically via spring.config.import.
 
 # 2. Run
 ./mvnw spring-boot:run
@@ -38,6 +34,8 @@ export CLOUDINARY_API_SECRET=your_api_secret
 
 ## API Base URL
 
-`http://localhost:8080/api`
+`http://localhost:8081/api`
 
-See [API_CONTRACT.md](API_CONTRACT.md) for full endpoint documentation.
+Swagger UI: `http://localhost:8081/swagger-ui.html`
+
+Full endpoint documentation: [backend API contract](../imp-doc/01-api-contracts/backend-api-contract.md). See also the project's [technical documentation](../docs/README.md).

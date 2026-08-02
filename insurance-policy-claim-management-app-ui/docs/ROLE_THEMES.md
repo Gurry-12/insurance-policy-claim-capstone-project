@@ -2,18 +2,18 @@
 
 In an Insurance Policy & Claim management portal, different user roles have fundamentally different needs. The user interface layout, visual hierarchy, and accents should reflect these goals.
 
-This guide details the styling focus and visual requirements for **Admin**, **Agent**, and **Customer** portals, and explains how to integrate your brand assets (such as your logo) cleanly.
+This guide details the styling focus and visual requirements for **Admin**, **Internal Staff**, and **Customer** portals, and explains how to integrate your brand assets (such as your logo) cleanly.
 
 ---
 
 ## 1. Role-Based Accent Colors & Brand Mood
 
-Each role has a custom accent theme defined by class bindings or inline custom properties. You can toggle these variables based on the active route prefix (e.g. `/admin`, `/agent`, `/customer`).
+Each role has a custom accent theme defined by class bindings or inline custom properties. You can toggle these variables based on the active route prefix (e.g. `/admin`, `/staff`, `/customer`).
 
 | User Role    | Brand Accent Color                               | Semantic Meaning & Mood                 | Main Visual Focus                                                 |
 | :----------- | :----------------------------------------------- | :-------------------------------------- | :---------------------------------------------------------------- |
 | **Admin**    | Slate / Deep Cobalt Blue (`#0f172a` / `#1e3a8a`) | **Security, Control, and Audits**       | System metrics, high density tables, logs, approval queues.       |
-| **Agent**    | Teal / Emerald Green (`#0d9488` / `#059669`)     | **Productivity, Sales, Action**         | Policy issuing screens, client lists, claim recommendation logs.  |
+| **Internal Staff** | Teal / Emerald Green (`#0d9488` / `#059669`)     | **Productivity, Sales, Action**         | Policy issuing screens, client lists, claim recommendation logs.  |
 | **Customer** | Sky Blue / Sage Green (`#0284c7` / `#10b981`)    | **Reassurance, Simplicity, Protection** | Large clear buttons, claim progression trackers, payment options. |
 
 ---
@@ -34,19 +34,19 @@ The Admin UI requires **maximum data density** with minimal distraction. Colors 
   ```
 - **Visual Design Rules**:
   - Use clean grids with thin borders (`var(--color-border)`).
-  - Stat cards should focus on absolute numbers (Total Customers, Active Claims, Total Agents).
+  - Stat cards should focus on absolute numbers (Total Customers, Active Claims, Total Staff).
   - Use badge colors strictly for semantic flags:
     - `Approved` &rarr; Green badge (`bg-success`)
     - `Under Review` &rarr; Yellow badge (`bg-warning`)
     - `Rejected` &rarr; Red badge (`bg-danger`)
 
-### B. Agent Theme: The Active Workspace
+### B. Staff Theme: The Active Workspace
 
-Field agents need to scan tables quickly, create recommendations, and issue new policies. The layout should guide the eye to pending actions.
+Field staff need to scan tables quickly, create recommendations, and issue new policies. The layout should guide the eye to pending actions.
 
 - **Theme Style Variables**:
   ```css
-  .theme-agent {
+  .theme-staff {
     --role-accent: #0d9488; /* Ocean Teal */
     --role-accent-light: #f0fdfa; /* Soft Mint Tint */
     --role-border-focus: #14b8a6;
@@ -54,7 +54,7 @@ Field agents need to scan tables quickly, create recommendations, and issue new 
   ```
 - **Visual Design Rules**:
   - Emphasize actions: "Issue Policy", "Verify Claim" using primary action buttons accented with Teal.
-  - Highlight customers assigned to the agent.
+  - Highlight customers assigned to the staff member.
   - Use sidebars with light, clean backgrounds for visual comfort during long work sessions.
 
 ### C. Customer Theme: Reassurance & Simplicity
@@ -139,7 +139,7 @@ Add this configuration to your root theme overrides:
 
 ### C. Sidebar Placement Strategy
 
-1. **Admin/Agent Sidebar (Dark Background)**: Wrap the logo inside a clean header div with a slight white opacity background if the logo needs high contrast:
+1. **Admin/Staff Sidebar (Dark Background)**: Wrap the logo inside a clean header div with a slight white opacity background if the logo needs high contrast:
    ```css
    .sidebar-brand-wrapper {
      background-color: rgba(

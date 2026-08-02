@@ -419,6 +419,5 @@ Returns: ClaimHistoryResponseDTO[] {
 
 ## Related Documents
 
-- [services/services-overview.md](../services/services-overview.md)
-- [controllers/controllers-overview.md](../controllers/controllers-overview.md)
-- [entities/entities-overview.md](../entities/entities-overview.md)
+- [backend-architecture-overview](../02-architecture/backend-architecture-overview.md)
+- [database-overview](../03-database/database-overview.md)

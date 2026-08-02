@@ -5,7 +5,7 @@ This document outlines the key dependencies used in the Insurance Policy Claim M
 ## Core Libraries
 - **React (`^19.2.6`)**: Core library for building the user interface.
 - **React DOM (`^19.2.6`)**: Serves as the entry point to the DOM and server renderers for React.
-- **React Router DOM (`^7.18.0`)**: Used for client-side routing, enabling navigation across the different roles (Admin, Agent, Customer) and shared pages.
+- **React Router DOM (`^7.18.0`)**: Used for client-side routing, enabling navigation across the different roles (Admin, Internal Staff, Customer) and shared pages.
 
 ## UI and Styling
 - **Bootstrap (`^5.3.8`)**: Primary CSS framework used for responsive layouts and styling.

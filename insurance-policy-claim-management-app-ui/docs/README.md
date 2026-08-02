@@ -57,53 +57,54 @@ Each role has its own set of pages, navigation items, and permissions enforced a
 
 ## Documentation Index
 
+> **Note:** the detailed docs previously under `docs/` were consolidated into the project-level `imp-doc/` and `docs/` folders. The links below point to the canonical documents.
+
 ### 🏗️ Architecture
 
-- [Architecture Overview](./architecture/overview.md) - System-level design, data flow, and folder structure
-- [Routing](./routing/routing.md) - Public, protected, and role-based routes
+- [Frontend Architecture Overview](../../imp-doc/02-architecture/frontend-architecture-overview.md) - System-level design, data flow, and folder structure
+- [Frontend Architecture (project docs)](../../docs/architecture/04-frontend-architecture.md) - Layers, routing & guards, state, data flow
 
 ### 📄 Pages
 
-- [Auth Pages](./pages/auth-pages.md) - Login, Register, Forgot Password, Verify OTP
-- [Admin Pages](./pages/admin-pages.md) - Dashboard, Users, Customers, Products, Plans, Policies, Claims, Payments
-- [Staff Pages](./pages/staff-pages.md) - Dashboard, Customers, Policies, Claims, Payments
-- [Customer Pages](./pages/customer-pages.md) - Dashboard, Profile, Products, Plans, Policies, Payments, Claims
+- [Auth Pages](../../imp-doc/04-workflows/auth-flow.md) - Login, Register, Forgot Password, Verify OTP
+- [Admin Pages](../../imp-doc/04-workflows/admin-flow.md) - Dashboard, Users, Customers, Products, Plans, Policies, Claims, Payments
+- [Staff & Customer Pages](../../docs/architecture/04-frontend-architecture.md) - per-role route map and page components
 
 ### 🧩 Components
 
-- [Layout Components](./components/layouts.md) - UnifiedLayout, Sidebar, TopNavbar
-- [Reusable UI Components](./components/ui-components.md) - DataTable, PaginationBar, FormInput, StatusBadge, Modal, etc.
-- [Common Components](./components/common-components.md) - PageHeader, ExportButton, GlobalApiHandler, GlobalToaster
+- [Layout & UI Components](../../docs/architecture/04-frontend-architecture.md) - UnifiedLayout, Sidebar, TopNavbar, ui/ and common/ components
+- [Design System](../../imp-doc/02-architecture/design-system.md) - DataTable, PaginationBar, FormInput, StatusBadge, Modal, theming
 
 ### 🌐 Services & API
 
-- [Services Overview](./services/services-overview.md) - All 9 service files documented
-- [Axios Layer](./services/axios-layer.md) - axiosInstance, apiAdapter, interceptors
-- [API Flow Diagrams](./services/api-flow-diagrams.md) - Sequence diagrams for every major API call
+- [Services & API (frontend contract)](../../imp-doc/01-api-contracts/frontend-api-contract.md) - endpoint inventory per service
+- [Axios Layer](../../docs/architecture/04-frontend-architecture.md) - axiosInstance, apiAdapter, interceptors
+- [API Flow Diagrams](../../docs/sequence-diagrams.md) - Sequence diagrams for the major API calls
 
 ### 🪝 Hooks
 
-- [Custom Hooks](./hooks/hooks.md) - useApiTable, useApiForm, useTableState, usePagination, useDebounceFilters, useAuth, useTheme
+- [Custom Hooks](../../docs/architecture/04-frontend-architecture.md) - useApiTable, useApiForm, useTableState, usePagination, useDebounceFilters, useAuth, useTheme
 
 ### 🗃️ Contexts
 
-- [State Management](./contexts/state-management.md) - AuthContext, ThemeContext, component communication patterns
+- [State Management](../../docs/architecture/04-frontend-architecture.md) - AuthContext, ThemeContext, component communication patterns
 
 ### 🔄 Workflows
 
-- [Business Workflows](./workflows/workflows.md) - End-to-end flows: Login → Register → Purchase → Claim → Approval
+- [Business Workflows](../../imp-doc/04-workflows/business-workflows.md) - Lifecycle & state machines: user, product, policy, claim
+- [Backend Workflows](../../imp-doc/04-workflows/backend-workflows.md) - End-to-end flows: Purchase → Payment → Claim → Review
 
 ### 🎨 Design System
 
-- [Design System](./design-system/design-system.md) - Colors, typography, components, spacing, theming
+- [Design System](../../imp-doc/02-architecture/design-system.md) - Colors, typography, components, spacing, theming
 
 ### 🛠️ Developer Guide
 
-- [Developer Guide](./developer-guide.md) - How to add pages, APIs, forms, tables, modules, and change permissions
+- [Developer Guide](../../imp-doc/05-deployment/frontend-developer-guide.md) - How to add pages, APIs, forms, tables, modules, and change permissions
 
 ### 🐛 Debugging
 
-- [Common Debugging](./debugging/debugging.md) - API failures, toast issues, state bugs, routing bugs, auth issues
+- [Common Mistakes & Debugging](../../imp-doc/04-workflows/auth-flow.md) - API failures, toast issues, state bugs, routing bugs, auth issues
 
 ---
 
@@ -111,15 +112,15 @@ Each role has its own set of pages, navigation items, and permissions enforced a
 
 | I want to...            | Go to...                                                               |
 | ----------------------- | ---------------------------------------------------------------------- |
-| Add a new page          | [`developer-guide.md`](./developer-guide.md#adding-a-new-page)         |
-| Add a new API call      | [`developer-guide.md`](./developer-guide.md#adding-a-new-api-call)     |
-| Modify a form           | [`developer-guide.md`](./developer-guide.md#modifying-a-form)          |
-| Change role permissions | [`developer-guide.md`](./developer-guide.md#changing-role-permissions) |
-| Understand login flow   | [`workflows/workflows.md`](./workflows/workflows.md#login-workflow)    |
-| Understand claim flow   | [`workflows/workflows.md`](./workflows/workflows.md#claim-workflow)    |
-| Debug an API error      | [`debugging/debugging.md`](./debugging/debugging.md#api-failures)      |
-| Understand routing      | [`routing/routing.md`](./routing/routing.md)                           |
-| Understand auth state   | [`contexts/state-management.md`](./contexts/state-management.md)       |
+| Add a new page          | [`frontend-developer-guide.md`](../../imp-doc/05-deployment/frontend-developer-guide.md) |
+| Add a new API call      | [`frontend-api-contract.md`](../../imp-doc/01-api-contracts/frontend-api-contract.md) |
+| Modify a form           | [`frontend-developer-guide.md`](../../imp-doc/05-deployment/frontend-developer-guide.md) |
+| Change role permissions | [`frontend-developer-guide.md`](../../imp-doc/05-deployment/frontend-developer-guide.md) |
+| Understand login flow   | [`auth-flow.md`](../../imp-doc/04-workflows/auth-flow.md) |
+| Understand claim flow   | [`backend-workflows.md`](../../imp-doc/04-workflows/backend-workflows.md) |
+| Debug an API error      | [`auth-flow.md`](../../imp-doc/04-workflows/auth-flow.md) |
+| Understand routing      | [`04-frontend-architecture.md`](../../docs/architecture/04-frontend-architecture.md) |
+| Understand auth state   | [`04-frontend-architecture.md`](../../docs/architecture/04-frontend-architecture.md) |
 
 ---
 

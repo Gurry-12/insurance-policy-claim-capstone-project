@@ -12,9 +12,9 @@ capstone-project/
 
 ## Backend
 
-- **Stack:** Java 17, Spring Boot 3.x, Spring Security (JWT), Spring Data JPA + Hibernate, MySQL
+- **Stack:** Java 17, Spring Boot 4.0.6, Spring Security (JWT), Spring Data JPA + Hibernate, MySQL
 - **Features:** Role-based auth (ADMIN / INTERNAL_STAFF / CUSTOMER), product & plan management, policy lifecycle, premium calculation with strategy pattern, claim submission & multi-step review, Cloudinary document upload, OTP via Twilio SMS & Gmail SMTP
-- **Port:** `http://localhost:8080/api`
+- **Port:** `http://localhost:8081/api`
 
 ## Frontend
 
@@ -29,15 +29,10 @@ capstone-project/
 ```bash
 cd insurance-policy-claim-management-system
 
-# Set required environment variables
-set DB_USER=your_mysql_user
-set DB_PASSWORD=your_mysql_password
-set JWT_SECRET=your_jwt_secret
-set TWILIO_ACCOUNT_SID=your_twilio_sid
-set TWILIO_AUTH_TOKEN=your_twilio_token
-set CLOUDINARY_CLOUD_NAME=your_cloud_name
-set CLOUDINARY_API_KEY=your_api_key
-set CLOUDINARY_API_SECRET=your_api_secret
+# Create env.properties with the required values (see application.properties):
+#   DB_USER, DB_PASSWORD, JWT_KEY, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY,
+#   CLOUDINARY_SECRET, EMAIL_USER, EMAIL_PASSWORD, TWILIO_SID, TWILIO_TOKEN, TWILIO_PHONE
+# The backend imports env.properties automatically via spring.config.import.
 
 # Run
 ./mvnw spring-boot:run
@@ -58,3 +53,13 @@ npm run dev
 | **ADMIN** | Manage products, plans, users, coverage options, pricing rules; final claim approval/denial |
 | **INTERNAL_STAFF** | Review claims, recommend decisions, issue policies, manage customer payments |
 | **CUSTOMER** | Browse products, purchase policies, make payments, raise and track claims |
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for a history of recent changes. Curated project documentation lives in [`imp-doc/`](./imp-doc/).
+
+## Documentation
+
+- [`docs/`](./docs/README.md) — architecture, sequence diagrams, database, caching, logging, performance, security, and deployment documentation
+- [`imp-doc/`](./imp-doc/README.md) — curated API contracts, workflows, and Postman scenarios
+- [`screenshots/`](./screenshots/) — UI screenshots per role

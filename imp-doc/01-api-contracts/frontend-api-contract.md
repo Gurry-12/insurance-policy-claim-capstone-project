@@ -40,6 +40,28 @@ This document serves as the single source of truth for frontend development for 
 
 ---
 
+## 0. Public API (`/api/public`)
+
+### 0.1 GET `/api/public/stats`
+- **Security:** Public (no auth)
+- **Description:** Returns live platform statistics for the landing page hero. Falls back to zeroes if the DB is empty.
+- **Response:** `ApiResponseDTO<PublicStatsResponseDTO>`
+  ```json
+  {
+    "message": "Platform statistics retrieved successfully",
+    "success": true,
+    "data": {
+      "activeProducts": 12,
+      "activePlans": 34,
+      "totalPolicies": 512,
+      "claimsProcessed": 89
+    },
+    "timeStamp": "2026-08-02T12:00:00"
+  }
+  ```
+
+---
+
 ## 1. Auth API (`/api/auth`)
 
 ### 1.1 POST `/api/auth/login`
@@ -149,25 +171,25 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<List<ClaimResponseDTO>>`
 
 ### 2.3 GET `/api/claims`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="createdDate"`, `sortDirection="desc"`, `customerId` (optional), `status` (optional)
 - **Response:** `PageResponseDTO<ClaimResponseDTO>`
 
 ### 2.4 GET `/api/claims/{claimId}`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<ClaimResponseDTO>`
 
 ### 2.5 GET `/api/claims/{claimId}/history`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="desc"`, `updatedBy` (optional), `status` (optional)
 - **Response:** `PageResponseDTO<ClaimHistoryResponseDTO>`
 
 ### 2.6 PATCH `/api/claims/{claimId}/under-review`
-- **Security:** AGENT
+- **Security:** INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<ClaimResponseDTO>`
 
 ### 2.7 PATCH `/api/claims/{claimId}/review`
-- **Security:** AGENT
+- **Security:** INTERNAL_STAFF
 - **Request Payload (`ClaimReviewRequestDTO`)**
   ```json
   {
@@ -219,11 +241,11 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<CustomerResponseDTO>`
 
 ### 4.2 GET `/api/customers/{customerId}`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<CustomerResponseDTO>`
 
 ### 4.3 GET `/api/customers`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<List<CustomerResponseDTO>>`
 
 ### 4.4 PUT `/api/customers/{customerId}`
@@ -232,7 +254,7 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<CustomerResponseDTO>`
 
 ### 4.5 GET `/api/customers/page`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="asc"`, `city` (optional), `state` (optional)
 - **Response:** `PageResponseDTO<CustomerResponseDTO>`
 
@@ -266,7 +288,7 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<ProductResponseDTO>`
 
 ### 5.4 GET `/api/products/active`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<List<ProductResponseDTO>>`
 
 ### 5.5 PUT `/api/products/{id}`
@@ -275,11 +297,11 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ProductResponseDTO` (No ApiResponse wrapper)
 
 ### 5.6 GET `/api/products/{id}`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<ProductResponseDTO>`
 
 ### 5.7 GET `/api/products/page`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="asc"`, `productType` (optional), `isActive` (optional boolean)
 - **Response:** `PageResponseDTO<ProductResponseDTO>`
 
@@ -299,7 +321,7 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<PolicyResponseDTO>`
 
 ### 6.2 POST `/api/policies/issue`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Request Payload (`PolicyIssueRequestDTO`)**
   ```json
   {
@@ -316,21 +338,21 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `PageResponseDTO<PolicyResponseDTO>`
 
 ### 6.4 GET `/api/policies/customer/{customerId}`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="asc"`
 - **Response:** `PageResponseDTO<PolicyResponseDTO>`
 
 ### 6.5 GET `/api/policies`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="asc"`, `customerId` (optional), `status` (optional)
 - **Response:** `PageResponseDTO<PolicyResponseDTO>`
 
 ### 6.6 GET `/api/policies/{policyId}`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<PolicyResponseDTO>`
 
 ### 6.7 PATCH `/api/policies/{policyId}/cancel`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<PolicyResponseDTO>`
 
 ---
@@ -368,20 +390,20 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<PlanResponseDTO>`
 
 ### 7.5 GET `/api/plans/active`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<List<PlanResponseDTO>>`
 
 ### 7.6 GET `/api/plans/{productId}/active`
-- **Security:** ADMIN, AGENT, CUSTOMER
+- **Security:** ADMIN, INTERNAL_STAFF, CUSTOMER
 - **Response:** `ApiResponseDTO<List<PlanResponseDTO>>`
 
 ### 7.7 GET `/api/plans/page`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="createdDate"`, `sortDirection="desc"`, `productId` (optional), `isActive` (optional)
 - **Response:** `PageResponseDTO<PlanResponseDTO>`
 
 ### 7.8 GET `/api/plans/{planId}`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<PlanResponseDTO>`
 
 ---
@@ -389,7 +411,7 @@ This document serves as the single source of truth for frontend development for 
 ## 8. Premium Payment API (`/api/payments`)
 
 ### 8.1 POST `/api/payments`
-- **Security:** CUSTOMER, AGENT
+- **Security:** CUSTOMER, INTERNAL_STAFF
 - **Request Payload (`PaymentRequestDTO`)**
   ```json
   {
@@ -402,15 +424,15 @@ This document serves as the single source of truth for frontend development for 
 - **Response:** `ApiResponseDTO<PaymentResponseDTO>`
 
 ### 8.2 GET `/api/payments/policy/{id}`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<List<PaymentResponseDTO>>`
 
 ### 8.3 GET `/api/payments/{id}`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Response:** `ApiResponseDTO<PaymentResponseDTO>`
 
 ### 8.4 GET `/api/payments/page`
-- **Security:** ADMIN, AGENT
+- **Security:** ADMIN, INTERNAL_STAFF
 - **Query Params:** `pageNumber=0`, `pageSize=10`, `sortBy="id"`, `sortDirection="asc"`, `policyId` (optional), `paymentStatus` (optional)
 - **Response:** `PageResponseDTO<PaymentResponseDTO>`
 
@@ -438,9 +460,9 @@ This document serves as the single source of truth for frontend development for 
 - **Security:** ADMIN
 - **Response:** `ApiResponseDTO<UserResponseDTO>`
 
-### 9.4 POST `/api/users/agent`
+### 9.4 POST `/api/users/staff`
 - **Security:** ADMIN
-- **Request Payload (`CreateAgentRequestDTO`)**
+- **Request Payload (`CreateStaffRequestDTO`)**
   ```json
   {
     "fullName": "string (Required, 2-100 chars, Letters/spaces)",
@@ -465,7 +487,7 @@ This document serves as the single source of truth for frontend development for 
 
 ## Shared Enums
 
-**`Role`**: `ROLE_ADMIN`, `ROLE_AGENT`, `ROLE_CUSTOMER`
+**`Role`**: `ROLE_ADMIN`, `ROLE_INTERNAL_STAFF`, `ROLE_CUSTOMER`
 **`ClaimStatus`**: `SUBMITTED`, `UNDER_REVIEW`, `RECOMMENDED_FOR_APPROVAL`, `RECOMMENDED_FOR_REJECTION`, `APPROVED`, `REJECTED`
 **`Gender`**: `MALE`, `FEMALE`, `OTHER`
 **`PaymentMode`**: `UPI`, `CARD`, `NET_BANKING`, `CASH`
@@ -588,13 +610,14 @@ This document serves as the single source of truth for frontend development for 
   "claimReason": "string",
   "incidentDate": "string",
   "claimStatus": "string",
-  "agentRemarks": "string",
+  "staffRemarks": "string",
   "adminRemarks": "string",
   "customerName": "string",
   "createdDate": "string",
   "updatedDate": "string",
   "documents": ["ClaimDocumentResponseDTO"],
-  "assignedAgentName": "string"
+  "assignedStaffId": "long",
+  "assignedStaffName": "string"
 }
 ```
 
@@ -616,5 +639,15 @@ This document serves as the single source of truth for frontend development for 
   "documentName": "string",
   "documentType": "string",
   "documentReference": "string"
+}
+```
+
+### `PublicStatsResponseDTO`
+```json
+{
+  "activeProducts": "long",
+  "activePlans": "long",
+  "totalPolicies": "long",
+  "claimsProcessed": "long"
 }
 ```

@@ -428,8 +428,7 @@ case 'NEW_STATUS':
 
 ## Related Documentation
 
-- [Architecture Overview](../architecture/overview.md)
-- [Routing](../routing/routing.md)
-- [Services Overview](../services/services-overview.md)
-- [Custom Hooks](../hooks/hooks.md)
-- [UI Components](../components/ui-components.md)
+- [Frontend Architecture Overview](../02-architecture/frontend-architecture-overview.md)
+- [Frontend Architecture (routing, hooks)](../../docs/architecture/04-frontend-architecture.md)
+- [Frontend API Contract](../01-api-contracts/frontend-api-contract.md)
+- [Design System](../02-architecture/design-system.md)
