@@ -8,6 +8,7 @@ import {
   deletePricingRule,
 } from '../../services/pricingRuleService';
 import toast from 'react-hot-toast';
+import StatusBadge from '../ui/StatusBadge';
 
 const defaultForm = {
   baseRiskRate: 0.025,
@@ -154,22 +155,6 @@ const PricingRulePanel = ({ planId }) => {
     }
   };
 
-  /* ── helpers ── */
-  const statusBadge = (status) => {
-    const map = {
-      ACTIVE:   { bg: 'var(--ip-success-bg, #d1fae5)', color: 'var(--ip-success, #065f46)', label: 'Active' },
-      INACTIVE: { bg: 'var(--ip-danger-bg, #fee2e2)', color: 'var(--ip-danger, #991b1b)', label: 'Inactive' },
-      EXPIRED:  { bg: 'var(--ip-warning-bg, #fef3c7)', color: 'var(--ip-warning, #92400e)', label: 'Expired' },
-    };
-    const s = map[status] || { bg: 'var(--ip-surface-raised, #f3f4f6)', color: 'var(--ip-text-muted, #6b7280)', label: status };
-    return (
-      <span style={{
-        backgroundColor: s.bg, color: s.color,
-        padding: '2px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600
-      }}>{s.label}</span>
-    );
-  };
-
   return (
     <>
     <div className="card border-0 mb-4" style={{ borderRadius: 16, boxShadow: 'var(--ip-shadow-md)' }}>
@@ -212,7 +197,7 @@ const PricingRulePanel = ({ planId }) => {
                     })()})
                   </span>
                   <div className="d-flex align-items-center gap-2">
-                    {statusBadge('ACTIVE')}
+                    <StatusBadge status="ACTIVE" />
                     <button
                       className="btn btn-xs btn-outline-warning py-0 px-2"
                       style={{ fontSize: '0.75rem' }}
@@ -356,7 +341,7 @@ const PricingRulePanel = ({ planId }) => {
                           <td>{(Number(rule.baseRiskRate) * 100).toFixed(2)}%</td>
                           <td>₹{Number(rule.processingFee).toLocaleString('en-IN')}</td>
                           <td>{rule.gst}%</td>
-                          <td>{statusBadge(rule.status)}</td>
+                          <td><StatusBadge status={rule.status} /></td>
                           <td>
                             <div className="d-flex gap-1">
                               {rule.status !== 'ACTIVE' && (

@@ -8,6 +8,7 @@ import ClaimHistoryTimeline from '../../../components/claims/ClaimHistoryTimelin
 import Drawer from '../../../components/ui/Drawer';
 import { Upload, Eye, Download } from "lucide-react";
 import useClaimPdf from "../../../hooks/PdfDownload/useClaimPdf";
+import { formatINR } from "../../../utils/formatters";
 
 const ClaimDetailsPage = () => {
   const { claimId } = useParams();
@@ -106,7 +107,7 @@ const ClaimDetailsPage = () => {
                 <div className="col-sm-6">
                   <div className="p-3 bg-light rounded h-100">
                     <small className="text-muted d-block mb-1">Claim Amount</small>
-                    <div className="fw-bold fs-5 text-dark">₹{claim.claimAmount?.toLocaleString()}</div>
+                    <div className="fw-bold fs-5 text-dark">{formatINR(claim.claimAmount)}</div>
                   </div>
                 </div>
                 <div className="col-sm-6">

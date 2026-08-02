@@ -62,7 +62,7 @@ const ExportButton = ({
       {loading ? (
         <>
           <span className="spinner-border spinner-border-sm" />
-          <span>Exportingâ€¦</span>
+          <span>Exporting…</span>
         </>
       ) : (
         <>

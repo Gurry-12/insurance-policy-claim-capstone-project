@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getProfile } from "../../../services/customerService";
 import CustomerProfilePage from "./CustomerProfilePage";
 import PageHeader from "../../../components/common/PageHeader";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
@@ -28,7 +29,7 @@ const ProfilePage = () => {
 
   
 
-  if (loading) return <h4>Loading...</h4>;
+  if (loading) return <LoadingSpinner />;
 
   if (!profileExists) {
     return (

@@ -6,10 +6,13 @@ import { FileText } from "lucide-react";
 import ExportButton from "../../../components/common/ExportButton";
 import DataTable from "../../../components/tables/DataTable";
 import { formatINR } from "../../../utils/formatters";
+import PaginationBar from "../../../components/tables/PaginationBar";
+import useClientPagination from "../../../hooks/useClientPagination";
 
 const CustomerPaymentHistoryPage = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { page, setPage, totalPages, pageItems } = useClientPagination(payments, 10);
 
   const fetchPayments = async () => {
     try {
@@ -85,12 +88,21 @@ const CustomerPaymentHistoryPage = () => {
           <div className="p-4">
             <DataTable
               columns={columns}
-              data={payments}
+              data={pageItems}
               loading={loading}
               emptyMessage="No Payments Found"
               emptyIcon={<FileText size={48} className="mb-3 text-secondary opacity-50" />}
             />
           </div>
+          {payments.length > 0 && (
+            <div className="px-4 pb-4">
+              <PaginationBar
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import StatusBadge from '../../../components/ui/StatusBadge';
+import SpecialityBadge from '../../../components/ui/SpecialityBadge';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/ui/ErrorAlert';
 import ConfirmModal from '../../../components/modals/ConfirmModal';
@@ -166,7 +167,9 @@ const UserDetailPage = () => {
               {user.productSpeciality && (
                 <div className="row mb-3">
                   <div className="col-md-4 text-muted">Staff Speciality:</div>
-                  <div className="col-md-8 fw-semibold">{user.productSpeciality}</div>
+                  <div className="col-md-8">
+                    <SpecialityBadge speciality={user.productSpeciality} />
+                  </div>
                 </div>
               )}
               <div className="row mb-3">

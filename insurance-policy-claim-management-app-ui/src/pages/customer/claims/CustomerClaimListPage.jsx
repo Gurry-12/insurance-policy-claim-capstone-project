@@ -5,10 +5,16 @@ import PageHeader from "../../../components/common/PageHeader";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import { Eye, FileText, Calendar, IndianRupee, ArrowRight, FilePlus } from "lucide-react";
 import ExportButton from "../../../components/common/ExportButton";
+import { formatINR } from "../../../utils/formatters";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import EmptyState from "../../../components/ui/EmptyState";
+import PaginationBar from "../../../components/tables/PaginationBar";
+import useClientPagination from "../../../hooks/useClientPagination";
 
 const CustomerClaimListPage = () => {
   const [claims, setClaims] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { page, setPage, totalPages, pageItems } = useClientPagination(claims, 9);
 
   const loadClaims = async () => {
     try {
@@ -69,14 +75,10 @@ const CustomerClaimListPage = () => {
 
       <div className="mt-4">
         {isLoading ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
+          <LoadingSpinner />
         ) : claims.length > 0 ? (
           <div className="row g-4">
-            {claims.map((claim) => {
+            {pageItems.map((claim) => {
               const cardStyle = getCardStyle(claim.claimStatus);
               return (
                 <div key={claim.claimId} className="col-md-6 col-xl-4">
@@ -118,7 +120,7 @@ const CustomerClaimListPage = () => {
                             <div className="text-muted small mb-1 d-flex align-items-center">
                               <IndianRupee size={14} className="me-1" /> Claim Amount
                             </div>
-                            <div className="fw-bold text-dark fs-5">₹{claim.claimAmount?.toLocaleString()}</div>
+                            <div className="fw-bold text-dark fs-5">{formatINR(claim.claimAmount)}</div>
                           </div>
                           <div className="col-6 border-start">
                             <div className="text-muted small mb-1 ps-2 d-flex align-items-center">
@@ -146,16 +148,28 @@ const CustomerClaimListPage = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-5 bg-white rounded-3 shadow-sm border">
-            <FileText size={48} className="text-muted mb-3 opacity-50" />
-            <h5 className="fw-bold text-secondary">No Claims Found</h5>
-            <p className="text-muted mb-4">You haven't filed any insurance claims yet.</p>
-            <Link to="/customer/claims/raise" className="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
-              <FilePlus size={18} className="me-2 d-inline" /> Raise a Claim
-            </Link>
-          </div>
+          <EmptyState
+            icon="bi-file-earmark-text"
+            title="No Claims Found"
+            message="You haven't filed any insurance claims yet."
+            action={
+              <Link to="/customer/claims/raise" className="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
+                <FilePlus size={18} className="me-2 d-inline" /> Raise a Claim
+              </Link>
+            }
+          />
         )}
       </div>
+
+      {claims.length > 0 && (
+        <div className="mt-4">
+          <PaginationBar
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 };

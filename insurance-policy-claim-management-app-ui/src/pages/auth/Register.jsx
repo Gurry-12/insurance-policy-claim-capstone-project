@@ -191,15 +191,15 @@ const Register = () => {
                         ? 'border border-success'
                         : 'border'
                     }`}
-                    style={{ background: '#fff', transition: 'border-color 0.2s' }}
+                    style={{ background: 'var(--ip-surface-raised)', transition: 'border-color 0.2s' }}
                   >
                     <span
                       className="px-3 py-2 fw-semibold flex-shrink-0"
                       style={{
-                        borderRight: '1px solid #dee2e6',
-                        color: errors.mobileNumber ? '#dc3545' : formData.mobileNumber.length === 10 ? '#198754' : 'var(--ip-primary)',
+                        borderRight: '1px solid var(--ip-border)',
+                        color: errors.mobileNumber ? '#dc3545' : formData.mobileNumber.length === 10 ? '#198754' : 'var(--ip-brand)',
                         fontSize: '0.9rem',
-                        background: '#f8f9fa',
+                        background: 'var(--ip-surface-subtle)',
                         userSelect: 'none',
                       }}
                     >+91</span>
@@ -367,7 +367,7 @@ const Register = () => {
                   type="submit"
                   className="login-submit-btn w-100 mt-2 mb-3"
                   isLoading={loading}
-                  loadingText="Creating accountâ€¦"
+                  loadingText="Creating account…"
                 >
                   Register for free
                 </LoadingButton>

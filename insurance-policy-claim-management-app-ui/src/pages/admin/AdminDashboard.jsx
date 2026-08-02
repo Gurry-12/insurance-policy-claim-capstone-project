@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { getAdminStats } from '../../services/dashboardService';
 import useAuth from '../../hooks/useAuth';
 import { EMPTY_STATES } from '../../utils/labels';
@@ -9,34 +8,9 @@ import ErrorAlert  from '../../components/ui/ErrorAlert';
 import PageHeader  from '../../components/common/PageHeader';
 import BentoCard   from '../../common/BentoCard';
 import DataTable   from '../../components/tables/DataTable';
+import StatTile    from '../../components/dashboard/StatTile';
+import QuickAction from '../../components/dashboard/QuickAction';
 import { formatINR } from '../../utils/formatters';
-
-const StatTile = ({ icon, label, value, color }) => (
-  <BentoCard className="ip-bento-stat-tile">
-    <div className="d-flex align-items-center gap-3">
-      <div className="ip-bento-stat-icon" style={{ background: color }}>
-        <i className={`bi ${icon}`} style={{ color: '#fff' }} />
-      </div>
-      <div>
-        <div className="ip-bento-stat-value">{value ?? <span className="placeholder col-4" />}</div>
-        <div className="ip-bento-stat-label">{label}</div>
-      </div>
-    </div>
-  </BentoCard>
-);
-
-const QuickAction = ({ icon, label, to, color }) => (
-  <Link to={to} className="text-decoration-none" style={{ display: 'contents' }}>
-    <BentoCard>
-      <div className="d-flex align-items-center gap-3">
-        <div className="ip-bento-stat-icon" style={{ background: color }}>
-          <i className={`bi ${icon}`} style={{ color: '#fff', fontSize: '1.1rem' }} />
-        </div>
-        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ip-text-primary)' }}>{label}</span>
-      </div>
-    </BentoCard>
-  </Link>
-);
 
 const AdminDashboard = () => {
   const { user } = useAuth();

@@ -275,3 +275,53 @@
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+[data-theme="dark"] .login-viewport {
+  background-color: #0F172A;
+  background-image: radial-gradient(circle at 15% 20%, rgba(37,99,235,0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 85% 85%, rgba(99,102,241,0.1) 0%, transparent 50%);
+}
+
+[data-theme="dark"] .master-glass-card {
+  background: rgba(30,41,59,0.6);
+  border: 1px solid rgba(51,65,85,0.6);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .inner-form-card {
+  background: rgba(30,41,59,0.8);
+  border: 1px solid rgba(51,65,85,0.7);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .form-display-title { color: var(--ip-text-primary); }
+[data-theme="dark"] .custom-field-label { color: var(--ip-text-secondary); }
+
+[data-theme="dark"] .pristine-input {
+  background: #1E293B !important;
+  border: 1px solid #334155 !important;
+  color: #F1F5F9 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+[data-theme="dark"] .pristine-input::placeholder { color: #64748B; }
+
+[data-theme="dark"] .pristine-input:focus {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.2) !important;
+}
+
+[data-theme="dark"] .input-embedded-trigger { color: #64748B; }
+[data-theme="dark"] .login-footer-text { color: var(--ip-text-secondary); }
+[data-theme="dark"] .login-footer-link { color: #60A5FA; }
+[data-theme="dark"] .floating-brand-character { filter: drop-shadow(0 25px 35px rgba(59,130,246,0.15)); }
+[data-theme="dark"] .brand-logo-sub { color: #60A5FA; }
+[data-theme="dark"] .otp-modal-card { background: rgba(30,41,59,0.9); border-color: rgba(51,65,85,0.8); }
+[data-theme="dark"] .resend-timer-text { color: #94a3b8; }
+[data-theme="dark"] .otp-modal-backdrop { background: rgba(2,6,23,0.5); }
+[data-theme="dark"] .vivid-text-link-btn { color: #60A5FA; }
+[data-theme="dark"] .vivid-text-link-btn:hover:not(:disabled) { color: #93C5FD; }
+
+@media (max-width: 991.98px) {
+  [data-theme="dark"] .inner-form-card { background: #1E293B; }
+}

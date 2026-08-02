@@ -8,6 +8,8 @@ import useTableState from "../../../hooks/useTableState";
 import PaginationBar from "../../../components/tables/PaginationBar";
 import ExportButton from "../../../components/common/ExportButton";
 import { formatINR } from "../../../utils/formatters";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const CustomerPolicyListPage = () => {
   const [policies, setPolicies] = useState([]);
@@ -51,7 +53,7 @@ const CustomerPolicyListPage = () => {
     switch (status) {
       case "ACTIVE": return "var(--ip-success-subtle)";
       case "PENDING_PAYMENT": return "var(--ip-warning-subtle)";
-      case "EXPIRED": return "var(--ip-secondary-subtle)";
+      case "EXPIRED": return "var(--ip-warning-subtle)";
       case "CANCELLED": return "var(--ip-danger-subtle)";
       default: return "var(--ip-border)";
     }
@@ -83,11 +85,7 @@ const CustomerPolicyListPage = () => {
 
       <div className="mt-4">
         {tableState.isLoading ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
+          <LoadingSpinner />
         ) : policies.length > 0 ? (
           <div className="row g-4">
             {policies.map((policy) => (
@@ -157,14 +155,16 @@ const CustomerPolicyListPage = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-5 bg-white rounded-3 shadow-sm border">
-            <Shield size={48} className="text-muted mb-3 opacity-50" />
-            <h5 className="fw-bold text-secondary">No Policies Found</h5>
-            <p className="text-muted mb-4">You haven't purchased any insurance policies yet.</p>
-            <Link to="/customer/plans" className="btn btn-primary rounded-pill px-4 py-2">
-              <PlusCircle size={18} className="me-2 d-inline" /> Browse Plans
-            </Link>
-          </div>
+          <EmptyState
+            icon="bi-shield-x"
+            title="No Policies Found"
+            message="You haven't purchased any insurance policies yet."
+            action={
+              <Link to="/customer/plans" className="btn btn-primary rounded-pill px-4 py-2">
+                <PlusCircle size={18} className="me-2 d-inline" /> Browse Plans
+              </Link>
+            }
+          />
         )}
       </div>
 
@@ -173,10 +173,7 @@ const CustomerPolicyListPage = () => {
           <PaginationBar
             currentPage={tableState.currentPage}
             totalPages={tableState.totalPages}
-            totalElements={tableState.totalElements}
-            pageSize={tableState.pageSize}
-            onPageChange={tableState.setPage}
-            onPageSizeChange={tableState.setPageSize}
+            onPageChange={tableState.setCurrentPage}
           />
         </div>
       )}

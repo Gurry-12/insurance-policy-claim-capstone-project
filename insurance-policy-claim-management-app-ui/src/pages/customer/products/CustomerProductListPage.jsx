@@ -2,11 +2,16 @@
 import { Link } from "react-router-dom";
 import { getActiveProducts } from "../../../services/productService";
 import PageHeader from "../../../components/common/PageHeader";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import EmptyState from "../../../components/ui/EmptyState";
+import PaginationBar from "../../../components/tables/PaginationBar";
+import useClientPagination from "../../../hooks/useClientPagination";
 
 const CustomerProductListPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { page, setPage, totalPages, pageItems } = useClientPagination(products, 9);
 
   const fetchProducts = async () => {
     try {
@@ -33,11 +38,7 @@ const CustomerProductListPage = () => {
           title="Insurance Products"
           subtitle="Browse our comprehensive range of insurance products"
         />
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "300px" }}>
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -62,7 +63,7 @@ const CustomerProductListPage = () => {
       />
 
       <div className="row g-4 mt-2">
-        {products.map((product) => (
+        {pageItems.map((product) => (
           <div
             key={product.productId}
             className="col-md-6 col-lg-4"
@@ -103,20 +104,29 @@ const CustomerProductListPage = () => {
         ))}
 
         {products.length === 0 && (
-          <div className="col-12 text-center py-5">
+          <div className="col-12">
             <div className="card border-0 shadow-sm">
-              <div className="card-body py-5">
-                <div className="text-muted">
-                  <i className="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
-                  <h5>No insurance products available</h5>
-                  <p>We are currently updating our product offerings.</p>
-                </div>
+              <div className="card-body">
+                <EmptyState
+                  icon="bi-box-seam"
+                  title="No insurance products available"
+                  message="We are currently updating our product offerings."
+                />
               </div>
             </div>
           </div>
         )}
       </div>
 
+      {products.length > 0 && (
+        <div className="mt-4">
+          <PaginationBar
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 };

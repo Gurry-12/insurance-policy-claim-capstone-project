@@ -21,7 +21,7 @@ const VerifyOtp = () => {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState(1);
+  const [timer, setTimer] = useState(30);
 
   useEffect(() => {
     let interval = null;

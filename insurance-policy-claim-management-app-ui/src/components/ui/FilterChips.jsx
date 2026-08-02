@@ -44,7 +44,7 @@ const FilterChips = ({ fields = [], localFilters, onRemove, onClearAll }) => {
       if (mn && mx) {
         chips.push({
           key: `${field.minName}-${field.maxName}`,
-          label: `${field.label}: ${formatAmount(mn)} â€“ ${formatAmount(mx)}`,
+          label: `${field.label}: ${formatAmount(mn)} – ${formatAmount(mx)}`,
           onRemove: () =>
             onRemove({ [field.minName]: "", [field.maxName]: "" }),
         });

@@ -48,7 +48,7 @@ const PaginationBar = ({ currentPage, totalPages, onPageChange }) => {
         {pages.map((page, idx) =>
           page === '...' ? (
             <li key={`ellipsis-${idx}`} className="page-item disabled">
-              <span className="page-link" aria-hidden="true">â€¦</span>
+              <span className="page-link" aria-hidden="true">…</span>
             </li>
           ) : (
             <li

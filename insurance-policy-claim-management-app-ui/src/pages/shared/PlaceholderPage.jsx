@@ -36,7 +36,7 @@ const PlaceholderPage = ({ role }) => {
         {user?.role}
       </span>
       <p className="text-muted small mt-2">
-        This section is coming soon. Auth is working correctly âœ…
+        This section is coming soon. Auth is working correctly ✓
       </p>
       <button
         className="btn btn-outline-danger rounded-pill px-4 mt-2"

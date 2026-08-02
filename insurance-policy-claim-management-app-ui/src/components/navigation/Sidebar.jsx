@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { notify } from "../../utils/notificationService";
 import useAuth from "../../hooks/useAuth";
+import SpecialityBadge from "../ui/SpecialityBadge";
 import logoImg from "../../assets/logo/insurance-heart-vector.png";
 import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 
@@ -109,6 +110,9 @@ const Sidebar = ({ navItems, isOpen, setIsOpen, isCollapsed, setIsCollapsed, tit
                 <div className="ip-sidebar-user-role" title={user?.email}>
                   {user?.email}
                 </div>
+                {user?.role === "INTERNAL_STAFF" && user?.productSpeciality && (
+                  <SpecialityBadge speciality={user.productSpeciality} size="sm" className="mt-1" />
+                )}
               </div>
             )}
           </div>

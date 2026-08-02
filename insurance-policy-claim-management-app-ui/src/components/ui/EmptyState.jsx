@@ -1,6 +1,6 @@
 ﻿
 
-const EmptyState = ({ icon = 'bi-inbox', title = 'No data found', message = 'There are no records to display here at the moment.' }) => (
+const EmptyState = ({ icon = 'bi-inbox', title = 'No data found', message = 'There are no records to display here at the moment.', action = null }) => (
   <div className="d-flex flex-column align-items-center justify-content-center py-5 px-3 text-center animate-slide-up w-100">
     <div 
       className="d-flex align-items-center justify-content-center rounded-circle mb-3"
@@ -18,6 +18,7 @@ const EmptyState = ({ icon = 'bi-inbox', title = 'No data found', message = 'The
     <p style={{ color: 'var(--ip-text-muted)', fontSize: '0.9rem', maxWidth: 320 }}>
       {message}
     </p>
+    {action && <div className="mt-2">{action}</div>}
   </div>
 );
 

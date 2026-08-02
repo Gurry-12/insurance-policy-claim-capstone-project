@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useLocation, useOutlet } from "react-router-dom";
-import { Suspense } from "react";
+import { useOutlet } from "react-router-dom";
 import Sidebar from "../navigation/Sidebar";
 import TopNavbar from "../navigation/TopNavbar";
 import useAuth from "../../hooks/useAuth";
@@ -137,7 +136,7 @@ const NAV_ITEMS_BY_ROLE = {
 
 const THEME_CLASS_BY_ROLE = {
   [ROLES.ADMIN]: "theme-admin",
-  [ROLES.INTERNAL_STAFF]: "theme-Staff",
+  [ROLES.INTERNAL_STAFF]: "theme-staff",
   [ROLES.CUSTOMER]: "theme-customer",
 };
 
@@ -149,7 +148,6 @@ const PORTAL_TITLE_BY_ROLE = {
 
 const MainLayout = () => {
   const { user } = useAuth();
-  const location = useLocation();
   const currentOutlet = useOutlet();
   const [sidebarOpen, setSidebarOpen] = useState(false); // For mobile overlay
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // For desktop

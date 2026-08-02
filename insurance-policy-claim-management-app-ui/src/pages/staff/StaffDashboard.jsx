@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { getAllPaymentsPaginated as getAllPayments } from "../../services/paymentService";
 import { getAllClaimsPaginated as getAllClaims } from "../../services/claimService";
@@ -7,56 +7,15 @@ import { getAllPoliciesPaginated as getAllPolicies } from "../../services/policy
 import { getAllCustomers } from "../../services/customerService";
 import { EMPTY_STATES } from "../../utils/labels";
 import StatusBadge from "../../components/ui/StatusBadge";
+import SpecialityBadge from "../../components/ui/SpecialityBadge";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorAlert from "../../components/ui/ErrorAlert";
 import PageHeader from "../../components/common/PageHeader";
 import BentoCard from "../../common/BentoCard";
 import DataTable from "../../components/tables/DataTable";
+import StatTile from "../../components/dashboard/StatTile";
+import QuickAction from "../../components/dashboard/QuickAction";
 import { formatINR } from "../../utils/formatters";
-
-const StatTile = ({ icon, label, value, color }) => (
-  <BentoCard className="ip-bento-stat-tile">
-    <div className="d-flex align-items-center gap-3">
-      <div className="ip-bento-stat-icon" style={{ background: color }}>
-        <i className={`bi ${icon}`} style={{ color: '#fff' }} />
-      </div>
-      <div>
-        <div className="ip-bento-stat-value">
-          {value ?? <span className="placeholder col-4" />}
-        </div>
-        <div className="ip-bento-stat-label">{label}</div>
-      </div>
-    </div>
-  </BentoCard>
-);
-
-const QuickAction = ({ icon, label, to, color }) => (
-  <Link
-    to={to}
-    className="text-decoration-none"
-    style={{ display: "contents" }}
-  >
-    <BentoCard>
-      <div className="d-flex align-items-center gap-3">
-        <div
-          className="ip-bento-stat-icon"
-          style={{ background: color }}
-        >
-          <i className={`bi ${icon}`} style={{ color: '#fff', fontSize: "1.1rem" }} />
-        </div>
-        <span
-          style={{
-            fontSize: "0.82rem",
-            fontWeight: 600,
-            color: "var(--ip-text-primary)",
-          }}
-        >
-          {label}
-        </span>
-      </div>
-    </BentoCard>
-  </Link>
-);
 
 const StaffDashboard = () => {
   const { user } = useAuth();
@@ -196,10 +155,7 @@ const StaffDashboard = () => {
           <span>
             Welcome back, {user?.name ?? "Staff"} 👋
             {user?.productSpeciality && (
-              <span className="badge bg-primary bg-opacity-10 text-primary ms-3 border border-primary-subtle" style={{ verticalAlign: 'middle' }}>
-                <i className="bi bi-star-fill me-1" style={{ fontSize: '0.75rem' }}></i>
-                {user.productSpeciality} Specialist
-              </span>
+              <SpecialityBadge speciality={user.productSpeciality} size="lg" className="ms-3" />
             )}
           </span>
         }

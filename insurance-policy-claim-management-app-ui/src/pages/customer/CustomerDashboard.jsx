@@ -10,36 +10,11 @@ import ErrorAlert  from "../../components/ui/ErrorAlert";
 import PageHeader  from "../../components/common/PageHeader";
 import BentoCard   from "../../common/BentoCard";
 import DataTable   from "../../components/tables/DataTable";
+import StatTile    from "../../components/dashboard/StatTile";
+import QuickAction from "../../components/dashboard/QuickAction";
 import { formatINR } from "../../utils/formatters";
 import { POLICY_STATUS } from '../../utils/statuses';
 import { EMPTY_STATES } from '../../utils/labels';
-
-const StatTile = ({ icon, label, value, color }) => (
-  <BentoCard className="ip-bento-stat-tile">
-    <div className="d-flex align-items-center gap-3">
-      <div className="ip-bento-stat-icon" style={{ background: color }}>
-        <i className={`bi ${icon}`} style={{ color: '#fff' }} />
-      </div>
-      <div>
-        <div className="ip-bento-stat-value">{value}</div>
-        <div className="ip-bento-stat-label">{label}</div>
-      </div>
-    </div>
-  </BentoCard>
-);
-
-const QuickAction = ({ icon, label, to, color }) => (
-  <Link to={to} className="text-decoration-none" style={{ display: 'contents' }}>
-    <BentoCard>
-      <div className="d-flex align-items-center gap-3">
-        <div className="ip-bento-stat-icon" style={{ background: color }}>
-          <i className={`bi ${icon}`} style={{ color: '#fff', fontSize: '1.1rem' }} />
-        </div>
-        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ip-text-primary)' }}>{label}</span>
-      </div>
-    </BentoCard>
-  </Link>
-);
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
@@ -160,7 +135,7 @@ const CustomerDashboard = () => {
                   onRowClick={(c) => navigate(`/customer/claims/${c.claimId}`)}
                   columns={[
                     { header: 'Sr No.', accessor: 'claimId', cell: (_, i) => <span style={{ fontWeight: 600 }}>{i + 1}</span> },
-                    { header: 'Amount', accessor: 'claimAmount', cell: (c) => <span style={{ fontWeight: 600 }}>₹{Number(c.claimAmount).toLocaleString('en-IN')}</span> },
+                    { header: 'Amount', accessor: 'claimAmount', cell: (c) => <span style={{ fontWeight: 600 }}>{formatINR(c.claimAmount)}</span> },
                     { header: 'Date', accessor: 'createdDate', cell: (c) => <span style={{ color: 'var(--ip-text-muted)' }}>{c.createdDate ? new Date(c.createdDate).toLocaleDateString() : "-"}</span> },
                     { header: 'Status', accessor: 'claimStatus', cell: (c) => <StatusBadge status={c.claimStatus} /> }
                   ]}

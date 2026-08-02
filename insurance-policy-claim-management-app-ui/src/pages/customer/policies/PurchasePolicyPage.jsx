@@ -414,14 +414,6 @@ const PurchasePolicyPage = () => {
                               {selectedPremiumType}
                             </span>
                           </div>
-                          {quoteData.quoteId && (
-                            <div className="col-6">
-                              <span className="text-muted">Quote ID: </span>
-                              <span className="fw-bold">
-                                #{quoteData.quoteId}
-                              </span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </>

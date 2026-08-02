@@ -17,39 +17,39 @@ const STATUS_CONFIG = {
     icon: "bi-check-circle-fill"
   },
   SUCCESS: {
-    bg: 'var(--ip-success-bg, #ecfdf5)',
-    color: 'var(--ip-success, #059669)',
-    border: 'var(--ip-success-subtle, #a7f3d0)',
+    bg: 'var(--ip-payment-success-bg, #f0fdf4)',
+    color: 'var(--ip-payment-success, #16a34a)',
+    border: 'var(--ip-success-subtle, #bbf7d0)',
     icon: "bi-check-circle-fill"
   },
   ASSIGNED: {
-    bg: 'var(--ip-info-bg, #eff6ff)',
-    color: 'var(--ip-info, #2563eb)',
-    border: 'var(--ip-info-subtle, #bfdbfe)',
+    bg: 'var(--ip-claim-submitted-bg, #f0f9ff)',
+    color: 'var(--ip-claim-submitted, #0284c7)',
+    border: 'var(--ip-info-subtle, #bae6fd)',
     icon: "bi-person-check-fill"
   },
   PENDING: {
-    bg: 'var(--ip-warning-bg, #fffbeb)',
-    color: 'var(--ip-warning, #d97706)',
-    border: 'var(--ip-warning-subtle, #fde047)',
+    bg: 'var(--ip-policy-pending-bg, #fffbeb)',
+    color: 'var(--ip-policy-pending, #d97706)',
+    border: 'var(--ip-warning-subtle, #fde68a)',
     icon: "bi-clock-fill"
   },
   UNDER_REVIEW: {
     bg: 'var(--ip-claim-under-review-bg, #fffbeb)',
-    color: 'var(--ip-claim-under-review, #f59e0b)',
-    border: 'var(--ip-warning-subtle, #fef08a)',
+    color: 'var(--ip-claim-under-review, #d97706)',
+    border: 'var(--ip-warning-subtle, #fde68a)',
     icon: "bi-search"
   },
   SUBMITTED: {
-    bg: 'var(--ip-claim-submitted-bg, #eff6ff)',
-    color: 'var(--ip-claim-submitted, #3b82f6)',
-    border: 'var(--ip-info-subtle, #dbeafe)',
+    bg: 'var(--ip-claim-submitted-bg, #f0f9ff)',
+    color: 'var(--ip-claim-submitted, #0284c7)',
+    border: 'var(--ip-info-subtle, #bae6fd)',
     icon: "bi-file-earmark-check-fill"
   },
   PENDING_PAYMENT: {
     bg: 'var(--ip-policy-pending-bg, #fffbeb)',
-    color: 'var(--ip-policy-pending, #f59e0b)',
-    border: 'var(--ip-warning-subtle, #fed7aa)',
+    color: 'var(--ip-policy-pending, #d97706)',
+    border: 'var(--ip-warning-subtle, #fde68a)',
     icon: "bi-credit-card-fill"
   },
   REJECTED: {
@@ -61,32 +61,38 @@ const STATUS_CONFIG = {
   CANCELLED: {
     bg: 'var(--ip-policy-cancelled-bg, #fef2f2)',
     color: 'var(--ip-policy-cancelled, #dc2626)',
-    border: 'var(--ip-danger-subtle, #fecdd3)',
+    border: 'var(--ip-danger-subtle, #fecaca)',
     icon: "bi-slash-circle-fill"
   },
   EXPIRED: {
-    bg: 'var(--ip-policy-expired-bg, #f1f5f9)',
-    color: 'var(--ip-policy-expired, #64748b)',
-    border: 'var(--ip-secondary-subtle, #e5e7eb)',
+    bg: 'var(--ip-policy-expired-bg, #fffbeb)',
+    color: 'var(--ip-policy-expired, #d97706)',
+    border: 'var(--ip-warning-subtle, #fde68a)',
     icon: "bi-hourglass-bottom"
   },
   FAILED: {
-    bg: 'var(--ip-danger-bg, #fef2f2)',
-    color: 'var(--ip-danger, #dc2626)',
-    border: 'var(--ip-danger-subtle, #fbcfe8)',
+    bg: 'var(--ip-payment-failed-bg, #fef2f2)',
+    color: 'var(--ip-payment-failed, #dc2626)',
+    border: 'var(--ip-danger-subtle, #fecaca)',
     icon: "bi-exclamation-triangle-fill"
   },
+  INACTIVE: {
+    bg: 'var(--ip-surface-raised, #f1f5f9)',
+    color: 'var(--ip-text-muted, #64748b)',
+    border: 'var(--ip-secondary-subtle, #cbd5e1)',
+    icon: "bi-pause-circle-fill"
+  },
   RECOMMENDED_FOR_APPROVAL: {
-    bg: 'var(--ip-claim-rec-approval-bg, #ecfdf5)',
-    color: 'var(--ip-claim-rec-approval, #10b981)',
-    border: 'var(--ip-success-subtle, #c7d2fe)',
+    bg: 'var(--ip-claim-rec-approval-bg, #f0fdf4)',
+    color: 'var(--ip-claim-rec-approval, #16a34a)',
+    border: 'var(--ip-success-subtle, #bbf7d0)',
     icon: "bi-hand-thumbs-up-fill",
     label: "Recommended for Approval"
   },
   RECOMMENDED_FOR_REJECTION: {
     bg: 'var(--ip-claim-rec-rejection-bg, #fff7ed)',
-    color: 'var(--ip-claim-rec-rejection, #f97316)',
-    border: 'var(--ip-warning-subtle, #f5d0fe)',
+    color: 'var(--ip-claim-rec-rejection, #ea580c)',
+    border: 'var(--ip-warning-subtle, #fed7aa)',
     icon: "bi-hand-thumbs-down-fill",
     label: "Recommended for Rejection"
   },
@@ -99,7 +105,8 @@ const STATUS_CONFIG = {
 };
 
 const StatusBadge = ({ status }) => {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.DEFAULT;
+  const normalized = (status ?? '').toString().trim().toUpperCase().replace(/ /g, '_');
+  const config = STATUS_CONFIG[normalized] || STATUS_CONFIG.DEFAULT;
 
   const badgeStyle = {
     display: 'inline-flex',

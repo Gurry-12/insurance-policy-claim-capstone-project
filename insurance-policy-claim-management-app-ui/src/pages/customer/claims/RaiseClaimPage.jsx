@@ -9,6 +9,7 @@ import ModernDatePicker from "../../../components/forms/ModernDatePicker";
 import { notify } from "../../../utils/notificationService";
 import { PRODUCT_DOCUMENT_CATEGORIES } from "../../../utils/documentCategories";
 import ErrorAlert from "../../../components/ui/ErrorAlert";
+import { formatINR } from "../../../utils/formatters";
 
 const RaiseClaimPage = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ const RaiseClaimPage = () => {
             changed = true;
           }
         } else if (amount > remaining) {
-          const msg = `Cannot exceed remaining coverage (₹${remaining.toLocaleString()})`;
+          const msg = `Cannot exceed remaining coverage (${formatINR(remaining)})`;
           if (newErrors.claimAmount !== msg) {
             newErrors.claimAmount = msg;
             changed = true;
@@ -178,7 +179,7 @@ const RaiseClaimPage = () => {
       } else if (selectedPolicyDetails) {
         const remaining = selectedPolicyDetails.remainingClaimAmount ?? selectedPolicyDetails.selectedCoverage ?? 0;
         if (amount > remaining) {
-          errs.claimAmount = `Cannot exceed remaining coverage (₹${remaining.toLocaleString()})`;
+          errs.claimAmount = `Cannot exceed remaining coverage (${formatINR(remaining)})`;
         }
       }
     }
@@ -364,7 +365,7 @@ const RaiseClaimPage = () => {
                         <div className="flex-grow-1">
                           <div className="text-muted small fw-medium mb-1">Available Claim Coverage</div>
                           <h4 className="mb-0 fw-bold text-success">
-                            ₹{(selectedPolicyDetails.remainingClaimAmount ?? selectedPolicyDetails.selectedCoverage ?? 0).toLocaleString()}
+                            {formatINR(selectedPolicyDetails.remainingClaimAmount ?? selectedPolicyDetails.selectedCoverage ?? 0)}
                           </h4>
                         </div>
                       </div>

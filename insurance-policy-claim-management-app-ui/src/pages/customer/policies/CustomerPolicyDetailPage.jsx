@@ -205,7 +205,7 @@ const showPayButton =
                       {payments.map((payment) => (
                         <tr key={payment.paymentId}>
                           <td>{payment.transactionReference}</td>
-                          <td className="fw-semibold">₹{payment.amount?.toLocaleString()}</td>
+                          <td className="fw-semibold">{formatINR(payment.amount)}</td>
                           <td>{payment.paymentMode?.replace('_', ' ')}</td>
                           <td>
                             <span className={`badge ${payment.paymentStatus === 'SUCCESS' ? 'bg-success' : 'bg-warning text-dark'}`}>

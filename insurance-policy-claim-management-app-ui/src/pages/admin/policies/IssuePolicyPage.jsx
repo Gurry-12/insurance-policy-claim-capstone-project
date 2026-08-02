@@ -7,6 +7,8 @@ import { generateQuoteAsAdmin } from '../../../services/quoteService';
 import { issuePolicy } from '../../../services/policyService';
 import { notify } from '../../../utils/notificationService';
 import { formatINR } from '../../../utils/formatters';
+import PremiumBreakdownCard from '../../../components/customer/PremiumBreakdownCard';
+import QuoteCountdownTimer from '../../../components/customer/QuoteCountdownTimer';
 
 const sectionCard = {
   borderRadius: 'var(--ip-radius-lg)',
@@ -54,6 +56,7 @@ const IssuePolicyPage = () => {
 
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteExpired, setQuoteExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -72,6 +75,7 @@ const IssuePolicyPage = () => {
       const plan = plans.find(p => (p.planId || p.id) === Number(form.planId));
       setSelectedPlan(plan || null);
       setQuote(null);
+      setQuoteExpired(false);
       const planPremiumType = plan?.supportedPremiumType || plan?.supportedPremiumTypes?.[0] || 'ANNUAL';
       setForm(f => ({ ...f, duration: '', coverageAmount: '', premiumType: planPremiumType }));
     }
@@ -81,7 +85,10 @@ const IssuePolicyPage = () => {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
     if (errors[name]) setErrors(err => ({ ...err, [name]: '' }));
-    if (name === 'planId') setQuote(null);
+    if (name === 'planId' || name === 'customerId' || name === 'duration') {
+      setQuote(null);
+      setQuoteExpired(false);
+    }
   };
 
   const handleGetQuote = async () => {
@@ -102,6 +109,7 @@ const IssuePolicyPage = () => {
         premiumType: form.premiumType,
       });
       setQuote(res);
+      setQuoteExpired(false);
     } catch (err) {
       setQuote(null);
       notify.error(err?.message || 'Failed to generate quote');
@@ -112,6 +120,7 @@ const IssuePolicyPage = () => {
 
   const handleSubmit = async () => {
     if (!quote) return notify.error('Generate a quote first');
+    if (quoteExpired) return notify.error('Quote has expired. Please generate a new quote.');
 
     setSubmitting(true);
     try {
@@ -260,6 +269,7 @@ const IssuePolicyPage = () => {
                           onClick={() => {
                             setForm(f => ({ ...f, coverageAmount: amt }));
                             setQuote(null);
+                            setQuoteExpired(false);
                             if (errors.coverageAmount) setErrors(e => ({ ...e, coverageAmount: '' }));
                           }}
                         >
@@ -309,40 +319,56 @@ const IssuePolicyPage = () => {
         {quote && (
           <div className="card border-0" style={{ ...sectionCard, borderLeft: '4px solid var(--ip-success)' }}>
             <div className="card-body p-4">
-              <div style={sectionHeader}>
-                <i className="bi bi-check-circle me-2" style={{ color: 'var(--ip-success)' }} />
-                Premium Quote
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div style={sectionHeader} className="mb-0">
+                  <i className="bi bi-check-circle me-2" style={{ color: 'var(--ip-success)' }} />
+                  Premium Quote
+                </div>
+                {quote.expiresAt && (
+                  <QuoteCountdownTimer
+                    expiresAt={quote.expiresAt}
+                    onExpire={() => setQuoteExpired(true)}
+                  />
+                )}
               </div>
-              <div className="row g-3">
-                {[
-                  { label: 'Annual Premium', value: quote.annualPremium },
-                  { label: 'Processing Fee', value: quote.processingFee },
-                  { label: 'GST', value: quote.gst },
-                ].map((item) => (
-                  <div className="col-md-4" key={item.label}>
-                    <div
-                      className="p-3 text-center"
-                      style={{ borderRadius: 'var(--ip-radius-sm)', backgroundColor: 'var(--ip-surface-raised)' }}
-                    >
-                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>{item.label}</div>
-                      <div className="fw-bold" style={{ color: 'var(--ip-brand)', fontSize: '1.05rem' }}>
-                        {formatINR(item.value)}
+
+              {quoteExpired ? (
+                <div className="alert alert-warning mb-0">
+                  <i className="bi bi-exclamation-triangle me-2" />
+                  Quote has expired. Please generate a new quote.
+                </div>
+              ) : (
+                <>
+                  <PremiumBreakdownCard quoteDetails={quote} />
+
+                  <div
+                    className="p-3 rounded-3 mt-3"
+                    style={{ backgroundColor: 'var(--ip-success-bg, #f0fdf4)', border: '1px solid var(--ip-success-subtle, #bbf7d0)' }}
+                  >
+                    <small className="text-success fw-bold d-block mb-2">Quote Summary</small>
+                    <div className="row g-2 small">
+                      <div className="col-md-6">
+                        <span className="text-muted">Customer: </span>
+                        <span className="fw-bold">
+                          {customers.find(c => (c.id || c.customerId) === Number(form.customerId))?.fullName || form.customerId}
+                        </span>
+                      </div>
+                      <div className="col-md-6">
+                        <span className="text-muted">Coverage: </span>
+                        <span className="fw-bold">{formatINR(form.coverageAmount)}</span>
+                      </div>
+                      <div className="col-md-6">
+                        <span className="text-muted">Duration: </span>
+                        <span className="fw-bold">{form.duration} Year(s)</span>
+                      </div>
+                      <div className="col-md-6">
+                        <span className="text-muted">Payment Type: </span>
+                        <span className="fw-bold">{form.premiumType.replace('_', ' ')}</span>
                       </div>
                     </div>
                   </div>
-                ))}
-                <div className="col-md-4">
-                  <div
-                    className="p-3 text-center"
-                    style={{ borderRadius: 'var(--ip-radius-sm)', backgroundColor: 'var(--ip-success-subtle)' }}
-                  >
-                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>Total</div>
-                    <div className="fw-bold" style={{ color: 'var(--ip-success)', fontSize: '1.15rem' }}>
-                      {formatINR(quote.totalPremium)}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -371,7 +397,7 @@ const IssuePolicyPage = () => {
               color: quote ? '#fff' : 'var(--ip-text-muted)',
             }}
             onClick={handleSubmit}
-            disabled={submitting || !quote}
+            disabled={submitting || !quote || quoteExpired}
           >
             {submitting ? (
               <><span className="spinner-border spinner-border-sm me-2" /> Issuing...</>
