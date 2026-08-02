@@ -10,6 +10,8 @@ Dates follow `YYYY-MM-DD` (newest first). Each entry links to the implementing c
 
 ### Docs: Technical documentation set + documentation consistency fixes
 
+[`a36fa7b`](https://github.com/Gurry-12/insurance-policy-claim-capstone-project/commit/a36fa7b)
+
 **Documentation only** - no application code changed.
 
 - Added a new `docs/` set with architecture diagrams (Mermaid), sequence diagrams, database reference, caching, logging + logging strategy, performance, security, decision records (ADRs), and deployment guides; added `docs/README.md` index and wired it into the root README.
