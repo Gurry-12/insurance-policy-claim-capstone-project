@@ -153,7 +153,7 @@ Validation (from `PlanRequestDTO.java`):
 | Coverage option request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/CoverageOptionRequestDTO.java` |
 | Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{PlanResponseDTO,PlanWizardResponseDTO,CoverageOptionResponseDTO}.java` |
 | Coverage option admin API | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/CoverageOptionController.java` |
-| Sample payloads | `demo-data/api-test-payloads/04-plans.json`, `05-coverage-options.json` |
+| Sample payloads | `demo-data/api-test-payloads/04-plans.md`, `05-coverage-options.md` |
 
 ## Diagrams
 

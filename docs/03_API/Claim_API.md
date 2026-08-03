@@ -182,7 +182,7 @@ Internal staff see only claims whose policy product type matches their `productS
 | Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{ClaimRequestDTO,ClaimReviewRequestDTO}.java` |
 | Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{ClaimResponseDTO,ClaimHistoryResponseDTO,ClaimDocumentResponseDTO}.java` |
 | Claim status enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/ClaimStatus.java` |
-| Sample payloads | `demo-data/api-test-payloads/10-claims.json` |
+| Sample payloads | `demo-data/api-test-payloads/10-claims.md` |
 
 ## Diagrams
 

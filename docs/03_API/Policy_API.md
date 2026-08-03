@@ -124,7 +124,7 @@ Field notes:
 | Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{PolicyPurchaseRequestDTO,PolicyIssueRequestDTO}.java` |
 | Response DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/PolicyResponseDTO.java` |
 | Policy status enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/PolicyStatus.java` |
-| Sample payloads | `demo-data/api-test-payloads/08-policies.json` |
+| Sample payloads | `demo-data/api-test-payloads/08-policies.md` |
 
 ## Diagrams
 

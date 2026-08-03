@@ -225,7 +225,7 @@ The SPA client (`src/api/axiosInstance.js`) reacts to `401` by running a **singl
 | CSRF origin check | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/CookieCsrfOriginFilter.java` |
 | Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{UserRequestDTO,VerifyOtpRequest,ResendOtpRequestDTO,LoginRequestDTO,ForgotPasswordRequestDTO,ResetPasswordRequestDTO}.java` |
 | Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{LoginResponseDTO,RefreshResponseDTO,ResendOtpResponseDTO,UserResponseDTO}.java` |
-| Sample payloads | `demo-data/api-test-payloads/01-auth.json` |
+| Sample payloads | `demo-data/api-test-payloads/01-auth.md` |
 
 ## Diagrams
 

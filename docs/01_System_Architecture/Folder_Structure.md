@@ -15,7 +15,7 @@ capstone-project/
 ├── docs/                        # Documentation — single source of truth (this tree)
 ├── demo-data/                   # Demo deliverables
 │   ├── sql/                     #   Seed scripts (users, catalog, policies/claims)
-│   ├── api-test-payloads/       #   JSON request bodies per API group
+│   ├── api-test-payloads/       #   Markdown request bodies per API group
 │   ├── 03-testing-flow.md       #   curl end-to-end walkthrough
 │   └── 04-evaluator-demo.md     #   evaluator display data & demo guide
 ├── screenshots/                 # UI screenshots by role (admin/, staff/, customer/, auth/)

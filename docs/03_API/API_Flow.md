@@ -153,7 +153,7 @@ Per-endpoint filters (e.g. `status`, `productType`, `isActive`, `policyId`, `cus
 | Controllers | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/*.java` |
 | Response wrappers | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{ApiResponseDTO,PageResponseDTO,ErrorResponseDTO,ValidationErrorResponseDTO}.java` |
 | Exception mapping | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/exception/GlobalExceptionHandler.java` |
-| Sample payloads | `demo-data/api-test-payloads/*.json` |
+| Sample payloads | `demo-data/api-test-payloads/*.md` |
 | Demo/evaluator flows | `demo-data/` (repo root) |
 
 ## Diagrams

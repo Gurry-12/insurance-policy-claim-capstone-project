@@ -95,7 +95,7 @@ Note the response field is `isActive` (boolean) while the request field is `acti
 | Request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/ProductRequestDTO.java` |
 | Response DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/ProductResponseDTO.java` |
 | Product type enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/ProductType.java` |
-| Sample payloads | `demo-data/api-test-payloads/03-products.json` |
+| Sample payloads | `demo-data/api-test-payloads/03-products.md` |
 
 ## Diagrams
 

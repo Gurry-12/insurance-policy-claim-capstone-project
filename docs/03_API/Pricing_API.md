@@ -171,7 +171,7 @@ After a successful purchase the quote is marked `USED`. Quote statuses: `CREATED
 | Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{PricingRuleRequestDTO,PricingPreviewRequestDTO}.java` |
 | Premium DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/{PremiumCalculationRequest,AdminPremiumCalculationRequest,PremiumQuote}.java` |
 | Calculator strategies | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/` |
-| Sample payloads | `demo-data/api-test-payloads/06-pricing-rules.json`, `07-premium-calculation.json` |
+| Sample payloads | `demo-data/api-test-payloads/06-pricing-rules.md`, `07-premium-calculation.md` |
 
 ## Diagrams
 

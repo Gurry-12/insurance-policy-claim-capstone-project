@@ -110,7 +110,7 @@ On a `SUCCESS` payment the policy is saved with:
 | Request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/PaymentRequestDTO.java` |
 | Response DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/PaymentResponseDTO.java` |
 | Enums | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/{PaymentMode,PaymentStatus,PolicyStatus}.java` |
-| Sample payloads | `demo-data/api-test-payloads/09-payments.json` |
+| Sample payloads | `demo-data/api-test-payloads/09-payments.md` |
 
 ## Diagrams
 

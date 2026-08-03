@@ -133,7 +133,7 @@ curl -s -b cookies.txt -c cookies.txt -X POST http://localhost:8081/api/auth/log
 ```
 
 ## 14. Offline OTP (register / verify-otp / reset-password)
-- **Register a new customer:** `POST /api/auth/register` (see `01-auth.json`). OTPs are delivered to
+- **Register a new customer:** `POST /api/auth/register` (see `api-test-payloads/01-auth.md`). OTPs are delivered to
   email (real mail) and phone. When Twilio is not configured, the phone OTP is logged to the
   **server console** (`Phone OTP for ... is 123456`). Both OTPs are stored in plaintext in the
   `otp_verifications` table:
