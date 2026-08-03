@@ -6,6 +6,21 @@ Dates follow `YYYY-MM-DD` (newest first). Each entry links to the implementing c
 
 ---
 
+## 2026-08-03
+
+### Docs: Documentation reorganization into a single enterprise `docs/` tree
+
+**Documentation only** - no application code changed.
+
+- Consolidated all project documentation into one `docs/` tree: `00_Project_Overview/` through `11_Developer_Guide/` plus `12_Knowledge_Base/` (34 concept cards) and `09_Diagrams/` (Mermaid sequence/class/ER/activity/flowcharts).
+- Added `docs/CONTRIBUTING.md` (mandatory 9-section template, knowledge-card template, single-source-of-truth map, and a code-verified Fact Sheet) and a top-level `docs/README.md` index with audience-specific reading paths.
+- Added evaluation material (`10_Evaluation/`: project summary, feature/business-rule/API checklists, interview Q&A, roadmap) and a developer guide (`11_Developer_Guide/`: setup, run, build, environment, deployment, troubleshooting).
+- Relocated the performance, caching, logging, and ADR analysis docs into the new tree (`06_Backend/Performance.md`, `06_Backend/Caching.md`, `06_Backend/Logging.md`, `07_Design_Patterns/Decision_Records.md`) with all cross-links repaired.
+- Removed legacy/duplicate content: `imp-doc/` (~38 files, incl. byte-identical Postman scenario guides already kept in the backend `postman/`), superseded flat `docs/*.md` and `docs/architecture/`, UI `docs/` (stale theming specs), Vite boilerplate UI `README.md`, and backend `HELP.md`.
+- Fixed all broken/renamed cross-links across the kept docs (full link scan now passes) and updated root `README.md`, backend `README.md`, and this changelog.
+
+---
+
 ## 2026-08-02
 
 ### Docs: Technical documentation set + documentation consistency fixes

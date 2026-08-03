@@ -1,44 +1,76 @@
-# Project Documentation
+# InsuranceFlow — Documentation Hub
 
-Technical documentation for the **Insurance Policy & Claim Management System**. These documents describe the system as built and audited for a technical evaluation.
+Full documentation for the **InsuranceFlow** capstone project — a full-stack
+insurance policy & claim management system.
 
-> Existing curated documentation also lives in [`imp-doc/`](../imp-doc/README.md) (API contracts, workflows, Postman scenarios, diagrams). This `docs/` set focuses on architecture, design analysis, and engineering-quality topics.
+| Module | Repo folder |
+|---|---|
+| Backend (Spring Boot) | `insurance-policy-claim-management-system/` |
+| Frontend (React + Vite) | `insurance-policy-claim-management-app-ui/` |
+| Docs | this `docs/` tree |
+| Demo data | `demo-data/` |
 
-## Architecture
+## How to read this documentation
 
-| Document | Contents |
-|----------|----------|
-| [`architecture/01-system-architecture.md`](architecture/01-system-architecture.md) | End-to-end system diagram: browser, API, MySQL, Cloudinary, Gmail SMTP, Twilio, JWT |
-| [`architecture/02-backend-architecture.md`](architecture/02-backend-architecture.md) | Spring Boot layered architecture, request path, cross-cutting concerns |
-| [`architecture/03-domain-model.md`](architecture/03-domain-model.md) | Domain/ER-style model of all 15 entities and their relationships |
-| [`architecture/04-frontend-architecture.md`](architecture/04-frontend-architecture.md) | React SPA layers, routing, state, data flow |
-| [`architecture/05-deployment-architecture.md`](architecture/05-deployment-architecture.md) | Runtime topology, configuration, and future scaling targets |
+Pick your audience:
 
-## Design Analysis
+**1. Evaluator / reviewer — quick, high-signal**
+- `10_Evaluation/Project_Summary.md` — one-page summary
+- `10_Evaluation/Features_Checklist.md` + `Business_Rules_Checklist.md` +
+  `API_Checklist.md` — verify everything, fast
+- `00_Project_Overview/` — vision, features, tech stack, architecture overview
+- `09_Diagrams/` — Mermaid sequence / class / ER / activity / flowcharts
+- `demo-data/04-evaluator-demo.md` — exact credentials + screens to show
 
-| Document | Contents |
-|----------|----------|
-| [`sequence-diagrams.md`](sequence-diagrams.md) | 10 request-level sequence diagrams (auth, quote, purchase, payment, claims) |
-| [`database.md`](database.md) | `insurance_db` schema, foreign keys, constraints, index recommendations |
-| [`caching.md`](caching.md) | Caching strategy: current state, recommended Caffeine/Redis design |
-| [`logging.md`](logging.md) | Current logging setup and what is logged today |
-| [`logging-strategy.md`](logging-strategy.md) | Recommended logging/observability strategy (levels, MDC, structured JSON, ELK) |
-| [`performance.md`](performance.md) | Performance review: N+1 risks, fetch strategies, pagination, recommendations |
-| [`security.md`](security.md) | Security review: JWT, RBAC, authorization, data protection |
-| [`authentication.md`](authentication.md) | Authentication hardening as built: JWT flow, tokenVersion revocation, rate limiting, OTP, enumeration |
-| [`refresh-token-architecture.md`](refresh-token-architecture.md) | Planned refresh-token + HttpOnly-cookie session design (deferred) |
-| [`jwt-key-rotation.md`](jwt-key-rotation.md) | Signing-key rotation strategy and runbook |
-| [`deployment.md`](deployment.md) | Build, run, configure, and deploy the system |
+**2. Interviewer / panel — deep-dive questions**
+- `10_Evaluation/Interview_Questions.md` — Q&A across architecture, security,
+  DB, frontend, business logic, ops, behavioral
+- Follow links into `02_Business_Domain/`, `03_API/`, `04_Database/`,
+  `05_Frontend/`, `07_Design_Patterns/` for supporting depth
 
-## Decisions
+**3. Developer — run, understand, extend**
+- `11_Developer_Guide/Setup.md` → `Run.md` → `Build.md` → `Environment.md`
+- `01_System_Architecture/` — system, backend, frontend, security, high-level
+- `03_API/`, `04_Database/`, `06_Backend/`, `08_Workflows/`
+- `12_Knowledge_Base/` — 34 concept cards (per-topic detail)
+- `11_Developer_Guide/Troubleshooting.md` — when things break
 
-| Document | Contents |
-|----------|----------|
-| [`decision-records.md`](decision-records.md) | Architecture Decision Records (ADR) for key engineering choices |
+## Folder index
 
-## Related material
+| Folder | Contents |
+|---|---|
+| `00_Project_Overview/` | README, Vision, Features, Tech_Stack, Architecture_Overview |
+| `01_System_Architecture/` | High-level, backend, frontend, security, data, folder structure |
+| `02_Business_Domain/` | Insurance domain, rules, product/policy/claim workflows, premium, pricing, coverage, duration, payment |
+| `03_API/` | Auth/Product/Plan/Pricing/Policy/Claim/Payment APIs + API flow |
+| `04_Database/` | ER summary, schema, entities, data flow, seed data |
+| `05_Frontend/` | Routing, layout, state, hooks, components, guards, API integration, UI workflows |
+| `06_Backend/` | Controllers, services, DTOs, JWT, security, validation, exceptions, repositories, package structure, premium service, performance, caching, logging |
+| `07_Design_Patterns/` | Strategy, Factory, Adapter, Builder, Dependency Injection, SOLID, Decision Records |
+| `08_Workflows/` | End-to-end flows (register, quote, purchase, pay, claim, admin) |
+| `09_Diagrams/` | Mermaid sequence/class/ER/activity/flowcharts |
+| `10_Evaluation/` | Summary, checklists, interview Q&A, roadmap |
+| `11_Developer_Guide/` | Setup, Run, Build, Environment, Deployment, Troubleshooting |
+| `12_Knowledge_Base/` | 34 concept cards (backend/domain + frontend/patterns) |
 
-- [`imp-doc/01-api-contracts/`](../imp-doc/01-api-contracts/backend-api-contract.md) — REST API contract (backend, per-endpoint)
-- [`imp-doc/04-workflows/`](../imp-doc/04-workflows/backend-workflows.md) — step-by-step business workflows
-- [`imp-doc/07-diagrams/`](../imp-doc/07-diagrams/class-diagrams.md) — UML class, flow, and security diagrams
-- [`CHANGELOG.md`](../CHANGELOG.md) — recent change history
+## Standards
+
+- `CONTRIBUTING.md` defines the mandatory doc template, the knowledge-card
+  template, the single-source-of-truth map, and the **code-verified Fact Sheet**
+  every doc must agree with.
+- Prefer linking across this tree over duplicating content; each topic has one
+  authoritative file.
+
+## Quick facts (verify against code before trusting stale sources)
+
+- Backend: Spring Boot 4.0.6 / Java 17 on port **8081**
+- Frontend: React 19.2.6 / Vite on port **5173**
+- DB: MySQL `insurance_db`, `ddl-auto=update`, 16 entities / 17 tables
+- Seed admin: `admin@insurance.com` / `Admin@123`
+- Access token default 15 min (60 s in the committed local override)
+
+## Related
+
+- Root `../README.md` — repository overview
+- `../demo-data/` — SQL, testing flows, evaluator demo
+- `../CHANGELOG.md` — history

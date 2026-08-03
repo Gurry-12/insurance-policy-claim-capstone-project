@@ -28,4 +28,4 @@ dist-ssr
 # never shared; only the committed .env.example template appears on GitHub.
 .env
 .env.*
-!.env.example
+

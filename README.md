@@ -56,10 +56,10 @@ npm run dev
 
 ## Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for a history of recent changes. Curated project documentation lives in [`imp-doc/`](./imp-doc/).
+See [CHANGELOG.md](./CHANGELOG.md) for a history of recent changes.
 
 ## Documentation
 
-- [`docs/`](./docs/README.md) — architecture, sequence diagrams, database, caching, logging, performance, security, and deployment documentation
-- [`imp-doc/`](./imp-doc/README.md) — curated API contracts, workflows, and Postman scenarios
+- [`docs/`](./docs/README.md) — full documentation hub (architecture, API, database, business domain, workflows, developer guide, evaluation material)
+- [`demo-data/`](./demo-data/) — seed SQL, API test payloads, testing flow, and the evaluator demo walkthrough
 - [`screenshots/`](./screenshots/) — UI screenshots per role
