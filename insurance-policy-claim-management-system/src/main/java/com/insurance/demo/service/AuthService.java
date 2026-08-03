@@ -8,6 +8,7 @@ import com.insurance.demo.dto.request.UserRequestDTO;
 import com.insurance.demo.dto.request.VerifyOtpRequest;
 import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.LoginResponseDTO;
+import com.insurance.demo.dto.response.RefreshResponseDTO;
 import com.insurance.demo.dto.response.ResendOtpResponseDTO;
 import com.insurance.demo.dto.response.UserResponseDTO;
 
@@ -24,4 +25,8 @@ public interface AuthService {
 	ApiResponseDTO<String> forgotPassword(ForgotPasswordRequestDTO request);
 
 	ApiResponseDTO<String> resetPassword(ResetPasswordRequestDTO request);
+
+	RefreshResponseDTO refresh(String rawRefreshToken);
+
+	void logout(String rawRefreshToken);
 }

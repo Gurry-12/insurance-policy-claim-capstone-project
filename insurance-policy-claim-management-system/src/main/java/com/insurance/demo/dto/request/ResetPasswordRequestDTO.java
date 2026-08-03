@@ -3,7 +3,7 @@ package com.insurance.demo.dto.request;
 import com.insurance.demo.util.MessageConstants;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +26,7 @@ public class ResetPasswordRequestDTO {
 	private String phoneOtp;
 
 	@NotBlank(message = MessageConstants.Validation.NEW_PASSWORD_REQUIRED)
-	@Size(min = 8, message = MessageConstants.Validation.PASSWORD_MIN_SIZE)
+	@Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,64}$", message = MessageConstants.Validation.PASSWORD_PATTERN)
 	private String newPassword;
 
 }

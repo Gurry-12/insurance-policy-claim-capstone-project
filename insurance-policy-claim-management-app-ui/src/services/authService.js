@@ -45,3 +45,16 @@ export const resetPasswordApi = async (payload) => {
   return response;
 };
 
+export const refreshSession = async () => {
+  const response = await axiosInstance.post('/auth/refresh');
+  return response.data.accessToken;
+};
+
+export const logout = async () => {
+  try {
+    await axiosInstance.post('/auth/logout');
+  } catch {
+    // Best-effort server-side revocation; the local session is already cleared.
+  }
+};
+

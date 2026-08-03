@@ -7,18 +7,19 @@ public final class MessageConstants {
     }
 
     public static final class Auth {
-        public static final String INVALID_CREDENTIALS = "Invalid email or password.";
+        public static final String INVALID_CREDENTIALS = "Invalid credentials or account unavailable.";
         public static final String EMAIL_NOT_VERIFIED = "Please verify your email address before logging in.";
         public static final String PHONE_NOT_VERIFIED = "Please verify your phone number before logging in.";
         public static final String ACCOUNT_DEACTIVATED = "Your account is deactivated. Please contact support.";
         public static final String EMAIL_ALREADY_REGISTERED = "Email address is already registered.";
         public static final String MOBILE_ALREADY_REGISTERED = "Duplicate user found with mobile number: ";
+        public static final String ACCOUNT_ALREADY_EXISTS = "An account already exists with this email or mobile number.";
         public static final String LOGIN_SUCCESS = "User logged in successfully.";
         public static final String REGISTRATION_SUCCESS = "Customer registered successfully. OTP sent to email and phone.";
         public static final String STAFF_REGISTERED = "Staff account created successfully. OTP sent to email and phone.";
         public static final String ACCOUNT_ACTIVATED = "User account activated successfully.";
         public static final String OTP_RESENT = "OTP has been resent to your email and phone.";
-        public static final String FORGOT_PASSWORD_OTP = "OTP sent to your registered email and phone number.";
+        public static final String FORGOT_PASSWORD_OTP = "If an account exists with this email, an OTP has been sent to the registered email and phone number.";
         public static final String PASSWORD_RESET_SUCCESS = "Password has been reset successfully.";
 
         public static final String OTP_LIMIT_EXCEEDED = "You have reached the maximum limit of 4 OTP requests in the last 24 hours.";
@@ -27,6 +28,9 @@ public final class MessageConstants {
         public static final String OTP_EXPIRED = "The OTP has expired. Please request a new OTP.";
         public static final String INVALID_EMAIL_OTP = "Invalid email OTP.";
         public static final String INVALID_PHONE_OTP = "Invalid phone OTP.";
+        public static final String SESSION_EXPIRED = "Session expired. Please sign in again.";
+        public static final String TOKEN_REFRESHED = "Session refreshed successfully.";
+        public static final String LOGOUT_SUCCESS = "You have been logged out successfully.";
 
         public static final String USERS_RETRIEVED = "Users retrieved successfully.";
         public static final String USER_RETRIEVED = "User details retrieved successfully.";
@@ -184,6 +188,7 @@ public final class MessageConstants {
         public static final String NOT_OWN_CLAIM_HISTORY = "You are not allowed to access another customer's claim history.";
         public static final String NOT_OWN_CLAIM = "You do not have permission to view this claim.";
         public static final String NOT_OWN_POLICY_PAYMENT = "You are not allowed to record payment for another customer's policy.";
+        public static final String NOT_OWN_POLICY_CLAIMS = "You are not allowed to access claims for another customer's policy.";
         public static final String NOT_OWN_PAYMENT = "You are not allowed to view this payment.";
         public static final String NOT_OWN_POLICY = "You are not allowed to access another customer's policy details.";
         public static final String NOT_OWN_PROFILE = "You are not allowed to access another customer's profile.";
@@ -202,7 +207,7 @@ public final class MessageConstants {
         public static final String VALID_EMAIL = "Enter valid email.";
         public static final String EMAIL_REQUIRED = "Email is required.";
         public static final String PASSWORD_REQUIRED = "Password is required.";
-        public static final String PASSWORD_PATTERN = "Password must contain uppercase, lowercase, digit and special character.";
+        public static final String PASSWORD_PATTERN = "Password must be at least 8 characters long and contain at least one letter and one digit.";
         public static final String MOBILE_REQUIRED = "Mobile number is required.";
         public static final String MOBILE_PATTERN = "Use international format, example: +919876543210.";
         public static final String SPECIALITY_REQUIRED = "Product speciality is required.";

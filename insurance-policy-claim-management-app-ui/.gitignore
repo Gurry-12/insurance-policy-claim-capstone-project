@@ -24,4 +24,8 @@ dist-ssr
 *.sw?
 
 
+# Environment files hold environment-specific values (origins, keys) and are
+# never shared; only the committed .env.example template appears on GitHub.
 .env
+.env.*
+!.env.example

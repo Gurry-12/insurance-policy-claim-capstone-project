@@ -11,6 +11,11 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.insurance.demo.config.SecurityAuditLogger;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +31,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
 
     private final UserDetailsService userDetailsService;
+
+    private final SecurityAuditLogger auditLogger;
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/") || path.startsWith("/api/public/") || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs");
+    }
 
     @Override
     protected void doFilterInternal(
@@ -43,13 +57,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            String username = jwtService.extractUsername(token);
+            Claims claims = jwtService.parseClaims(token);
+            String username = claims.getSubject();
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (jwtService.isTokenValid(token, userDetails)) {
+                if (jwtService.isTokenValid(claims, userDetails)) {
 
                     UsernamePasswordAuthenticationToken authenticationToken =
                             new UsernamePasswordAuthenticationToken(
@@ -65,8 +80,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 }
             }
+        } catch (ExpiredJwtException ex) {
+            auditLogger.logEvent(SecurityAuditLogger.TOKEN_INVALID, "Expired token, subject=" + ex.getClaims().getSubject());
+            log.debug("Expired JWT token: {}", ex.getMessage());
+        } catch (JwtException ex) {
+            auditLogger.logEvent(SecurityAuditLogger.TOKEN_INVALID, "Tampered or malformed token");
+            log.debug("Invalid JWT token: {}", ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Invalid or expired JWT token: {}", ex.getMessage());
+            auditLogger.logEvent(SecurityAuditLogger.TOKEN_INVALID, "Token validation failed");
+            log.warn("Unexpected JWT processing error: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

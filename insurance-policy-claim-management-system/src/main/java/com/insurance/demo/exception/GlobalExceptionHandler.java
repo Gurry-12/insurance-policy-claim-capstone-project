@@ -110,6 +110,14 @@ public class GlobalExceptionHandler {
 		return buildResponse(HttpStatus.CONFLICT, MessageConstants.Common.DB_CONSTRAINT_VIOLATION, request);
 	}
 
+	@ExceptionHandler(RefreshTokenException.class)
+	public ResponseEntity<ErrorResponseDTO> handleRefreshToken(RefreshTokenException ex, HttpServletRequest request) {
+		log.warn("Refresh token rejected: {}", ex.getMessage());
+		ErrorResponseDTO error = new ErrorResponseDTO(LocalDateTime.now(), HttpStatus.UNAUTHORIZED.value(),
+				"INVALID_REFRESH_TOKEN", ex.getMessage(), request.getRequestURI());
+		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+	}
+
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ErrorResponseDTO> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
 		log.warn("Access denied: {}", ex.getMessage());

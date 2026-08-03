@@ -25,6 +25,9 @@ Technical documentation for the **Insurance Policy & Claim Management System**. 
 | [`logging-strategy.md`](logging-strategy.md) | Recommended logging/observability strategy (levels, MDC, structured JSON, ELK) |
 | [`performance.md`](performance.md) | Performance review: N+1 risks, fetch strategies, pagination, recommendations |
 | [`security.md`](security.md) | Security review: JWT, RBAC, authorization, data protection |
+| [`authentication.md`](authentication.md) | Authentication hardening as built: JWT flow, tokenVersion revocation, rate limiting, OTP, enumeration |
+| [`refresh-token-architecture.md`](refresh-token-architecture.md) | Planned refresh-token + HttpOnly-cookie session design (deferred) |
+| [`jwt-key-rotation.md`](jwt-key-rotation.md) | Signing-key rotation strategy and runbook |
 | [`deployment.md`](deployment.md) | Build, run, configure, and deploy the system |
 
 ## Decisions

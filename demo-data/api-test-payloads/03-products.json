@@ -1,0 +1,54 @@
+[
+  {
+    "endpoint": "POST /api/products",
+    "method": "POST",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Create a new insurance product. productName is unique (case-insensitive). Field is activeStatus (not isActive).",
+    "body": {
+      "productName": "Home Insurance",
+      "productType": "INSURANCE",
+      "description": "Home insurance covering structure, contents and third-party liability.",
+      "activeStatus": true
+    }
+  },
+  {
+    "endpoint": "PUT /api/products/{id}",
+    "method": "PUT",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Update an existing product (seeded ids 1-5).",
+    "body": {
+      "productName": "Home Insurance",
+      "productType": "INSURANCE",
+      "description": "Home insurance covering structure, contents and liability. Updated description.",
+      "activeStatus": true
+    }
+  },
+  {
+    "endpoint": "PATCH /api/products/{id}/activate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Activate a product. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "PATCH /api/products/{id}/deactivate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Deactivate a product. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/products/active",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "List active products (seeded: 5). No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/products/{id}",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "Get product by id (seeded 1-5). No body.",
+    "body": null
+  }
+]

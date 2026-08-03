@@ -7,11 +7,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.insurance.demo.enums.Role;
 import com.insurance.demo.model.AppUser;
+
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpecificationExecutor<AppUser> {
@@ -36,5 +40,14 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpec
 	Page<AppUser> findByIsActive(Boolean isActive, Pageable pageable);
 
 	Optional<AppUser> findByEmailAndMobileNumber(String email, String mobileNumber);
+
+	/**
+	 * Locks the user row for update. Used to serialize session-family
+	 * revocation per user so concurrent refresh replays cannot deadlock each
+	 * other on the bulk token update.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT a FROM AppUser a WHERE a.id = :id")
+	Optional<AppUser> findByIdForUpdate(@Param("id") Long id);
 
 }

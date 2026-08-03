@@ -1,0 +1,27 @@
+[
+  {
+    "endpoint": "POST /api/premium/calculate",
+    "method": "POST",
+    "auth": "CUSTOMER (Bearer token)",
+    "description": "Generate a quote for the logged-in customer. coverageAmount must EXACTLY match an active coverage option of the plan; duration must be in the plan's allowed durations; premiumType must match the plan. Creates a Quote (quotes table) and returns its quoteId.",
+    "body": {
+      "planId": 1,
+      "coverageAmount": 1000000.00,
+      "duration": 1,
+      "premiumType": "ANNUAL"
+    }
+  },
+  {
+    "endpoint": "POST /api/premium/admin/calculate",
+    "method": "POST",
+    "auth": "ADMIN or INTERNAL_STAFF (Bearer token)",
+    "description": "Generate a quote for any customer (seeded customerId 1-4).",
+    "body": {
+      "customerId": 2,
+      "planId": 3,
+      "coverageAmount": 500000.00,
+      "duration": 1,
+      "premiumType": "ANNUAL"
+    }
+  }
+]

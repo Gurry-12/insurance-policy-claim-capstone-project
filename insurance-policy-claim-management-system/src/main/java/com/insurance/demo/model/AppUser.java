@@ -79,6 +79,9 @@ public class AppUser {
 	@NotNull(message = "role can not be null")
 	private Role role;
 
+	@Column(name = "token_version")
+	private Long tokenVersion = 0L;
+
 	@OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
 	private Customer customer;
 

@@ -28,6 +28,7 @@ public class PremiumCalculationController {
 	private PremiumCalculationService calculationService;
 
 	@PostMapping("/calculate")
+	@PreAuthorize("hasRole('CUSTOMER')")
 	public ResponseEntity<ApiResponseDTO<PremiumQuote>> generateQuote(@Valid @RequestBody PremiumCalculationRequest request) {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		String username = auth.getName();

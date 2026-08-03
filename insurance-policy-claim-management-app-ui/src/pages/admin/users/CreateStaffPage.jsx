@@ -73,9 +73,9 @@ const CreateStaffPage = () => {
     if (!formData.password) {
       errs.password = 'Password is required.';
     } else {
-      const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{6,15}$/;
+      const passRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/;
       if (!passRegex.test(formData.password)) {
-        errs.password = 'Password must be 6-15 chars with uppercase, lowercase, digit, and special char (@#$%^&+=!).';
+        errs.password = 'Password must be 8-64 characters and contain at least one letter and one digit.';
       }
     }
 

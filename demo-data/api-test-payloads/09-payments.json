@@ -1,0 +1,42 @@
+[
+  {
+    "endpoint": "POST /api/payments",
+    "method": "POST",
+    "auth": "CUSTOMER or INTERNAL_STAFF (Bearer token)",
+    "description": "Record a premium payment. amount must EXACTLY match the plan's calculated premium (annualPremium for ANNUAL, totalPremium for ONE_TIME). A SUCCESS payment on a PENDING_PAYMENT policy activates it. transactionReference is auto-generated.",
+    "body": {
+      "policyId": 3,
+      "amount": 2655.00,
+      "paymentMode": "UPI",
+      "paymentStatus": "SUCCESS"
+    }
+  },
+  {
+    "endpoint": "GET /api/payments/my-payments",
+    "method": "GET",
+    "auth": "CUSTOMER (Bearer token)",
+    "description": "Own payment history. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/payments/my-policies/{policyId}",
+    "method": "GET",
+    "auth": "CUSTOMER (Bearer token)",
+    "description": "Payments for own policy (e.g. policyId=1 has payment TXN-2026-HLTH-00001). No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/payments/policy/{id}",
+    "method": "GET",
+    "auth": "ADMIN or INTERNAL_STAFF (Bearer token)",
+    "description": "Payments by policy (seeded policyId 1-4). No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/payments/{id}",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "Get payment by id (seeded payment_id 1-4). No body.",
+    "body": null
+  }
+]

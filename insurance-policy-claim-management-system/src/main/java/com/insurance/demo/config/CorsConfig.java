@@ -11,12 +11,18 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
+	private final AppSecurityProperties properties;
+
+	public CorsConfig(AppSecurityProperties properties) {
+		this.properties = properties;
+	}
+
 	@Bean
 	CorsConfigurationSource corsConfigurationSource() {
 
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+		configuration.setAllowedOrigins(List.of(properties.getCorsAllowedOrigin()));
 
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 

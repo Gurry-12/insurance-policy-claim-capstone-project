@@ -2,6 +2,7 @@ import axios from 'axios';
 import NProgress from 'nprogress';
 
 import { parseSuccessResponse, parseErrorResponse } from './apiAdapter';
+import { getToken, setToken, clearToken } from './tokenStore';
 
 NProgress.configure({ showSpinner: false, speed: 400, minimum: 0.08, trickleSpeed: 200 });
 
@@ -35,6 +36,27 @@ const axiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Single-flight refresh: concurrent 401s share one refresh call instead of
+// hammering the server with parallel requests.
+let pendingRefreshPromise = null;
+
+const refreshAccessToken = () => {
+  if (pendingRefreshPromise) return pendingRefreshPromise;
+  pendingRefreshPromise = axios
+    .post(`${BASE_URL}/auth/refresh`, null, { withCredentials: true })
+    .then((response) => response.data?.data?.accessToken)
+    .catch(() => {
+      clearToken();
+      localStorage.removeItem('ss_user');
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      return Promise.reject(new Error('Refresh token invalid'));
+    })
+    .finally(() => {
+      pendingRefreshPromise = null;
+    });
+  return pendingRefreshPromise;
+};
+
 axiosInstance.interceptors.request.use(
   (config) => {
     startProgress();
@@ -42,7 +64,7 @@ axiosInstance.interceptors.request.use(
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
-    const token = localStorage.getItem('ss_token');
+    const token = getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
@@ -57,11 +79,31 @@ axiosInstance.interceptors.response.use(
     finishProgress();
     return parseSuccessResponse(response);
   },
-  (error) => {
+  async (error) => {
     finishProgress();
     const status = error.response?.status;
+    const originalRequest = error.config;
+    const isAuthCall = originalRequest?.url?.includes('/auth/');
+
+    // A 401 on any protected call triggers a silent refresh once. If it
+    // succeeds the original request is retried with the new access token.
+    if (status === 401 && !isAuthCall && originalRequest && !originalRequest._retried) {
+      originalRequest._retried = true;
+      try {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          setToken(newToken);
+          window.dispatchEvent(new CustomEvent('auth:token-refreshed', { detail: newToken }));
+          return axiosInstance(originalRequest);
+        }
+      } catch {
+        // Session truly expired — 'auth:unauthorized' was already dispatched.
+        return Promise.reject(parseErrorResponse(error));
+      }
+    }
+
     if (status === 401) {
-      localStorage.removeItem('ss_token');
+      clearToken();
       localStorage.removeItem('ss_user');
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     } else if (status === 403) {

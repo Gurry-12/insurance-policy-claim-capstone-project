@@ -75,8 +75,8 @@ const Register = () => {
     }
     if (!formData.password) {
       errs.password = "Password is required.";
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{6,15}$/.test(formData.password)) {
-      errs.password = "Password must be 6-15 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character (@#$%^&+=!).";
+    } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,64}$/.test(formData.password)) {
+      errs.password = "Password must be 8-64 characters and contain at least one letter and one digit.";
     }
     if (formData.password !== formData.confirmPassword) {
       errs.confirmPassword = "Passwords do not match.";

@@ -1,6 +1,7 @@
 package com.insurance.demo.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,21 +18,38 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
+import tools.jackson.databind.ObjectMapper;
 import com.insurance.demo.security.JwtAuthenticationFilter;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+	private final AppSecurityProperties properties;
+
+	public SecurityConfig(AppSecurityProperties properties) {
+		this.properties = properties;
+	}
+
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider,
-			JwtAuthenticationFilter jwtAuthenticationFilter,
+			JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitFilter rateLimitFilter,
+			CookieCsrfOriginFilter cookieCsrfOriginFilter,
 			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver handlerExceptionResolver) throws Exception {
 
 		http.cors(cors -> {
 		}).csrf(AbstractHttpConfigurer::disable)
+
+				.headers(headers -> headers
+						// API responses are JSON-only, so lock the surface down.
+						.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+						.referrerPolicy(referrer -> referrer
+								.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+						.frameOptions(frame -> frame.deny())
+						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
 
 				.authenticationProvider(authenticationProvider)
 
@@ -41,16 +59,18 @@ public class SecurityConfig {
 						.accessDeniedHandler((request, response, accessDeniedException) -> handlerExceptionResolver
 								.resolveException(request, response, null, accessDeniedException)))
 
-				.authorizeHttpRequests(auth -> auth
+				.authorizeHttpRequests(auth -> {
 
 						// IMPORTANT FOR CORS
-						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+						auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
 						// PUBLIC
-						.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+						if (properties.isSwaggerEnabled()) {
+							auth.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
+						}
 
-						.requestMatchers("/api/auth/**").permitAll()
-						.requestMatchers("/api/public/**").permitAll()
+						auth.requestMatchers("/api/auth/**").permitAll()
+								.requestMatchers("/api/public/**").permitAll()
 
 						// PLANS
 						.requestMatchers(HttpMethod.POST, "/api/plans/**").hasRole("ADMIN")
@@ -113,13 +133,54 @@ public class SecurityConfig {
 						// ADMIN ENDPOINTS (Pricing Rules, Coverage Options, etc.)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-						.anyRequest().authenticated())
+						.anyRequest().authenticated();
+					})
 
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class)
+				.addFilterBefore(cookieCsrfOriginFilter, JwtAuthenticationFilter.class);
 
 		return http.build();
+	}
+
+	@Bean
+	RateLimitFilter rateLimitFilter(AppSecurityProperties properties, ObjectMapper objectMapper,
+			SecurityAuditLogger auditLogger) {
+		return new RateLimitFilter(properties, objectMapper, auditLogger);
+	}
+
+	@Bean
+	CookieCsrfOriginFilter cookieCsrfOriginFilter(AppSecurityProperties properties, ObjectMapper objectMapper,
+			SecurityAuditLogger auditLogger) {
+		return new CookieCsrfOriginFilter(properties, objectMapper, auditLogger);
+	}
+
+	/**
+	 * Prevents Spring Boot from auto-registering the CSRF-origin filter with the
+	 * servlet container. It is wired into the security filter chain only, so its
+	 * ordering is controlled by {@link SecurityConfig}.
+	 */
+	@Bean
+	FilterRegistrationBean<CookieCsrfOriginFilter> cookieCsrfOriginFilterRegistration(
+			CookieCsrfOriginFilter cookieCsrfOriginFilter) {
+		FilterRegistrationBean<CookieCsrfOriginFilter> registration = new FilterRegistrationBean<>(
+				cookieCsrfOriginFilter);
+		registration.setEnabled(false);
+		return registration;
+	}
+
+	/**
+	 * Prevents Spring Boot from auto-registering the rate-limit filter with the
+	 * servlet container. It is wired into the security filter chain only, so its
+	 * ordering is controlled by {@link SecurityConfig}.
+	 */
+	@Bean
+	FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter rateLimitFilter) {
+		FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(rateLimitFilter);
+		registration.setEnabled(false);
+		return registration;
 	}
 
 	@Bean

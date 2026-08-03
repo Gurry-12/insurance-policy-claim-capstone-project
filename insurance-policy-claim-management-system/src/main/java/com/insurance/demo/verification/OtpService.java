@@ -12,6 +12,7 @@ import com.insurance.demo.exception.BadRequestException;
 import com.insurance.demo.model.AppUser;
 import com.insurance.demo.model.OtpVerification;
 import com.insurance.demo.repository.OtpVerificationRepository;
+import com.insurance.demo.util.MessageConstants;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +23,7 @@ public class OtpService {
 	private final OtpVerificationRepository otpRepository;
 	private final EmailService emailService;
 	private final SmsService smsService;
+	private final OtpAttemptRecorder otpAttemptRecorder;
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	@Value("${app.otp.expiry-minutes}")
@@ -74,25 +76,31 @@ public class OtpService {
 
 	@Transactional
 	public void verifyOtp(AppUser user, String emailOtp, String phoneOtp) {
-		//OtpVerification latestOtp = otpRepository.findTopByUserAndUsedFalseOrderByCreatedAtDesc(user)
-		
+
 		OtpVerification latestOtp = otpRepository.findTopByUserOrderByCreatedAtDesc(user)
 
-				.orElseThrow(() -> new BadRequestException(com.insurance.demo.util.MessageConstants.Auth.OTP_NOT_FOUND));
+				.orElseThrow(() -> new BadRequestException(MessageConstants.Auth.OTP_NOT_FOUND));
+
+		if (latestOtp.isUsed()) {
+			throw new BadRequestException(MessageConstants.Auth.OTP_NOT_FOUND);
+		}
 
 		if (latestOtp.getExpiresAt().isBefore(LocalDateTime.now())) {
-			throw new BadRequestException(com.insurance.demo.util.MessageConstants.Auth.OTP_EXPIRED);
+			throw new BadRequestException(MessageConstants.Auth.OTP_EXPIRED);
 		}
 
 		if (!latestOtp.getEmailOtp().equals(emailOtp)) {
-            throw new BadRequestException(com.insurance.demo.util.MessageConstants.Auth.INVALID_EMAIL_OTP);
-        }
+			otpAttemptRecorder.recordFailedAttempt(latestOtp.getId());
+			throw new BadRequestException(MessageConstants.Auth.INVALID_EMAIL_OTP);
+		}
 
-        if (!latestOtp.getPhoneOtp().equals(phoneOtp)) {
-            throw new BadRequestException(com.insurance.demo.util.MessageConstants.Auth.INVALID_PHONE_OTP);
-        }
+		if (!latestOtp.getPhoneOtp().equals(phoneOtp)) {
+			otpAttemptRecorder.recordFailedAttempt(latestOtp.getId());
+			throw new BadRequestException(MessageConstants.Auth.INVALID_PHONE_OTP);
+		}
 
 		latestOtp.setUsed(true);
+		latestOtp.setAttemptCount(0);
 		otpRepository.save(latestOtp);
 	}
 

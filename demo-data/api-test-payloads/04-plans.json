@@ -1,0 +1,81 @@
+[
+  {
+    "endpoint": "POST /api/plans/wizard",
+    "method": "POST",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Create a plan + coverage options + pricing rule in one call. allowedDurations are stored in policy_plan_durations; coverage amounts must match one of the coverageOptions for the premium calculator. Note the nested structure: planDetails / coverageOptions[] / pricingRule.",
+    "body": {
+      "planDetails": {
+        "productId": 2,
+        "planName": "Drive Safe Pro",
+        "allowedDurations": [1, 2, 3],
+        "supportedPremiumType": "ANNUAL",
+        "termsAndConditions": "Own damage and third-party cover. No-claim bonus up to 20% on renewal.",
+        "activeStatus": true
+      },
+      "coverageOptions": [
+        { "coverageAmount": 1000000.00, "label": "Base Cover", "displayOrder": 1, "activeStatus": true },
+        { "coverageAmount": 2000000.00, "label": "Silver Cover", "displayOrder": 2, "activeStatus": true },
+        { "coverageAmount": 3000000.00, "label": "Gold Cover", "displayOrder": 3, "activeStatus": true }
+      ],
+      "pricingRule": {
+        "planId": null,
+        "baseRiskRate": 0.0180,
+        "processingFee": 450.00,
+        "gst": 18.00,
+        "effectiveFrom": "2026-08-03T00:00:00",
+        "effectiveTo": null,
+        "remarks": "Demo plan created from test payload."
+      }
+    }
+  },
+  {
+    "endpoint": "PUT /api/plans/{planId}",
+    "method": "PUT",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Update an existing plan (seeded planId 1-6). Cannot update an inactive plan.",
+    "body": {
+      "productId": 1,
+      "planName": "Health Shield",
+      "allowedDurations": [1, 2, 3, 5],
+      "supportedPremiumType": "ANNUAL",
+      "termsAndConditions": "Coverage is subject to hospitalisation in a network hospital. Updated terms for the demo.",
+      "activeStatus": true
+    }
+  },
+  {
+    "endpoint": "PATCH /api/plans/{planId}/activate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Activate a plan. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "PATCH /api/plans/{planId}/deactivate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Deactivate a plan. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/plans/active",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "List active plans (seeded: 6). No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/plans/{productId}/active",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "Active plans under a product (e.g. productId=1 returns plans 1 and 2). No body.",
+    "body": null
+  },
+  {
+    "endpoint": "GET /api/plans/{planId}",
+    "method": "GET",
+    "auth": "ADMIN, INTERNAL_STAFF or CUSTOMER (Bearer token)",
+    "description": "Get plan by id (seeded 1-6). No body.",
+    "body": null
+  }
+]

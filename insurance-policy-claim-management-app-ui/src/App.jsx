@@ -61,9 +61,18 @@ import RaiseClaimPage from "./pages/customer/claims/RaiseClaimPage";
 import ClaimDetailsPage from "./pages/customer/claims/ClaimDetailsPage";
 import UploadDocumentsPage from "./pages/customer/claims/UploadDocumentsPage";
 
+const AuthLoading = () => (
+  <div className="d-flex align-items-center justify-content-center vh-100">
+    <div className="spinner-border text-primary" role="status" aria-label="Restoring session" />
+  </div>
+);
+
 const ProtectedRoute = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isRestoring } = useAuth();
   const location = useLocation();
+  if (isRestoring) {
+    return <AuthLoading />;
+  }
   if (!isAuthenticated) {
     const isLoggingOut = localStorage.getItem("isLoggingOut");
     if (isLoggingOut) {
@@ -76,7 +85,10 @@ const ProtectedRoute = () => {
 };
 
 const GuestRoute = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isRestoring } = useAuth();
+  if (isRestoring) {
+    return <AuthLoading />;
+  }
   if (isAuthenticated && user) {
     if (user.role === ROLES.ADMIN)
       return <Navigate to="/admin/dashboard" replace />;

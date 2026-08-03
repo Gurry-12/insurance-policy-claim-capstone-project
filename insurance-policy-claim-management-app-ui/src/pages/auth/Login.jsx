@@ -113,8 +113,8 @@ const Login = () => {
                       {...register("password", { 
                         required: "Password is required.",
                         pattern: {
-                          value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{6,15}$/,
-                          message: "Password must be 6-15 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character (@#$%^&+=!)."
+                          value: /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/,
+                          message: "Password must be 8-64 characters and contain at least one letter and one digit."
                         }
                       })}
                     />

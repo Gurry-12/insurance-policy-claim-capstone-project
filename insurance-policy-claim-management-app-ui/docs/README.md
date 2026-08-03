@@ -126,11 +126,13 @@ Each role has its own set of pages, navigation items, and permissions enforced a
 
 ## Key Environment Variables
 
-| Variable            | Description               | Example                     |
-| ------------------- | ------------------------- | --------------------------- |
-| `VITE_API_BASE_URL` | Backend REST API base URL | `http://localhost:8081/api` |
+| Variable            | Description                                                         | Example       |
+| ------------------- | ------------------------------------------------------------------- | ------------- |
+| `VITE_API_BASE_URL` | API base URL (same-origin proxy in dev, host serving `/api` in prod) | `/api`        |
+| `VITE_API_PROXY_TARGET` | Backend origin for the Vite dev-server proxy (dev only)      | `http://localhost:8081` |
 
-Set in `.env` at project root.
+Set in `.env` at project root (gitignored; see `.env.example`). The backend
+origin for the dev proxy lives only in `.env`, so it is never committed.
 
 ---
 

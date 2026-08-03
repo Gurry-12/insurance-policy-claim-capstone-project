@@ -1,0 +1,58 @@
+[
+  {
+    "endpoint": "POST /api/admin/policy-plans/{planId}/coverage-options",
+    "method": "POST",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Add a coverage option to a plan (seeded planId 1-6).",
+    "body": {
+      "coverageAmount": 3000000.00,
+      "label": "Platinum Cover",
+      "displayOrder": 4,
+      "activeStatus": true
+    }
+  },
+  {
+    "endpoint": "PUT /api/admin/policy-plans/{planId}/coverage-options/{optionId}",
+    "method": "PUT",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Update a coverage option (seeded optionId 1-18).",
+    "body": {
+      "coverageAmount": 4000000.00,
+      "label": "Platinum Cover",
+      "displayOrder": 4,
+      "activeStatus": true
+    }
+  },
+  {
+    "endpoint": "PATCH /api/admin/policy-plans/{planId}/coverage-options/{optionId}/activate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Activate a coverage option. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "PATCH /api/admin/policy-plans/{planId}/coverage-options/{optionId}/deactivate",
+    "method": "PATCH",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Deactivate a coverage option. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "DELETE /api/admin/policy-plans/{planId}/coverage-options/{optionId}",
+    "method": "DELETE",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Delete a coverage option. No body.",
+    "body": null
+  },
+  {
+    "endpoint": "POST /api/admin/policy-plans/{planId}/coverage-options/regenerate",
+    "method": "POST",
+    "auth": "ADMIN (Bearer token)",
+    "description": "Regenerate a plan's coverage options as a ladder (min -> max stepping by incrementStep).",
+    "body": {
+      "minCoverage": 100000.00,
+      "maxCoverage": 1000000.00,
+      "incrementStep": 100000.00
+    }
+  }
+]

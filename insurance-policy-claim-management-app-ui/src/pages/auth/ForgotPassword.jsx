@@ -67,11 +67,11 @@ const ForgotPassword = () => {
       errs.phoneOtp = "Phone OTP is required.";
     }
 
-    const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{6,15}$/;
+    const passRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,64}$/;
     if (!resetData.newPassword) {
       errs.newPassword = "New Password is required.";
     } else if (!passRegex.test(resetData.newPassword)) {
-      errs.newPassword = "Password must be 6-15 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character (@#$%^&+=!).";
+      errs.newPassword = "Password must be 8-64 characters and contain at least one letter and one digit.";
     }
 
     if (Object.keys(errs).length > 0) {

@@ -1,0 +1,9 @@
+[
+  {
+    "endpoint": "GET /api/public/stats",
+    "method": "GET",
+    "auth": "PUBLIC (no token)",
+    "description": "Platform statistics for the landing page. No body. With the seed data loaded the response should be: activeProducts=5, activePlans=6, totalPolicies=4, claimsProcessed=3. Falls back to 0 if the DB is empty.",
+    "body": null
+  }
+]

@@ -21,6 +21,7 @@ import com.insurance.demo.dto.request.CreateStaffRequestDTO;
 import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.PageResponseDTO;
 import com.insurance.demo.dto.response.UserResponseDTO;
+import com.insurance.demo.config.SecurityAuditLogger;
 import com.insurance.demo.enums.Role;
 import com.insurance.demo.exception.BadRequestException;
 import java.util.Base64;
@@ -30,6 +31,7 @@ import com.insurance.demo.exception.ResourceNotFoundException;
 import com.insurance.demo.model.AppUser;
 import com.insurance.demo.model.StaffSpeciality;
 import com.insurance.demo.repository.AppUserRepository;
+import com.insurance.demo.security.RefreshTokenService;
 import com.insurance.demo.service.UserService;
 import com.insurance.demo.util.PaginationValidator;
 import com.insurance.demo.verification.OtpService;
@@ -47,6 +49,8 @@ public class UserServiceImpl implements UserService {
 	private final ModelMapper modelMapper;
 	private final PasswordEncoder passwordEncoder;
 	private final OtpService otpService;
+	private final SecurityAuditLogger auditLogger;
+	private final RefreshTokenService refreshTokenService;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -93,6 +97,8 @@ public class UserServiceImpl implements UserService {
 
 		AppUser retrivedUser = userRepository.save(user);
 
+		auditLogger.logEvent(SecurityAuditLogger.ACCOUNT_ACTIVATED, "userId=" + retrivedUser.getId());
+
 		UserResponseDTO responseDto = mapToUserResponseDTO(retrivedUser);
 		return new ApiResponseDTO<>(MessageConstants.Auth.ACCOUNT_ACTIVATED, true, responseDto, LocalDateTime.now());
 	}
@@ -130,8 +136,14 @@ public class UserServiceImpl implements UserService {
 		}
 
 		user.setIsActive(false);
+		// Bump tokenVersion so every existing access token is invalidated on deactivation.
+		user.setTokenVersion((user.getTokenVersion() == null ? 0L : user.getTokenVersion()) + 1L);
 
 		AppUser retrivedUser = userRepository.save(user);
+
+		refreshTokenService.revokeAllForUser(retrivedUser.getId());
+
+		auditLogger.logEvent(SecurityAuditLogger.ACCOUNT_DEACTIVATED, "userId=" + retrivedUser.getId());
 
 		UserResponseDTO responseDto = mapToUserResponseDTO(retrivedUser);
 		return new ApiResponseDTO<>(MessageConstants.Auth.ACCOUNT_DEACTIVATED, true, responseDto, LocalDateTime.now());

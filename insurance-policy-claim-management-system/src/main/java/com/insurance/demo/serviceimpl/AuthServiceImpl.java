@@ -1,9 +1,11 @@
 package com.insurance.demo.serviceimpl;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.insurance.demo.config.SecurityAuditLogger;
 import com.insurance.demo.dto.request.ForgotPasswordRequestDTO;
 import com.insurance.demo.dto.request.LoginRequestDTO;
 import com.insurance.demo.dto.request.ResendOtpRequestDTO;
@@ -19,6 +22,7 @@ import com.insurance.demo.dto.request.UserRequestDTO;
 import com.insurance.demo.dto.request.VerifyOtpRequest;
 import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.LoginResponseDTO;
+import com.insurance.demo.dto.response.RefreshResponseDTO;
 import com.insurance.demo.dto.response.ResendOtpResponseDTO;
 import com.insurance.demo.dto.response.UserResponseDTO;
 import com.insurance.demo.enums.Role;
@@ -31,7 +35,9 @@ import com.insurance.demo.model.AppUser;
 import com.insurance.demo.model.Customer;
 import com.insurance.demo.repository.AppUserRepository;
 import com.insurance.demo.repository.CustomerRepository;
+import com.insurance.demo.security.AppUserDetails;
 import com.insurance.demo.security.JwtService;
+import com.insurance.demo.security.RefreshTokenService;
 import com.insurance.demo.service.AuthService;
 import com.insurance.demo.service.UserService;
 import com.insurance.demo.verification.OtpService;
@@ -53,70 +59,97 @@ public class AuthServiceImpl implements AuthService {
 	private final JwtService jwtService;
 	private final UserService userService;
 	private final OtpService otpService;
+	private final SecurityAuditLogger auditLogger;
+	private final RefreshTokenService refreshTokenService;
 
 	@Override
 	public ApiResponseDTO<LoginResponseDTO> login(LoginRequestDTO requestDto) {
 
 		log.info("Login attempt received. Email={}", requestDto.getEmail());
 		String email = requestDto.getEmail().toLowerCase();
-		AppUser appUser = userRepository.findByEmail(email).orElseThrow(() -> {
-			log.warn("Login failed due to invalid credentials. Email={}", requestDto.getEmail());
-			throw new BadRequestException(MessageConstants.Auth.INVALID_CREDENTIALS);
-		});
 
-		if (!appUser.getEmailVerified()) {
-			log.warn("Login blocked. Email not verified. UserId={}", appUser.getId());
-			throw new BadRequestException(MessageConstants.Auth.EMAIL_NOT_VERIFIED);
+		AppUser appUser = userRepository.findByEmail(email).orElse(null);
+
+		if (appUser == null) {
+			auditLogger.logEvent(SecurityAuditLogger.LOGIN_FAILED, "Reason=USER_NOT_FOUND, email=" + email);
+			throw new BadCredentialsException(MessageConstants.Auth.INVALID_CREDENTIALS);
 		}
 
-		if (!appUser.getPhoneVerified()) {
-			log.warn("Login blocked. Phone not verified. UserId={}", appUser.getId());
-			throw new BadRequestException(MessageConstants.Auth.PHONE_NOT_VERIFIED);
+		if (Boolean.FALSE.equals(appUser.getEmailVerified())) {
+			auditLogger.logEvent(SecurityAuditLogger.LOGIN_FAILED, "Reason=EMAIL_NOT_VERIFIED, userId=" + appUser.getId());
+			throw new BadCredentialsException(MessageConstants.Auth.INVALID_CREDENTIALS);
+		}
+
+		if (Boolean.FALSE.equals(appUser.getPhoneVerified())) {
+			auditLogger.logEvent(SecurityAuditLogger.LOGIN_FAILED, "Reason=PHONE_NOT_VERIFIED, userId=" + appUser.getId());
+			throw new BadCredentialsException(MessageConstants.Auth.INVALID_CREDENTIALS);
 		}
 
 		if (Boolean.FALSE.equals(appUser.getIsActive())) {
-			log.warn("Login blocked. Inactive account. UserId={}", appUser.getId());
-			throw new BadRequestException(MessageConstants.Auth.ACCOUNT_DEACTIVATED);
+			auditLogger.logEvent(SecurityAuditLogger.ACCOUNT_DISABLED, "userId=" + appUser.getId());
+			auditLogger.logEvent(SecurityAuditLogger.LOGIN_FAILED, "Reason=ACCOUNT_DEACTIVATED, userId=" + appUser.getId());
+			throw new BadCredentialsException(MessageConstants.Auth.INVALID_CREDENTIALS);
 		}
 
-		Authentication authentication = authenticationManager
-				.authenticate(new UsernamePasswordAuthenticationToken(requestDto.getEmail(), requestDto.getPassword().trim()));
+		Authentication authentication;
+		try {
+			authentication = authenticationManager
+					.authenticate(new UsernamePasswordAuthenticationToken(email, requestDto.getPassword().trim()));
+		} catch (BadCredentialsException ex) {
+			auditLogger.logEvent(SecurityAuditLogger.LOGIN_FAILED, "Reason=BAD_PASSWORD, userId=" + appUser.getId());
+			throw ex;
+		}
 
 		UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-		String productSpeciality = (appUser.getStaffSpeciality() != null)
-				? appUser.getStaffSpeciality().getProductSpeciality().name()
-				: null;
-
-		String token = jwtService.generateToken(userDetails, appUser.getFullName(), productSpeciality);
+		String token = jwtService.generateToken(userDetails, appUser.getTokenVersion());
 
 		UserResponseDTO dto = userService.findByEmail(userDetails.getUsername());
 
-		log.info("User login successful. UserId={}, Role={}", appUser.getId(), appUser.getRole());
+		auditLogger.logEvent(SecurityAuditLogger.LOGIN_SUCCESS,
+				"userId=" + appUser.getId() + ", role=" + appUser.getRole());
 
-		LoginResponseDTO loginResponseDTO = new LoginResponseDTO(dto.getId(), dto.getFullName(), dto.getEmail(), dto.getRole(), token, "Bearer");
+		String refreshToken = refreshTokenService.createRefreshToken(appUser);
+
+		LoginResponseDTO loginResponseDTO = new LoginResponseDTO(dto.getId(), dto.getFullName(), dto.getEmail(), dto.getRole(), token, "Bearer", refreshToken);
 		return new ApiResponseDTO<>(MessageConstants.Auth.LOGIN_SUCCESS, true, loginResponseDTO, LocalDateTime.now());
+	}
+
+	@Override
+	public RefreshResponseDTO refresh(String rawRefreshToken) {
+		RefreshTokenService.RotatedRefreshToken rotated = refreshTokenService.rotate(rawRefreshToken);
+
+		String accessToken = jwtService.generateToken(
+				new AppUserDetails(rotated.user()), rotated.user().getTokenVersion());
+
+		RefreshResponseDTO dto = new RefreshResponseDTO(accessToken, "Bearer", rotated.rawToken());
+		return dto;
+	}
+
+	@Override
+	public void logout(String rawRefreshToken) {
+		refreshTokenService.revoke(rawRefreshToken);
 	}
 
 	@Override
 	@Transactional
 	public ApiResponseDTO<UserResponseDTO> registerUser(UserRequestDTO dto) {
 
-		if (userRepository.existsByEmail(dto.getEmail())) {
-			log.warn("Registration failed. Email already exists. Email={}", dto.getEmail());
-			throw new DuplicateResourceException(MessageConstants.Auth.EMAIL_ALREADY_REGISTERED);
+		String email = dto.getEmail().toLowerCase();
+
+		if (userRepository.existsByEmail(email) || userRepository.existsByMobileNumber(dto.getMobileNumber())) {
+			log.warn("Registration failed. Email or mobile number already in use. Email={}", email);
+			throw new DuplicateResourceException(MessageConstants.Auth.ACCOUNT_ALREADY_EXISTS);
 		}
 
-		if (userRepository.existsByMobileNumber(dto.getMobileNumber())) {
-			throw new DuplicateResourceException(MessageConstants.Auth.MOBILE_ALREADY_REGISTERED + dto.getMobileNumber());
-		}
 		AppUser user = modelMapper.map(dto, AppUser.class);
-		user.setEmail(dto.getEmail().toLowerCase());
+		user.setEmail(email);
 		user.setPassword(passwordEncoder.encode(dto.getPassword().trim()));
 		user.setRole(Role.ROLE_CUSTOMER);
 		user.setIsActive(false);
 		user.setEmailVerified(false);
 		user.setPhoneVerified(false);
+		user.setTokenVersion(0L);
 
 		AppUser savedUser = userRepository.save(user);
 
@@ -138,10 +171,6 @@ public class AuthServiceImpl implements AuthService {
 	public ApiResponseDTO<UserResponseDTO> verifyOtp( VerifyOtpRequest request) {
 		AppUser user = userRepository.findByEmail(request.getEmail())
 				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Auth.OTP_NOT_FOUND));
-
-		if (Boolean.TRUE.equals(user.getIsActive())) {
-			throw new BadRequestException(MessageConstants.Auth.OTP_EXPIRED);
-		}
 
 		otpService.verifyOtp(user, request.getEmailOtp(), request.getPhoneOtp());
 
@@ -175,10 +204,15 @@ public class AuthServiceImpl implements AuthService {
 	
 	@Override
 	public ApiResponseDTO<String> forgotPassword(ForgotPasswordRequestDTO request) {
-		AppUser user = userRepository.findByEmail(request.getEmail().toLowerCase())
-				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Auth.OTP_NOT_FOUND));
+		String email = request.getEmail().toLowerCase();
+		Optional<AppUser> existingUser = userRepository.findByEmail(email);
 
-		otpService.sendOrResendOtp(user);
+		if (existingUser.isEmpty()) {
+			log.info("Forgot password requested for unknown email: {}", email);
+		} else {
+			otpService.sendOrResendOtp(existingUser.get());
+		}
+
 		return new ApiResponseDTO<>(MessageConstants.Auth.FORGOT_PASSWORD_OTP, true, null, LocalDateTime.now());
 	}
 
@@ -197,9 +231,19 @@ public class AuthServiceImpl implements AuthService {
 		}
 
 		user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+		user.setTokenVersion(incrementTokenVersion(user.getTokenVersion()));
 		userRepository.save(user);
 
+		refreshTokenService.revokeAllForUser(user.getId());
+
+		auditLogger.logEvent(SecurityAuditLogger.PASSWORD_RESET, "userId=" + user.getId());
+		log.info("Password reset completed for userId={}", user.getId());
+
 		return new ApiResponseDTO<>(MessageConstants.Auth.PASSWORD_RESET_SUCCESS, true, null, LocalDateTime.now());
+	}
+
+	private Long incrementTokenVersion(Long current) {
+		return (current == null ? 0L : current) + 1L;
 	}
 
 }

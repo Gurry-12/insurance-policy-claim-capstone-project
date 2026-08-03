@@ -288,6 +288,36 @@ public class ClaimServiceImpl implements ClaimService {
 	@Override
 	@Transactional(readOnly = true)
 	public ApiResponseDTO<List<ClaimResponseDTO>> getClaimsByPolicyId(Long policyId) {
+
+		Policy policy = policyRepository.findById(policyId)
+				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Policy.NOT_FOUND + policyId));
+
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		String loggedInEmail = authentication.getName();
+		boolean isCustomer = authentication.getAuthorities().stream()
+				.anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"));
+		boolean isStaff = authentication.getAuthorities().stream()
+				.anyMatch(a -> a.getAuthority().equals("ROLE_INTERNAL_STAFF"));
+
+		if (isCustomer && (policy.getCustomer() == null || policy.getCustomer().getUser() == null
+				|| !policy.getCustomer().getUser().getEmail().equals(loggedInEmail))) {
+			throw new AccessDeniedException(MessageConstants.Security.NOT_OWN_POLICY_CLAIMS);
+		}
+
+		if (isStaff) {
+			AppUser currentUser = userRepository.findByEmail(loggedInEmail)
+					.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Auth.OTP_NOT_FOUND));
+			ProductType staffSpeciality = (currentUser.getStaffSpeciality() != null)
+					? currentUser.getStaffSpeciality().getProductSpeciality() : null;
+			ProductType policyProductType = (policy.getPolicyPlan() != null
+					&& policy.getPolicyPlan().getInsuranceProduct() != null)
+							? policy.getPolicyPlan().getInsuranceProduct().getProductType() : null;
+
+			if (staffSpeciality == null || !staffSpeciality.equals(policyProductType)) {
+				throw new AccessDeniedException(MessageConstants.Security.SPECIALITY_VIEW_DENIED);
+			}
+		}
+
 		List<Claim> claims = claimRepository.findByPolicyId(policyId);
 		List<ClaimResponseDTO> responseList = new java.util.ArrayList<>();
 		for (Claim claim : claims) {

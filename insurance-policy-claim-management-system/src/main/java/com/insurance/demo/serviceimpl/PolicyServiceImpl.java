@@ -347,7 +347,23 @@ public class PolicyServiceImpl implements PolicyService {
 
 		Pageable pageable = PageRequest.of(pageNumber, pageSize, sort);
 
-		Page<Policy> policyPage = policyRepository.findByCustomerId(customerId, pageable);
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		boolean isStaff = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_INTERNAL_STAFF"));
+
+		Specification<Policy> spec = (root, query, cb) -> cb.equal(root.get("customer").get("id"), customerId);
+
+		if (isStaff) {
+			AppUser currentUser = userRepository.findByEmail(auth.getName())
+					.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Auth.OTP_NOT_FOUND));
+			ProductType staffSpeciality = (currentUser.getStaffSpeciality() != null) ? currentUser.getStaffSpeciality().getProductSpeciality() : null;
+			if (staffSpeciality == null) {
+				spec = spec.and((root, query, cb) -> cb.disjunction());
+			} else {
+				spec = spec.and((root, query, cb) -> cb.equal(root.get("policyPlan").get("insuranceProduct").get("productType"), staffSpeciality));
+			}
+		}
+
+		Page<Policy> policyPage = policyRepository.findAll(spec, pageable);
 
 		List<PolicyResponseDTO> content = policyPage.getContent().stream().map(this::convertToResponseDTO).toList();
 
