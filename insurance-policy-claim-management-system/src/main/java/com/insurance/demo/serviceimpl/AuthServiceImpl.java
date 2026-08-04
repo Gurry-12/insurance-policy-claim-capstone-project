@@ -38,10 +38,13 @@ import com.insurance.demo.repository.CustomerRepository;
 import com.insurance.demo.security.AppUserDetails;
 import com.insurance.demo.security.JwtService;
 import com.insurance.demo.security.RefreshTokenService;
+import com.insurance.demo.security.cache.RedisTokenCacheService;
 import com.insurance.demo.service.AuthService;
 import com.insurance.demo.service.UserService;
 import com.insurance.demo.verification.OtpService;
 import com.insurance.demo.util.MessageConstants;
+import io.jsonwebtoken.Claims;
+import java.time.Duration;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
 	private final OtpService otpService;
 	private final SecurityAuditLogger auditLogger;
 	private final RefreshTokenService refreshTokenService;
+	private final RedisTokenCacheService redisTokenCacheService;
 
 	@Override
 	public ApiResponseDTO<LoginResponseDTO> login(LoginRequestDTO requestDto) {
@@ -127,8 +131,42 @@ public class AuthServiceImpl implements AuthService {
 	}
 
 	@Override
-	public void logout(String rawRefreshToken) {
+	public void logout(String rawRefreshToken, String accessToken) {
 		refreshTokenService.revoke(rawRefreshToken);
+		blacklistAccessToken(accessToken);
+	}
+
+	/**
+	 * Best-effort blacklisting of the current access token so it cannot be used
+	 * for the remaining lifetime after logout. Silently ignored when the token
+	 * is null, already expired, or Redis is unavailable — the primary logout
+	 * mechanism is refresh-token revocation.
+	 */
+	private void blacklistAccessToken(String accessToken) {
+		if (accessToken == null || accessToken.isBlank()) {
+			return;
+		}
+		try {
+			Claims claims = jwtService.parseClaims(accessToken);
+			String jti = claims.getId();
+			if (jti != null) {
+				long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+				if (remainingMs > 0) {
+					redisTokenCacheService.blacklistJwt(jti, Duration.ofMillis(remainingMs));
+				}
+			}
+		} catch (Exception ex) {
+			// Token already expired or malformed — nothing to blacklist.
+			log.debug("Access token blacklisting skipped on logout: {}", ex.getMessage());
+		}
+	}
+
+	@Override
+	public void logoutAll(Long userId) {
+		if (userId != null) {
+			refreshTokenService.revokeAllForUser(userId);
+			auditLogger.logEvent(SecurityAuditLogger.LOGOUT, "Logout all sessions for userId=" + userId);
+		}
 	}
 
 	@Override

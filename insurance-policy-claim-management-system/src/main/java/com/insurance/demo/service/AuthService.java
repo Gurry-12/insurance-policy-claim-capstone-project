@@ -28,5 +28,8 @@ public interface AuthService {
 
 	RefreshResponseDTO refresh(String rawRefreshToken);
 
-	void logout(String rawRefreshToken);
+	void logout(String rawRefreshToken, String accessToken);
+
+	void logoutAll(Long userId);
 }
+

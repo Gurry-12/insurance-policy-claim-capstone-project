@@ -4,9 +4,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.insurance.demo.config.RefreshTokenCookieManager;
 import com.insurance.demo.dto.request.ForgotPasswordRequestDTO;
@@ -21,6 +24,7 @@ import com.insurance.demo.dto.response.RefreshResponseDTO;
 import com.insurance.demo.dto.response.ResendOtpResponseDTO;
 import com.insurance.demo.dto.response.UserResponseDTO;
 import com.insurance.demo.exception.RefreshTokenException;
+import com.insurance.demo.security.AppUserDetails;
 import com.insurance.demo.service.AuthService;
 import com.insurance.demo.util.MessageConstants;
 
@@ -79,15 +83,36 @@ public class AuthController {
 	@Operation(summary = "Logout", description = "Revokes the refresh token and clears the refresh cookie.")
 	public ApiResponseDTO<String> logout(
 			@CookieValue(name = RefreshTokenCookieManager.COOKIE_NAME, required = false) String refreshToken,
+			@RequestHeader(name = "Authorization", required = false) String authHeader,
 			HttpServletResponse response) {
 
-		if (refreshToken != null && !refreshToken.isBlank()) {
-			authService.logout(refreshToken);
+		String accessToken = null;
+		if (authHeader != null && authHeader.startsWith("Bearer ")) {
+			accessToken = authHeader.substring(7);
+		}
+
+		if ((refreshToken != null && !refreshToken.isBlank()) || accessToken != null) {
+			authService.logout(refreshToken, accessToken);
 		}
 
 		refreshTokenCookieManager.clearCookie(response);
 
 		return new ApiResponseDTO<>(MessageConstants.Auth.LOGOUT_SUCCESS, true, null, java.time.LocalDateTime.now());
+	}
+
+	@PostMapping("/logout-all")
+	@Operation(summary = "Logout All Devices", description = "Revokes all refresh tokens and sessions for the current user across all devices.")
+	public ApiResponseDTO<String> logoutAll(
+			@AuthenticationPrincipal AppUserDetails userDetails,
+			HttpServletResponse response) {
+
+		if (userDetails != null) {
+			authService.logoutAll(userDetails.getId());
+		}
+
+		refreshTokenCookieManager.clearCookie(response);
+
+		return new ApiResponseDTO<>("Successfully logged out from all devices.", true, null, java.time.LocalDateTime.now());
 	}
 
 	@PostMapping("/register")

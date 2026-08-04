@@ -23,6 +23,10 @@ public class AppUserDetails implements UserDetails {
 		return appUser;
 	}
 
+	public Long getId() {
+		return appUser != null ? appUser.getId() : null;
+	}
+
 	public Long getTokenVersion() {
 		return appUser.getTokenVersion() != null ? appUser.getTokenVersion() : 0L;
 	}

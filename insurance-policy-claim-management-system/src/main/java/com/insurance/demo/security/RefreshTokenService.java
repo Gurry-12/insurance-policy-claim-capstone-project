@@ -24,6 +24,7 @@ import com.insurance.demo.model.AppUser;
 import com.insurance.demo.model.RefreshToken;
 import com.insurance.demo.repository.AppUserRepository;
 import com.insurance.demo.repository.RefreshTokenRepository;
+import com.insurance.demo.security.cache.RedisTokenCacheService;
 import com.insurance.demo.util.MessageConstants;
 
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,8 @@ public class RefreshTokenService {
 
 	private final PlatformTransactionManager transactionManager;
 
+	private final RedisTokenCacheService redisTokenCacheService;
+
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	public record RotatedRefreshToken(String rawToken, AppUser user) {
@@ -59,6 +62,7 @@ public class RefreshTokenService {
 				.tokenVersion(user.getTokenVersion() == null ? 0L : user.getTokenVersion()).build();
 
 		refreshTokenRepository.save(refreshToken);
+		redisTokenCacheService.cacheRefreshToken(user.getId(), refreshToken.getTokenHash(), refreshTokenTtl());
 
 		auditLogger.logEvent(SecurityAuditLogger.REFRESH_TOKEN_ISSUED, "userId=" + user.getId());
 
@@ -84,6 +88,10 @@ public class RefreshTokenService {
 				.orElseThrow(() -> invalidToken(SecurityAuditLogger.REFRESH_TOKEN_INVALID));
 
 		if (stored.isRevoked()) {
+			if (redisTokenCacheService.getGraceToken(tokenHash) != null) {
+				// Rotated within the 10-second grace window by a concurrent browser tab - avoid false-positive family revocation
+				throw new RefreshTokenException(MessageConstants.Auth.SESSION_EXPIRED);
+			}
 			// Replay of a rotated token - assume compromise and kill the whole family.
 			revokeSessionFamily(stored.getUser().getId());
 			auditLogger.logEvent(SecurityAuditLogger.REFRESH_REUSE_DETECTED, "userId=" + stored.getUser().getId());
@@ -125,6 +133,10 @@ public class RefreshTokenService {
 				// Expired within the race window - not a replay.
 				throw invalidToken(SecurityAuditLogger.REFRESH_TOKEN_INVALID);
 			}
+			if (redisTokenCacheService.getGraceToken(tokenHash) != null) {
+				// Rotated within the 10-second grace window by a concurrent browser tab - avoid false-positive family revocation
+				throw new RefreshTokenException(MessageConstants.Auth.SESSION_EXPIRED);
+			}
 			// Another request rotated the same token concurrently - a replay.
 			revokeSessionFamily(user.getId());
 			auditLogger.logEvent(SecurityAuditLogger.REFRESH_REUSE_DETECTED, "userId=" + user.getId());
@@ -132,6 +144,11 @@ public class RefreshTokenService {
 		}
 
 		auditLogger.logEvent(SecurityAuditLogger.REFRESH_TOKEN_ROTATED, "userId=" + user.getId());
+
+		redisTokenCacheService.cacheGraceToken(tokenHash, hash(rotated.rawToken()),
+				Duration.ofSeconds(properties.getRedis().getGraceWindowSeconds()));
+		redisTokenCacheService.cacheRefreshToken(user.getId(), hash(rotated.rawToken()), refreshTokenTtl());
+		redisTokenCacheService.evictRefreshToken(user.getId(), tokenHash);
 
 		return rotated;
 	}
@@ -176,6 +193,8 @@ public class RefreshTokenService {
 		refreshTokenRepository.findByTokenHash(hash(rawToken)).ifPresent(stored -> {
 			stored.setRevoked(true);
 			refreshTokenRepository.save(stored);
+			redisTokenCacheService.evictRefreshToken(stored.getUser().getId(), stored.getTokenHash());
+			redisTokenCacheService.evictGraceToken(stored.getTokenHash());
 		});
 		auditLogger.logEvent(SecurityAuditLogger.LOGOUT, "rawToken present=" + (rawToken != null));
 	}
@@ -183,6 +202,7 @@ public class RefreshTokenService {
 	@Transactional
 	public void revokeAllForUser(Long userId) {
 		refreshTokenRepository.revokeAllActiveForUser(userId);
+		redisTokenCacheService.evictUserSessionFamily(userId);
 	}
 
 	/**
@@ -193,7 +213,10 @@ public class RefreshTokenService {
 	private void revokeSessionFamily(Long userId) {
 		TransactionTemplate requiresNew = new TransactionTemplate(transactionManager);
 		requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-		requiresNew.executeWithoutResult(status -> refreshTokenRepository.revokeAllActiveForUser(userId));
+		requiresNew.executeWithoutResult(status -> {
+			refreshTokenRepository.revokeAllActiveForUser(userId);
+			redisTokenCacheService.evictUserSessionFamily(userId);
+		});
 	}
 
 	private Duration refreshTokenTtl() {

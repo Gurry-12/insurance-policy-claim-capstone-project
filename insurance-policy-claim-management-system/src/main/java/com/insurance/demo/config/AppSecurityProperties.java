@@ -16,6 +16,8 @@ public class AppSecurityProperties {
 
 	private RateLimit rateLimit = new RateLimit();
 
+	private Redis redis = new Redis();
+
 	private int maxOtpAttempts = 5;
 
 	private String corsAllowedOrigin = "http://localhost:5173";
@@ -67,6 +69,22 @@ public class AppSecurityProperties {
 			private int refillPerMinute = 5;
 
 		}
+
+	}
+
+	@Getter
+	@Setter
+	public static class Redis {
+
+		private boolean enabled = false;
+
+		private String jwtBlacklistPrefix = "auth:blacklist:jwt:";
+
+		private String refreshTokenPrefix = "auth:refresh:";
+
+		private String gracePrefix = "auth:refresh:grace:";
+
+		private long graceWindowSeconds = 10;
 
 	}
 

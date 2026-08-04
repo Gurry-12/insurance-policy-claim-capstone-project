@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.insurance.demo.config.SecurityAuditLogger;
+import com.insurance.demo.security.cache.RedisTokenCacheService;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -33,6 +34,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
 
     private final SecurityAuditLogger auditLogger;
+
+    private final RedisTokenCacheService redisTokenCacheService;
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
@@ -58,6 +61,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             Claims claims = jwtService.parseClaims(token);
+            String jti = claims.getId();
+            if (jti != null && redisTokenCacheService.isJwtBlacklisted(jti)) {
+                auditLogger.logEvent(SecurityAuditLogger.TOKEN_INVALID, "Blacklisted JWT presented, jti=" + jti);
+                log.debug("Blacklisted JWT presented: jti={}", jti);
+                filterChain.doFilter(request, response);
+                return;
+            }
             String username = claims.getSubject();
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
