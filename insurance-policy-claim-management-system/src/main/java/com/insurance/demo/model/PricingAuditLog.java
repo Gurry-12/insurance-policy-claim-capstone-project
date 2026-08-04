@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -17,7 +18,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "pricing_audit_logs")
+@Table(name = "pricing_audit_logs", indexes = {
+		@Index(name = "idx_audit_pricing_rule_id", columnList = "pricing_rule_id") })
 @Getter
 @Setter
 @NoArgsConstructor

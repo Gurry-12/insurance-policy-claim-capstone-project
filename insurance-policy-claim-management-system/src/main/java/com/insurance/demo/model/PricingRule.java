@@ -25,8 +25,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.persistence.Index; // Ensure this is imported
+
 @Entity
-@Table(name = "pricing_rules")
+@Table(name = "pricing_rules", indexes = { @Index(name = "idx_pricing_plan_id", columnList = "plan_id"),
+		@Index(name = "idx_pricing_status", columnList = "status") })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,7 +45,6 @@ public class PricingRule {
 	@ManyToOne
 	@JoinColumn(name = "plan_id", nullable = false)
 	private PolicyPlan policyPlan;
-
 
 	@PositiveOrZero(message = "base risk rate should be positive or zero")
 	@Column(name = "base_risk_rate", nullable = false, precision = 10, scale = 4)

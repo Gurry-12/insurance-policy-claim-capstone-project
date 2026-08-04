@@ -30,8 +30,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.persistence.Index; // Ensure this is imported
+
 @Entity
-@Table(name = "insurance_products")
+@Table(name = "insurance_products", indexes = { @Index(name = "idx_product_type", columnList = "product_type"),
+		@Index(name = "idx_product_is_active", columnList = "is_active") })
 @Getter
 @Setter
 @NoArgsConstructor

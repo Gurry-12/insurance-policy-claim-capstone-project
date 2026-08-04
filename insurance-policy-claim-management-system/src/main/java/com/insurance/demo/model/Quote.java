@@ -16,6 +16,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -27,7 +28,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "quotes")
+@Table(name = "quotes", indexes = { @Index(name = "idx_quote_customer_id", columnList = "customer_id"),
+		@Index(name = "idx_quote_plan_id", columnList = "plan_id"),
+		@Index(name = "idx_quote_status", columnList = "status") })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -56,7 +59,6 @@ public class Quote {
 	@Column(name = "pricing_rule_id", nullable = false)
 	@NotNull(message = "pricing rule ID is required")
 	private Long pricingRuleId;
-
 
 	@Column(name = "coverage", nullable = false, precision = 15, scale = 2)
 	@NotNull(message = "coverage is required")

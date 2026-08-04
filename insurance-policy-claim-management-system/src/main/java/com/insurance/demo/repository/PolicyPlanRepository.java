@@ -39,5 +39,7 @@ public interface PolicyPlanRepository extends JpaRepository<PolicyPlan, Long>, J
 
 	Page<PolicyPlan> findByIsActive(Boolean isActive, Pageable pageable);
 
+	boolean existsByInsuranceProductIdAndIsActiveTrue(Long id);
+
 }
 

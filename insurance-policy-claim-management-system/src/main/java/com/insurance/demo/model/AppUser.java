@@ -16,6 +16,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -31,7 +32,9 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "users", uniqueConstraints = { @UniqueConstraint(name = "user_valid_email", columnNames = "email"),
-		@UniqueConstraint(name = "user_valid_phone", columnNames = "mobile_number") })
+		@UniqueConstraint(name = "user_valid_phone", columnNames = "mobile_number") }, indexes = {
+				@Index(name = "idx_user_role", columnList = "role"),
+				@Index(name = "idx_user_is_active", columnList = "is_active") })
 @Getter
 @Setter
 @NoArgsConstructor

@@ -6,7 +6,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "otp_verifications")
+@Table(name = "otp_verifications", indexes = { @Index(name = "idx_otp_user_id", columnList = "user_id"),
+		@Index(name = "idx_otp_created_at", columnList = "created_at") })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,38 +15,38 @@ import java.time.LocalDateTime;
 @Builder
 public class OtpVerification {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private AppUser user;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private AppUser user;
 
-    @Column(nullable = false)
-    private String emailOtp;
+	@Column(nullable = false)
+	private String emailOtp;
 
-    @Column(nullable = false)
-    private String phoneOtp;
-    
-    @Column(nullable = false)
-    private LocalDateTime expiresAt;
+	@Column(nullable = false)
+	private String phoneOtp;
 
-    private boolean used;
+	@Column(nullable = false)
+	private LocalDateTime expiresAt;
 
-    @Column(name = "attempt_count")
-    private Integer attemptCount = 0;
+	private boolean used;
 
-    @Column(nullable = false, columnDefinition = "int default 1")
-    private int sendCount = 1;
+	@Column(name = "attempt_count")
+	private Integer attemptCount = 0;
 
-    private LocalDateTime lastSentAt;
+	@Column(nullable = false, columnDefinition = "int default 1")
+	private int sendCount = 1;
 
-    private LocalDateTime createdAt;
+	private LocalDateTime lastSentAt;
 
-    @PrePersist
-    public void onCreate() {
-        createdAt = LocalDateTime.now();
-        lastSentAt = LocalDateTime.now();
-    }
+	private LocalDateTime createdAt;
+
+	@PrePersist
+	public void onCreate() {
+		createdAt = LocalDateTime.now();
+		lastSentAt = LocalDateTime.now();
+	}
 }

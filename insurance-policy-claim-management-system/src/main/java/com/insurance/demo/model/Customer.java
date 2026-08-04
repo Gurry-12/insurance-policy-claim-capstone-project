@@ -26,8 +26,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import jakarta.persistence.Index; // Ensure this is imported
+
 @Entity
-@Table(name = "customers")
+@Table(name = "customers", indexes = { @Index(name = "idx_customer_user_id", columnList = "user_id"),
+		@Index(name = "idx_customer_city", columnList = "city"),
+		@Index(name = "idx_customer_state", columnList = "state") })
 @Getter
 @Setter
 @NoArgsConstructor

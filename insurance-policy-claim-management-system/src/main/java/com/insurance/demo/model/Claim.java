@@ -8,7 +8,7 @@ import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.insurance.demo.enums.ClaimStatus; 
+import com.insurance.demo.enums.ClaimStatus;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -32,69 +32,75 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+
+import jakarta.persistence.Index; // Ensure this is imported
+
 @Entity
-@Table(name = "claims")
+@Table(name = "claims", indexes = { @Index(name = "idx_claim_status", columnList = "claim_status"),
+		@Index(name = "idx_policy_id", columnList = "policy_id") })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Claim {
 
-    @Id
-    @Column(name = "id")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@Column(name = "id")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "claim_number", unique = true, nullable = false, length = 50)
-    private String claimNumber; 
+	@Column(name = "claim_number", unique = true, nullable = false, length = 50)
+	private String claimNumber;
 
-    @Positive(message = "Claim amount must be greater than zero")
-    @NotNull(message = "Claim amount is required")
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal claimAmount;
+	@Positive(message = "Claim amount must be greater than zero")
+	@NotNull(message = "Claim amount is required")
+	@Column(nullable = false, precision = 15, scale = 2)
+	private BigDecimal claimAmount;
 
-    @NotBlank(message = "Claim reason is required")
-    @Column(nullable = false)
-    private String claimReason;
+	@NotBlank(message = "Claim reason is required")
+	@Column(nullable = false)
+	private String claimReason;
 
-    @NotNull(message = "Incident date is required")
-    @Column(name = "incident_date", nullable = false)
-    private LocalDateTime incidentDate;
+	@NotNull(message = "Incident date is required")
+	@Column(name = "incident_date", nullable = false)
+	private LocalDateTime incidentDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "claim_status", nullable = false)
-    @NotNull(message = "Claim status is required")
-    private ClaimStatus claimStatus;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "claim_status", nullable = false)
+	@NotNull(message = "Claim status is required")
+	private ClaimStatus claimStatus;
 
-    @Column(name = "staff_remarks")
-    private String staffRemarks;
+	@Column(name = "staff_remarks")
+	private String staffRemarks;
 
-    @Column(name = "admin_remarks")
-    private String adminRemarks;
+	@Column(name = "admin_remarks")
+	private String adminRemarks;
 
-    @CreationTimestamp
-    @Column(name = "created_date", updatable = false)
-    private LocalDateTime createdDate;
+	@CreationTimestamp
+	@Column(name = "created_date", updatable = false)
+	private LocalDateTime createdDate;
 
-    @UpdateTimestamp
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
+	@UpdateTimestamp
+	@Column(name = "updated_date")
+	private LocalDateTime updatedDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "policy_id", nullable = false)
-    @NotNull(message = "Policy is required")
-    private Policy policy;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "policy_id", nullable = false)
+	@NotNull(message = "Policy is required")
+	private Policy policy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_staff_id")
-    private AppUser assignedStaff;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "assigned_staff_id")
+	private AppUser assignedStaff;
 
-    @OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<ClaimDocument> claimDocuments = new ArrayList<>();
+	@OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	private List<ClaimDocument> claimDocuments = new ArrayList<>();
 
-    @OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<ClaimStatusHistory> claimStatusHistories = new ArrayList<>();
+	@OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	private List<ClaimStatusHistory> claimStatusHistories = new ArrayList<>();
 
-    @Version
-    private Long version;
+	@Version
+	private Long version;
 }

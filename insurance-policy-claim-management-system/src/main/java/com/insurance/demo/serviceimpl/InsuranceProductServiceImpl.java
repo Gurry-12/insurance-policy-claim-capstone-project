@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,10 +88,12 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 
 	@Override
 	@Transactional
-	public ApiResponseDTO<PageResponseDTO<ProductResponseDTO>> getAllProductsWithPagination(int pageNumber, int pageSize, String sortBy,
-			String sortDirection, String productType, Boolean isActive, String productName) {
+	public ApiResponseDTO<PageResponseDTO<ProductResponseDTO>> getAllProductsWithPagination(int pageNumber,
+			int pageSize, String sortBy, String sortDirection, String productType, Boolean isActive,
+			String productName) {
 
-		log.info("Fetching products with pagination. pageNumber: {}, pageSize: {}, sortBy: {}, sortDirection: {}, type: {}, active: {}, productName: {}",
+		log.info(
+				"Fetching products with pagination. pageNumber: {}, pageSize: {}, sortBy: {}, sortDirection: {}, type: {}, active: {}, productName: {}",
 				pageNumber, pageSize, sortBy, sortDirection, productType, isActive, productName);
 		PaginationValidator.validate(pageNumber, pageSize);
 		PaginationValidator.validateSortField(sortBy, Set.of("id", "productName", "productType"));
@@ -104,9 +108,9 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 		}
 
 		Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(getSortDirection(sortDirection), sortBy));
-		
+
 		Specification<InsuranceProduct> spec = (root, query, cb) -> cb.conjunction();
-		
+
 		if (typeEnum != null) {
 			com.insurance.demo.enums.ProductType finalTypeEnum = typeEnum;
 			spec = spec.and((root, query, cb) -> cb.equal(root.get("productType"), finalTypeEnum));
@@ -115,16 +119,18 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 			spec = spec.and((root, query, cb) -> cb.equal(root.get("isActive"), isActive));
 		}
 		if (productName != null && !productName.trim().isEmpty()) {
-			spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("productName")), "%" + productName.trim().toLowerCase() + "%"));
+			spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("productName")),
+					"%" + productName.trim().toLowerCase() + "%"));
 		}
 
 		Page<InsuranceProduct> productPage = productRepository.findAll(spec, pageable);
 
 		List<ProductResponseDTO> content = productPage.getContent().stream()
 				.map(product -> modelMapper.map(product, ProductResponseDTO.class)).toList();
-		PageResponseDTO<ProductResponseDTO> pageResponse = new PageResponseDTO<>(content, productPage.getNumber(), productPage.getSize(),
-				productPage.getTotalElements(), productPage.getTotalPages(), productPage.isLast(), sortDirection);
-		
+		PageResponseDTO<ProductResponseDTO> pageResponse = new PageResponseDTO<>(content, productPage.getNumber(),
+				productPage.getSize(), productPage.getTotalElements(), productPage.getTotalPages(),
+				productPage.isLast(), sortDirection);
+
 		return new ApiResponseDTO<>(MessageConstants.Product.ALL_RETRIEVED, true, pageResponse, LocalDateTime.now());
 	}
 
@@ -140,32 +146,48 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 	public ApiResponseDTO<List<ProductResponseDTO>> viewActiveProducts() throws ResourceNotFoundException {
 
 		log.info("fatching all active products");
+
 		List<InsuranceProduct> products = productRepository.findByIsActiveTrue();
 
-		if (products.isEmpty()) {
-			log.warn("No active products found");
-			throw new ResourceNotFoundException(MessageConstants.Product.ACTIVE_NOT_FOUND);
-		}
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+		boolean isCustomer = auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"));
 
 		List<ProductResponseDTO> productResponseDTOs = products.stream()
-				.filter(product -> policyPlanRepository.findByInsuranceProductIdAndIsActiveTrue(product.getId()).size() > 0)
+
+				.filter(product -> !isCustomer
+						|| policyPlanRepository.existsByInsuranceProductIdAndIsActiveTrue(product.getId()))
+
 				.map(product -> {
 
-			ProductResponseDTO dto = modelMapper.map(product, ProductResponseDTO.class);
+					ProductResponseDTO dto = modelMapper.map(product, ProductResponseDTO.class);
 
-			dto.setActive(product.getIsActive());
+					dto.setActive(product.getIsActive());
 
-			return dto;
-		}).toList();
+					return dto;
+
+				}).toList();
+
+		if (productResponseDTOs.isEmpty()) {
+
+			log.warn("No active products found");
+
+			throw new ResourceNotFoundException(MessageConstants.Product.ACTIVE_NOT_FOUND);
+
+		}
 
 		ApiResponseDTO<List<ProductResponseDTO>> apiResponseDTO = new ApiResponseDTO<>();
 
 		apiResponseDTO.setData(productResponseDTOs);
+
 		apiResponseDTO.setMessage(MessageConstants.Product.ACTIVE_FETCHED);
+
 		apiResponseDTO.setSuccess(true);
+
 		apiResponseDTO.setTimeStamp(LocalDateTime.now());
 
 		log.info("Retrieved {} active products", productResponseDTOs.size());
+
 		return apiResponseDTO;
 
 	}
@@ -237,7 +259,8 @@ public class InsuranceProductServiceImpl implements InsuranceProductService {
 		log.info("Fetching product with id: {}", id);
 		InsuranceProduct product = productRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Product.NOT_FOUND + id));
-		org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+				.getContext().getAuthentication();
 		boolean isCustomer = auth != null
 				&& auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"));
 		if (isCustomer && !Boolean.TRUE.equals(product.getIsActive())) {
