@@ -1,96 +1,78 @@
-# Deployment
+# Deployment Guide
+> Taking InsuranceFlow from local development to production.
 
-> How to deploy the application to production.
+---
 
 ## Purpose
+To outline the architecture and steps required to deploy the frontend and backend in a live environment.
 
-Production deployment topology and steps. For local development see
-`Setup.md` / `Run.md`.
+---
 
-## Topology
+## Deployment Checklist
+- [ ] Database is migrated, and `ddl-auto` is set to `validate`.
+- [ ] Frontend `.env.production` points to the live backend domain.
+- [ ] Backend CORS configuration allows the live frontend domain.
+- [ ] Redis is secured with a password and not exposed to the public internet.
+- [ ] SSL/TLS certificates are provisioned for both domains.
 
+---
+
+## Backend Deployment (JAR)
+
+1. **Build:** `mvn clean install -DskipTests`
+2. **Transfer:** Move the JAR to the server.
+3. **Environment:** Set system ENV variables (DB, Redis, Secrets).
+4. **Run as Service:** Use `systemd` to keep the app running.
+   ```ini
+   [Unit]
+   Description=InsuranceFlow Backend
+   [Service]
+   ExecStart=/usr/bin/java -jar /opt/app/insuranceflow.jar
+   Restart=always
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+---
+
+## Frontend Deployment (Static Build)
+
+1. **Build:** `npm run build`
+2. **Transfer:** Copy the `/dist` folder contents to `/var/www/insuranceflow` on your server.
+3. **Nginx Config:** Serve the static files and map fallback routes for React Router.
+
+### Reverse Proxy (Nginx) Example
+```nginx
+server {
+    listen 80;
+    server_name insuranceflow.com;
+
+    # Serve React App
+    location / {
+        root /var/www/insuranceflow;
+        index index.html;
+        try_files $uri $uri/ /index.html; # Required for React Router 7
+    }
+
+    # Reverse Proxy to Spring Boot API
+    location /api/ {
+        proxy_pass http://localhost:8081/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        
+        # Pass cookies securely
+        proxy_cookie_path / "/; secure; HttpOnly; SameSite=strict";
+    }
+}
 ```
-┌─────────────┐      ┌──────────────────────────┐      ┌─────────────┐
-│   CDN/Web   │      │    Application Server     │      │   MySQL 8   │
-│  Server      │──────│  Spring Boot fat jar      │──────│ insurance_db│
-│  (static     │ HTTPS│  :8081  (embedded Tomcat) │ 3306 │             │
-│   dist/)     │      └────────────┬─────────────┘      └─────────────┘
-└─────────────┘                   │
-                     Cloudinary │ Twilio │ Gmail SMTP
-```
 
-- Frontend `dist/` is served as static files (any web server / CDN / S3).
-- Backend runs as a single service (fat jar) behind a reverse proxy (TLS
-  termination, `X-Forwarded-*` headers, path `/api`).
+---
 
-## 1. Build
+## Dev vs Production Differences
 
-```bash
-# Frontend
-cd insurance-policy-claim-management-app-ui
-npm ci
-npm run build                       # → dist/
-
-# Backend
-cd ../insurance-policy-claim-management-system
-./mvnw clean package -DskipTests     # → target/*.jar
-```
-
-## 2. Backend runtime config (production)
-
-Set environment values and **overrides** so secrets are not on disk only:
-
-```bash
-export DB_USER=... DB_PASSWORD=...
-export JWT_KEY='<long random secret>'
-export CLOUDINARY_CLOUD_NAME=... CLOUDINARY_API_KEY=... CLOUDINARY_SECRET=...
-export EMAIL_USER=... EMAIL_PASSWORD=...
-export TWILIO_SID=... TWILIO_TOKEN=... TWILIO_PHONE=...
-export CORS_ALLOWED_ORIGIN='https://app.example.com'
-export FRONTEND_URL='https://app.example.com'
-export REFRESH_COOKIE_SECURE=true
-```
-
-Run:
-
-```bash
-java -jar insurance-policy-claim-management-system-0.0.1-SNAPSHOT.jar
-```
-
-Suggested overrides for production (`--` args or env):
-- `--server.port=8081`
-- `--app.security.swagger-enabled=false`
-- `--app.security.seed-admin.enabled=false` (or change admin password immediately)
-- `--app.security.jwt.expiration-ms=900000` (15 min)
-- `--app.security.jwt.refresh-cookie-secure=true`
-- `--spring.jpa.show-sql=false`
-
-## 3. Frontend hosting
-
-Serve `dist/` with `index.html` as the SPA fallback (all non-asset routes →
-`index.html`). Set the strict CSP (already emitted from `.env.production`) and
-secure headers at the reverse proxy (HSTS, X-Content-Type-Options, etc.).
-Configure the reverse proxy to forward `/api` to the backend (same-origin
-deployment keeps `VITE_API_BASE_URL=/api` and the CORS allowlist trivially).
-
-## 4. Database
-
-- MySQL 8, `insurance_db`, credentials via `env.properties`.
-- Keep `ddl-auto=update` only if you accept Hibernate-managed schema; for strict
-  production control, generate DDL once and switch to `validate`.
-- Back up the database; schedule binary backups.
-
-## 5. Security checklist
-
-- HTTPS everywhere; `REFRESH_COOKIE_SECURE=true`.
-- CSP with `frame-ancestors 'none'` (already in `.env.production`).
-- Restrict Swagger (`app.security.swagger-enabled=false`).
-- Change/seed admin credentials; disable admin auto-seed after first run.
-- `JWT_KEY` strong + rotation plan (see `../01_System_Architecture/Security_Architecture.md`).
-
-## Related
-
-- `Environment.md` — full config reference
-- `Build.md` — build steps
-- `../01_System_Architecture/High_Level_Architecture.md` — architecture
-- `Troubleshooting.md` — production issue notes
+| Feature | Local Dev | Production |
+|---------|-----------|------------|
+| **CORS** | `http://localhost:5173` | `https://insuranceflow.com` |
+| **Cookies** | `Secure=false` | `Secure=true` |
+| **Database** | `ddl-auto=update` | `ddl-auto=validate` (Flyway) |
+| **Routing** | Vite Dev Server | Nginx `try_files` |

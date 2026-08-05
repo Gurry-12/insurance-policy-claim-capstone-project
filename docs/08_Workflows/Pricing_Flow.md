@@ -1,118 +1,140 @@
 # Pricing Flow
+> The catalog math engine: creating pricing rules, swapping active rules, generating quotes, and ensuring contract immutability.
 
-> The pricing-rule lifecycle: admin creates or updates a rule for a plan, the change is audit-logged, one active rule per plan governs quote generation, admins preview premium impact, and customer quotes consume the active rule.
+---
 
 ## Purpose
+This document details how pricing logic is managed by Admins and consumed by the system. It covers the lifecycle of a `PricingRule`, how it affects quotes, and why legacy policies remain unaffected by new price changes.
 
-Explains how a `PricingRule` moves from creation to production and how it feeds customer pricing. The rule semantics, defaults, and one-active-rule invariant are authoritative in `../02_Business_Domain/Pricing_Rules.md`; the premium mathematics in `../02_Business_Domain/Premium_Calculation.md`; the API contracts in `../03_API/Pricing_API.md`.
+---
 
 ## Overview
+- **Creation & Auditing:** Admins create `PricingRule` entities defining base rates, fees, and taxes. Every change writes to `PricingAuditLog`.
+- **One Active Rule:** A policy plan can only have one `ACTIVE` rule at a time. Swapping requires deactivating the old rule first.
+- **Quoting:** When a customer generates a quote, the system clones the math variables from the `ACTIVE` rule into the quote.
+- **Immutability:** Existing policies use the cloned variables. Admin price changes only affect future purchases.
 
-A pricing rule holds the three actuarial inputs (`baseRiskRate`, `processingFee`, `gst` percentage) plus an `effectiveFrom`/`effectiveTo` window, a status (`ACTIVE`/`INACTIVE`), and remarks. Admins create rules per plan, and the system enforces **exactly one active rule per plan**. Every create/update/activate/deactivate writes a `PricingAuditLog` entry capturing the new configuration, remarks, and the operator's email. The active rule is what `POST /api/premium/calculate` uses to produce a customer quote; `POST /api/admin/pricing-rules/preview` lets the admin estimate a rule's premium effect before switching it on.
+---
 
 ## Business Context
+Insurance pricing changes annually based on risk models. When an actuary decides to raise rates by 2%, the Admin must update the system without invalidating the legal contracts of customers who bought policies yesterday. The system handles this via strict state management (Active/Inactive rules) and data snapshotting (copy-by-value into Quotes).
 
-Pricing is the actuarial lever: rates must be changeable (a motor risk rate rise, a fee change) without retroactively mutating contracts. That is achieved by versioning rules as rows and snapshotting the rule's inputs into each quote and policy. The one-active-rule invariant guarantees a plan never prices ambiguously, and the audit log satisfies the "who changed what, when" regulatory need.
+---
 
-## Technical Design
-
-### Rule inputs and defaults
-
-| Input | Meaning |
-|---|---|
-| `baseRiskRate` | risk rate multiplied by coverage to give the base premium |
-| `processingFee` | fixed fee added per year |
-| `gst` | GST percentage applied to the taxable amount |
-
-If a create request omits any of these, product-type defaults apply (`PricingRuleServiceImpl.applyDefaults`): HEALTH 0.025 / 100.00 / 0.00, MOTOR 0.030 / 150.00 / 18.00, TRAVEL 0.015 / 50.00 / 18.00, LIFE 0.008 / 200.00 / 0.00, INSURANCE 0.020 / 100.00 / 18.00.
-
-### One-active-rule-per-plan behaviour (code-verified)
-
-- **Create** (`POST /api/admin/pricing-rules`): if the plan has no `ACTIVE` rule, the new rule is created `ACTIVE`; otherwise it is created `INACTIVE`. `effectiveFrom` defaults to now; `effectiveTo` is optional.
-- **Activate** (`PATCH /{ruleId}/activate`): fails with `An active pricing rule already exists for this plan…` unless the existing active rule is deactivated first — the swap is explicit.
-- **Deactivate** (`PATCH /{ruleId}/deactivate`): sets `INACTIVE`; fails if already inactive.
-- **Lookup**: quote generation and `GET /api/admin/pricing-rules/plan/{planId}/active` use `findByPolicyPlanIdAndStatusOrderByIdDesc(planId, ACTIVE)` and take the first (highest-id) row.
-- **Update** (`PUT /{ruleId}`): the rule cannot move to another plan (`Cannot change plan of existing pricing rule`); inputs, effective window, and remarks are replaced.
-- **Delete** (`DELETE /{ruleId}`): blocked with 400 while any quote or policy references the rule.
-
-### Effective dates
-
-`effectiveFrom` (required) and `effectiveTo` (optional) define the rule's intended validity window. Note that the system does not yet auto-activate on `effectiveFrom` or auto-expire on `effectiveTo` — activation is an explicit admin action and the `ACTIVE` status is what the quote path checks. This is a documented future improvement.
-
-### Audit log
-
-`PricingAuditLog` rows are written on create/update/activate/deactivate with `pricingRuleId`, `newConfiguration` (JSON snapshot of the full rule), `remarks` ("Activated", "Deactivated", or the operator's remarks), `changedBy` (email), `changedAt`. History is read via `GET /{ruleId}/history` (newest first).
-
-### Premium preview (admin)
-
-`POST /api/admin/pricing-rules/preview` requires the rule to be `ACTIVE` and returns a simplified `PremiumQuote` for a coverage/duration combination. Its math is an approximation (`basePremium = coverage × rate`; `gst = processingFee × gst%`; totals per premium type) — it is a "what-if" for configuring rules and is **not** the pricing used for real quotes. Authoritative quote math is `../02_Business_Domain/Premium_Calculation.md`.
-
-### Consumption by customer quotes
-
-`PremiumCalculationServiceImpl.generateQuoteInternal`:
-1. Validates the plan/product are active, duration allowed, premium type supported, coverage matches an active option.
-2. Reads the plan's highest-id `ACTIVE` rule; none → 400 `No active pricing rule found for this plan`.
-3. `PremiumCalculatorFactory` resolves the strategy (`ONE_TIME`/`ANNUAL`) which computes the premium from `baseRiskRate`, `processingFee`, `gst` with `BigDecimal` HALF_UP rounding.
-4. The quote persists a snapshot: `planVersion`, `pricingRuleId`, `riskRate`, `processingFee`, `gst`, premium, and total.
-
-## Workflow
-
-1. **Create** — plan detail/pricing screen → `POST /api/admin/pricing-rules` (plan, inputs or defaults, effective window, remarks). If no active rule exists for the plan, the rule starts `ACTIVE`; otherwise `INACTIVE`. Audit row written.
-2. **List / inspect** — `GET /api/admin/pricing-rules?planId=&status=`; `GET /api/admin/pricing-rules/{ruleId}`; `GET /api/admin/pricing-rules/plan/{planId}/active` to see what customers currently price against.
-3. **Preview** — `POST /api/admin/pricing-rules/preview` to estimate the premium impact of a rule on a coverage/duration.
-4. **Update** — `PUT /api/admin/pricing-rules/{ruleId}` to revise inputs within the same plan; audit row written. Existing quotes/policies keep their snapshots.
-5. **Swap** — deactivate the current active rule (`PATCH .../deactivate`), then activate the replacement (`PATCH .../activate`) — activation is rejected while another rule is active.
-6. **Audit** — `GET /api/admin/pricing-rules/{ruleId}/history` for the change trail.
-7. **Consume** — customers generate quotes (`POST /api/premium/calculate`) against the active rule; the resulting quote carries the pricing snapshot and a `pricingRuleId` that is copied to the purchased policy.
+## Feature Flow
 
 ```mermaid
-flowchart LR
-    Admin([Admin]) --> Create[POST /api/admin/pricing-rules]
-    Create --> Check{Plan has an\nACTIVE rule?}
-    Check -- no --> Active[Rule created ACTIVE]
-    Check -- yes --> Inactive[Rule created INACTIVE]
-    Active --> Audit[PricingAuditLog written]
-    Inactive --> Audit
-    Audit --> Preview[POST .../preview : premium what-if]
-    Audit --> Swap[Deactivate current -> activate new]
-    Swap --> ActiveRule[Highest-id ACTIVE rule for the plan]
-
-    ActiveRule --> Calc[POST /api/premium/calculate]
-    Calc --> Quote[Quote + pricing snapshot\nplanVersion, pricingRuleId, riskRate, fee, gst, total]
-    Quote --> Policy[Policy stores the same snapshot]
-
-    subgraph Audit trail
-        Audit --> History[GET .../{ruleId}/history]
-    end
+flowchart TD
+    Start([Admin Creates Rule]) --> Draft[Rule Created as INACTIVE]
+    Draft --> Preview[Preview Premium Math]
+    
+    Preview --> Activate[Request Activation]
+    Activate --> DBCheck{Has Active Rule?}
+    
+    DBCheck -- Yes --> Deact[Deactivate Old Rule]
+    DBCheck -- No --> Proceed[Proceed]
+    
+    Deact --> Proceed
+    Proceed --> SetActive[Set New Rule ACTIVE]
+    SetActive --> Audit[Write PricingAuditLog]
+    
+    Audit --> Consume[Customers request Quotes]
+    Consume --> Snapshot[Clone Active Rule into Quote]
 ```
 
-## Code References
+---
 
-- `controller/PricingRuleController.java` — full admin rule lifecycle + preview.
-- `serviceimpl/PricingRuleServiceImpl.java` — defaults, one-active-rule logic, activation/deactivation, delete guards, preview, audit logging.
-- `serviceimpl/PremiumCalculationServiceImpl.java` — active-rule lookup for customer quotes.
-- `model/{PricingRule,PricingAuditLog,Quote,Policy}.java`, `enums/PricingRuleStatus.java`, `enums/PremiumType.java`.
-- Frontend: plan detail and pricing management screens under `src/pages/admin/plans/**`.
+## System Flow
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+```mermaid
+flowchart TD
+    UI[Admin Dashboard] -->|POST /pricing-rules| Ctrl[PricingRuleController]
+    Ctrl --> Svc[PricingRuleServiceImpl]
+    Svc --> DB[(Database)]
+    DB -->|Save INACTIVE| Svc
+    
+    UI -->|PATCH /activate| Ctrl
+    Ctrl --> Svc
+    Svc --> Transaction[@Transactional Swap]
+    Transaction --> DB
+    DB -->|Old -> INACTIVE\nNew -> ACTIVE| Transaction
+    Transaction --> AuditSvc[AuditLogger]
+    AuditSvc --> DB
+```
 
-## Diagrams
+---
 
-- Full lifecycle narrative: `../02_Business_Domain/Pricing_Rules.md`.
-- Premium strategy math: `../02_Business_Domain/Premium_Calculation.md`.
-- Entity relationships (rule ↔ plan ↔ quote ↔ policy): `../04_Database/ER_Diagram.md`.
-- Activity diagrams: `../09_Diagrams/Activity_Diagrams/`.
+## Audit Log Sequence Diagram
 
-## Best Practices
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant API as PricingRuleService
+    participant Audit as PricingAuditLog
+    participant DB as Database
+    
+    A->>API: Activate Rule ID: 5
+    API->>DB: Find Rule ID: 4 (Status=ACTIVE)
+    API->>DB: Update Rule 4 (Status=INACTIVE)
+    API->>DB: Update Rule 5 (Status=ACTIVE)
+    
+    API->>Audit: Create Log (Action: ACTIVATED, Rule: 5, By: Admin)
+    Audit->>DB: Insert Audit Log
+    
+    API-->>A: Success
+```
 
-- The explicit "deactivate first, then activate" protocol makes repricing a deliberate, two-step act and prevents surprise pricing changes.
-- Versioned rules plus quote/policy snapshots mean catalogue changes never mutate in-force contracts.
-- The audit log records the full new configuration and the operator on every change — a complete regulatory trail.
-- Delete is blocked once a rule is referenced, so historical pricing integrity is preserved.
+---
 
-## Future Improvements
+## Database Design
 
-- Effective-dated auto-activation (a scheduled job flips a rule `ACTIVE` when `effectiveFrom` arrives) and auto-expiry at `effectiveTo`.
-- Populate `oldConfiguration` in the audit log (the column already exists).
-- Rule dry-run comparisons across candidate rules before switching.
-- See `../10_Evaluation/Future_Enhancements.md`.
+| Entity | Purpose | Relationships |
+|---|---|---|
+| `PolicyPlan` | The core product offering. | One-to-Many to `PricingRule`. |
+| `PricingRule` | Holds `baseRiskRate`, `processingFee`, `gstRate`. | Many-to-One to `PolicyPlan`. |
+| `PricingAuditLog` | Historical ledger of rule changes. | Many-to-One to `PricingRule`. |
+
+**Why this design?**
+Separating `PricingRule` from `PolicyPlan` allows for versioning over time. A 10-year-old plan might have 10 different pricing rules associated with it, providing a perfect historical timeline of how prices evolved.
+
+---
+
+## Business Rules
+
+| Rule | Description | Why it exists |
+|---|---|---|
+| **Single Active Rule** | A plan must have exactly one active pricing rule to be quoted. | Prevents ambiguity in the premium calculator. |
+| **Snapshotting** | Quotes copy the `baseRiskRate` and fees explicitly. | Ensures price guarantees for 30 minutes, and insulates bought policies forever. |
+| **Immutable Logs** | `PricingAuditLog` entries can never be updated or deleted. | Regulatory compliance for financial systems. |
+
+---
+
+## Design Decisions
+
+- **Why separate Pricing from the Plan?**
+  If pricing fields lived on the `PolicyPlan` entity, updating the price would overwrite the historical record. By breaking it into a separate entity, we can maintain a timeline of inactive rules.
+- **Why use a Premium Preview tool?**
+  Insurance math is complex. Admins need a way to verify that a new rule produces sane numbers (e.g., verifying a $1,000 policy doesn't accidentally cost $100,000 due to a typo in the risk rate) before pushing it live.
+- **Why are quotes snapshotted instead of just storing the `ruleId`?**
+  If a quote only stored `ruleId`, and the admin updated the rule's values directly (rather than making a new rule), the customer's price would change in their cart. Snapshotting (copy-by-value) guarantees the contract.
+
+---
+
+## Interview Notes
+
+1. **How do you ensure a price change doesn't alter existing policies?**
+   > Through the Snapshot pattern. When a quote is generated, the specific rates (`riskRate`, `gstRate`) are copied from the active rule into the quote, and subsequently into the policy. Future rules don't touch these snapshots.
+2. **How is the swapping of active rules handled safely?**
+   > Using a Spring `@Transactional` boundary. The service fetches the current active rule, deactivates it, activates the new rule, and writes the audit log. If any step fails, the entire transaction rolls back.
+3. **Why do we need a Pricing Audit Log?**
+   > Price changes directly impact business revenue and customer fairness. Regulators require strict audit trails of who changed financial parameters and when.
+4. **What happens if a plan has no active pricing rule?**
+   > The `PremiumCalculationService` will throw a 400 Bad Request indicating "No active pricing rule found", preventing any quotes from being generated for that plan.
+5. **How does the Premium Preview work?**
+   > It acts as a dry-run. It calls the exact same Strategy Pattern calculations (`AnnualPremiumCalculator` or `OneTimePremiumCalculator`) used by customers, but uses the draft rule variables without saving a quote to the database.
+
+---
+
+## Related Documents
+- [Premium Calculation Domain](../02_Business_Domain/Premium_Calculation.md)
+- [Purchase Flow](Purchase_Flow.md)

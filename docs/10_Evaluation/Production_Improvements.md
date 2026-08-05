@@ -1,67 +1,48 @@
 # Production Improvements
+> Critical changes required before deploying InsuranceFlow to a production environment.
 
-> Operational hardening needed to run this in real production. Each item notes
-> current state → target state.
+---
 
-## Database
+## Purpose
+To document the necessary security, configuration, and architectural changes required to transition the application from a local development state to a hardened, production-ready state.
 
-| Item | Current | Target |
-|---|---|---|
-| Schema management | `ddl-auto=update` | Flyway/Liquibase versioned migrations; `validate` in prod |
-| Backups | none | Scheduled automated backups + restore drill |
-| Connection pool | defaults (Hikari) | Explicit pool sizing, leak detection, prod metrics |
+---
 
-## Secrets & config
+## 1. Database & Schema Management
+- **Replace `ddl-auto=update` with Flyway or Liquibase.**
+  - *Why:* Spring Data's auto-update can drop columns, mismanage foreign keys, or lock tables unexpectedly in production. Migrations ensure predictable, versioned schema changes.
+- **Implement Connection Pooling Optimization.**
+  - *Why:* Tune HikariCP settings (max pool size, idle timeouts) to handle production load without exhausting database connections.
 
-| Item | Current | Target |
-|---|---|---|
-| Secrets | gitignored `env.properties` + env vars | Vault / cloud secret manager |
-| JWT key | single static secret | Key rotation with kid/dual-key overlap; shorter-lived keys |
-| Admin seeding | auto-seed flag | Idempotent bootstrap with forced password change |
+## 2. Security Hardening
+- **Disable Admin Auto-Seed.**
+  - *Why:* The `DataSeeder` runs on startup and creates a default admin. This is a massive security risk in production. Admin accounts should be created via secure, one-time scripts.
+- **Enable Secure Cookies (HTTPS).**
+  - *Why:* The refresh token cookie must have `Secure=true` set so it is only transmitted over HTTPS, preventing packet sniffing.
+- **Disable Swagger / OpenAPI UI.**
+  - *Why:* Exposing API documentation in production reveals the attack surface. It should be disabled or placed behind strict authentication.
 
-## Security
+## 3. Rate Limiting & Caching
+- **Redis Distributed Rate Limiting.**
+  - *Why:* Local Bucket4j state is lost if the application runs on multiple instances. Bucket4j must be backed by Redis to enforce rate limits globally across the cluster.
 
-| Item | Current | Target |
-|---|---|---|
-| OTP | Email/SMS, console fallback | Verified providers, TOTP option, hashed OTPs at rest |
-| Rate limiting | Bucket4j on auth endpoints | Business-rule limits (purchase, claim) + admin API |
-| Headers | CSP in prod build | HSTS, X-Content-Type-Options, Referrer-Policy at proxy |
-| Audit | pricing + claim history captured | Exposed query UI + retention policy |
-| File uploads | size/type validated, Cloudinary | Server-side malware scan, EXIF stripping, per-tenant limits |
-| Logging | console | Structured JSON, PII redaction, centralised log pipeline |
+## 4. Observability & Monitoring
+- **Structured Logging (ELK/Loki).**
+  - *Why:* Console logging is insufficient. Logs must be output in JSON format and aggregated centrally for searchability and alerting.
+- **Health Checks & Actuator.**
+  - *Why:* Spring Boot Actuator must be enabled (but secured) to provide readiness and liveness probes for Kubernetes or AWS target groups.
 
-## Frontend / delivery
+## 5. File Storage
+- **Move to Cloud Native Storage (S3).**
+  - *Why:* Currently, Cloudinary is used for demonstration. An enterprise app should use AWS S3 with strict IAM roles, pre-signed URLs, and bucket policies for claim documents.
 
-| Item | Current | Target |
-|---|---|---|
-| SPA hosting | static `dist/` | CDN with cache headers; SSG/pre-render for landing |
-| Error reporting | console + toasts | Sentry-style capture with source maps |
-| Feature flags | none | Config-driven rollout of new claim flows |
-| CI/CD | local builds | Pipeline (build → test → SAST → image → deploy), zero-downtime |
+---
 
-## Observability
+## Summary of Configuration Changes
 
-| Item | Current | Target |
-|---|---|---|
-| Health/liveness | actuator basics | `/health`, `/ready`, `/metrics` wired to Prometheus |
-| Tracing | none | Distributed tracing (Micrometer + Tempo/OTel) |
-| Alerts | none | SLOs on auth failure rate, claim latency, error budget |
-
-## SLA & resilience
-
-| Item | Current | Target |
-|---|---|---|
-| Single instance | one jar | Horizontal scaling behind proxy; sticky sessions not needed (stateless JWT) |
-| Queueing | sync calls | Async claim document processing / email dispatch (queues) |
-| Disaster recovery | none | RTO/RPO definition, failover runbook |
-
-## Compliance
-
-- Data retention & right-to-erasure handling for user PII.
-- Payment processing under PCI-DSS guidance (outsource to gateway).
-- Accessibility (WCAG) audit before public launch.
-
-## Related
-
-- `../11_Developer_Guide/Deployment.md` — current deployment steps
-- `Future_Enhancements.md` — feature roadmap
+| Environment Variable | Dev Value | Production Value |
+|----------------------|-----------|------------------|
+| `spring.jpa.hibernate.ddl-auto` | `update` | `validate` or `none` |
+| `jwt.cookie.secure` | `false` | `true` |
+| `springdoc.swagger-ui.enabled` | `true` | `false` |
+| `server.error.include-stacktrace`| `always` | `never` |

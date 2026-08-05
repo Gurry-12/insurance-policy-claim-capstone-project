@@ -1,190 +1,147 @@
-# Pricing API
+</Agent System Instructions>
+<Pricing API>
+> The financial rules engine dictating base rates, multipliers, and taxes for plan premiums.
 
-> Admin pricing-rule management under `/api/admin/pricing-rules` (CRUD, activate/deactivate, preview) and premium-quote calculation under `/api/premium` for customers and staff/admin.
+---
 
 ## Purpose
+This document details the Pricing Rules API. It allows administrators to dynamically configure the base premium rates and age-based multipliers for plans, without requiring code deployments.
 
-Reference for the pricing-rule CRUD API, the premium preview endpoint, and the premium-calculation (quote) endpoints, including the `PremiumCalculationRequest`, `AdminPremiumCalculationRequest`, and `PremiumQuote` shapes and the quote expiry rule.
+---
 
 ## Overview
+- **Rule Creation**: Admins define Base Rate, Age Multipliers, and Tax parameters.
+- **Rule Activation**: Only one active rule per plan at a time.
+- **Audit Logging**: Every pricing change is audited for compliance.
+- **Preview Tool**: Simulate premiums before activating a rule.
 
-Pricing rules encode the financial parameters of a plan: `baseRiskRate`, `processingFee`, and `gst`. Quotes are generated from an active pricing rule and are persisted with a `quoteId` and a 30-minute expiry. Base URL: `http://localhost:8081/api`.
+---
 
 ## Business Context
+Insurance pricing changes constantly based on risk models. Hardcoding prices is unacceptable. This dynamic pricing engine ensures actuaries (admins) can update rates instantly. Because pricing changes affect financial reporting, every change requires strict audit logging.
 
-Premium mathematics — `base = coverage × baseRiskRate`, `taxable = base + processingFee`, `gst = 18% of taxable`, ANNUAL vs ONE_TIME totals and duration discounts — is defined in `../02_Business_Domain/Premium_Calculation.md` and summarized in `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Pricing-rule endpoint matrix
-
-All under `/api/admin/pricing-rules`, **ADMIN only** (`@PreAuthorize("hasRole('ADMIN')")`).
-
-| Method | Path | Response envelope | Notes |
-|---|---|---|---|
-| POST | `/api/admin/pricing-rules` | `ApiResponseDTO<PricingRuleResponseDTO>` | `201 Created` |
-| PUT | `/api/admin/pricing-rules/{ruleId}` | `ApiResponseDTO<PricingRuleResponseDTO>` | |
-| GET | `/api/admin/pricing-rules/{ruleId}` | `ApiResponseDTO<PricingRuleResponseDTO>` | |
-| GET | `/api/admin/pricing-rules` | `ApiResponseDTO<PageResponseDTO<PricingRuleResponseDTO>>` | `planId`, `status` filters |
-| PATCH | `/api/admin/pricing-rules/{ruleId}/activate` | `ApiResponseDTO<PricingRuleResponseDTO>` | |
-| PATCH | `/api/admin/pricing-rules/{ruleId}/deactivate` | `ApiResponseDTO<PricingRuleResponseDTO>` | |
-| DELETE | `/api/admin/pricing-rules/{ruleId}` | `ApiResponseDTO<Void>` | Blocked if referenced by quotes/policies |
-| GET | `/api/admin/pricing-rules/{ruleId}/history` | `ApiResponseDTO<List<PricingAuditLog>>` | |
-| GET | `/api/admin/pricing-rules/plan/{planId}/active` | `ApiResponseDTO<PricingRuleResponseDTO>` | |
-| POST | `/api/admin/pricing-rules/preview` | `ApiResponseDTO<PremiumQuote>` | Preview, no quote persisted |
-
-### Pricing-rule create/update — `PricingRuleRequestDTO`
-
-```json
-{
-  "planId": 3,
-  "baseRiskRate": 0.0180,
-  "processingFee": 450.00,
-  "gst": 18.00,
-  "effectiveFrom": "2026-08-03T00:00:00",
-  "effectiveTo": null,
-  "remarks": "Demo pricing rule."
-}
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Admin Drafts Rule] --> B[Preview Pricing Simulator]
+    B --> C[Admin Saves Rule]
+    C --> D[Activate Rule]
+    D --> E[Deactivate Old Rule Automatically]
+    D --> F[Log to Audit Table]
+    F --> G[New Quotes Use New Rate]
 ```
 
-Validation: `baseRiskRate`, `processingFee`, `gst` must be positive-or-zero. `gst` is a percentage (0–100). `effectiveFrom`/`effectiveTo` are optional.
+---
 
-### Premium preview — `PricingPreviewRequestDTO`
+## API Documentation
 
-`POST /api/admin/pricing-rules/preview` computes a quote **without persisting it** (no `quoteId`). Note it takes `productId` + `pricingRuleId`, not `planId`:
-
-```json
-{
-  "productId": 2,
-  "coverageAmount": 500000.00,
-  "duration": 2,
-  "premiumType": "ANNUAL",
-  "pricingRuleId": 3
-}
-```
-
-### Premium-calculation endpoints
-
-| Method | Path | Role | Request | Notes |
-|---|---|---|---|---|
-| POST | `/api/premium/calculate` | CUSTOMER | `PremiumCalculationRequest` | Persists a `Quote`, returns `quoteId` |
-| POST | `/api/premium/admin/calculate` | ADMIN, INTERNAL_STAFF | `AdminPremiumCalculationRequest` | Adds `customerId` |
-
-`PremiumCalculationRequest`:
-
-```json
-{
-  "planId": 1,
-  "coverageAmount": 1000000.00,
-  "duration": 1,
-  "premiumType": "ANNUAL"
-}
-```
-
-`AdminPremiumCalculationRequest` (identical plus `customerId`):
-
-```json
-{
-  "customerId": 2,
-  "planId": 3,
-  "coverageAmount": 500000.00,
-  "duration": 1,
-  "premiumType": "ANNUAL"
-}
-```
-
-Validation: `planId` and `premiumType` required; `coverageAmount` and `duration` required and positive.
-
-### Quote validation rules
-
-Before a quote is produced, all of the following must hold (from `PremiumCalculationServiceImpl`):
-
-- The plan and its product are active.
-- `duration` ∈ plan `allowedDurations`.
-- `premiumType` equals the plan `supportedPremiumType`.
-- `coverageAmount` **exactly** matches an **active** coverage option of the plan.
-- At least one `ACTIVE` pricing rule exists for the plan (the latest by id is used).
-
-### Response — `PremiumQuote`
-
-```json
-{
-  "message": "Quote generated successfully",
-  "success": true,
-  "data": {
-    "quoteId": 8,
-    "selectedCoverage": 1000000.00,
-    "duration": 1,
-    "premiumType": "ANNUAL",
-    "basePremium": 18000.00,
-    "annualPremium": 18540.00,
-    "processingFee": 450.00,
-    "gst": 90.00,
-    "totalCommitment": 18540.00,
-    "discountPercentage": 0,
-    "discountAmount": 0.00,
-    "oneTimeDiscount": 0.00,
-    "totalPremium": 18540.00,
-    "expiresAt": "2026-08-03T10:30:00",
-    "status": "CREATED"
-  },
-  "timeStamp": "2026-08-03T10:00:00"
-}
-```
-
-Field notes:
-
-- `basePremium` = coverage × baseRiskRate.
-- `annualPremium` = base + processingFee (+ GST).
-- ANNUAL: `totalPremium` = annualPremium; ONE_TIME: `totalPremium` = annualPremium × duration × (1 − durationDiscount).
-- `totalCommitment` is the annual commitment before any one-time discount.
-- `discountPercentage`/`discountAmount`/`oneTimeDiscount` are non-zero for multi-year ONE_TIME quotes.
-- `expiresAt` = creation + **30 minutes**.
-- `status` = `CREATED` (a `QuoteStatus` enum value).
-
-### Quote expiry
-
-Quotes persist with status `QuoteStatus.CREATED` and `expiresAt = now + 30 minutes`. On policy purchase (`POST /api/policies/purchase` or `/issue`), the service validates:
-
-1. The quote belongs to the purchasing customer.
-2. `quote.status == CREATED` (not `USED`, `EXPIRED`, or `CANCELLED`).
-3. `quote.expiresAt` is still in the future — otherwise the quote is flipped to `EXPIRED` and the purchase is rejected with `400`.
-
-After a successful purchase the quote is marked `USED`. Quote statuses: `CREATED`, `USED`, `EXPIRED`, `CANCELLED`.
-
-## Workflow
-
-1. Admin defines pricing: `POST /api/admin/pricing-rules`, then `PATCH .../activate`.
-2. Admin sanity-checks numbers without persisting: `POST /api/admin/pricing-rules/preview`.
-3. Customer requests a quote: `POST /api/premium/calculate`.
-4. Staff/admin quote on a customer's behalf: `POST /api/premium/admin/calculate`.
-5. The returned `quoteId` is used by `POST /api/policies/purchase`.
-
-## Code References
-
-| Concern | Path |
+### 1. Create Pricing Rule (Admin)
+| Field | Value |
 |---|---|
-| Pricing rule controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/PricingRuleController.java` |
-| Premium calculation controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/PremiumCalculationController.java` |
-| Calculation service | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/serviceimpl/PremiumCalculationServiceImpl.java` |
-| Pricing rule service | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/serviceimpl/PricingRuleServiceImpl.java` |
-| Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{PricingRuleRequestDTO,PricingPreviewRequestDTO}.java` |
-| Premium DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/{PremiumCalculationRequest,AdminPremiumCalculationRequest,PremiumQuote}.java` |
-| Calculator strategies | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/` |
-| Sample payloads | `demo-data/api-test-payloads/06-pricing-rules.md`, `07-premium-calculation.md` |
+| Purpose | Define a new pricing configuration for a plan. |
+| Method | POST |
+| URL | `/api/admin/pricing-rules` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "planId": 1, "basePremium": 5000, "ageMultiplier": 1.05, "taxRate": 0.18 }` |
+| Response | `ApiResponseDTO` with Rule ID (Status INACTIVE) |
+| Validation | Non-negative amounts. Valid Plan ID. |
+| Possible Errors | `400 Validation Error` |
+| Business Logic | Saves new rule. Defaults to INACTIVE. |
+| Frontend Screen | Admin Pricing Engine |
 
-## Diagrams
+### 2. Get Rules by Plan
+| Field | Value |
+|---|---|
+| Purpose | Fetch all historical and active rules for a plan. |
+| Method | GET |
+| URL | `/api/admin/pricing-rules/{planId}` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | List of rules |
+| Validation | Admin check |
+| Possible Errors | `404 Plan Not Found` |
+| Business Logic | Queries rules by plan ID, ordered by created date desc. |
+| Frontend Screen | Admin Plan Details |
 
-The pricing-rule audit trail and quote lifecycle are described in `../04_Database/Table_Descriptions.md`.
+### 3. Activate Pricing Rule
+| Field | Value |
+|---|---|
+| Purpose | Sets a rule as the active calculation model. |
+| Method | PATCH |
+| URL | `/api/admin/pricing-rules/{id}/activate` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | Updated Rule |
+| Validation | Rule must exist. |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Finds currently active rule for the plan, deactivates it, sets new rule to ACTIVE, logs change to Audit. |
+| Frontend Screen | Admin Pricing Engine |
 
-## Best Practices
+### 4. Deactivate Pricing Rule
+| Field | Value |
+|---|---|
+| Purpose | Turns off a pricing rule. |
+| Method | PATCH |
+| URL | `/api/admin/pricing-rules/{id}/deactivate` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | Updated Rule |
+| Validation | Must not leave plan without an active rule (business warning). |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Status = INACTIVE. Logs to audit. |
+| Frontend Screen | Admin Pricing Engine |
 
-- Preview is deliberately non-persisting, keeping admin exploration side-effect free.
-- Quotes are single-use (CREATED → USED) and time-boxed (30 min), preventing stale pricing.
-- Pricing rule changes are captured in `PricingAuditLog` and versioned via plan `planVersion`/`pricingRuleId` on the policy.
-- Calculator strategy classes isolate ANNUAL vs ONE_TIME math.
+### 5. Preview Pricing Rule
+| Field | Value |
+|---|---|
+| Purpose | Allows admin to simulate a premium calculation using a drafted rule before saving. |
+| Method | POST |
+| URL | `/api/admin/pricing-rules/preview` |
+| Auth Required | Yes (Admin) |
+| Request Body | Rule JSON + Mock Applicant Age |
+| Response | Calculated Premium Amount |
+| Validation | Math boundaries |
+| Possible Errors | `400 Invalid inputs` |
+| Business Logic | Runs calculation logic without saving to DB. |
+| Frontend Screen | Pricing Simulator Modal |
 
-## Future Improvements
+### 6. Get Audit Log
+| Field | Value |
+|---|---|
+| Purpose | Fetch the history of changes for a pricing rule. |
+| Method | GET |
+| URL | `/api/admin/pricing-rules/{id}/audit-log` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | List of audit events (Action, Timestamp, Admin Email) |
+| Validation | Admin check |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Queries `PricingAudit` table. |
+| Frontend Screen | Audit History Panel |
 
-- Consider automatic expiry sweeps for stale `CREATED` quotes.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+---
+
+## Design Decisions
+1. **Why not just update the Plan entity directly?**
+   Pricing must have a history. If a quote was generated yesterday and purchased today, we must know exactly what rules applied. Separate PricingRule entities mapped to Plans allow for historical tracking.
+2. **Pricing Audit Table:**
+   Compliance requirement. We track exactly who (Admin Email) changed the price and when, preventing unauthorized tampering with financial formulas.
+
+---
+
+## Interview Notes
+1. **Q: How do you ensure only one pricing rule is active at a time for a plan?**
+   **A:** In the Service layer, when activating a rule, we first execute a query to find the currently active rule for that `planId`, set its status to INACTIVE, and then set the new rule to ACTIVE within a `@Transactional` block to ensure atomicity.
+2. **Q: How does the system calculate premiums?**
+   **A:** The `PremiumCalculatorService` fetches the ACTIVE `PricingRule` for the requested plan and applies the math: `(BasePremium + (Age * AgeMultiplier)) * (1 + TaxRate)`.
+3. **Q: Why is the Preview endpoint a POST?**
+   **A:** Because it accepts a complex JSON payload representing the draft rule parameters, which is better suited for a request body than query strings in a GET.
+
+---
+
+## Related Documents
+- `Plan_API.md`
+- `Policy_API.md`
+</Pricing API>

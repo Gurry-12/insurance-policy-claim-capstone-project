@@ -1,95 +1,45 @@
 # API Checklist
+> Exhaustive list of REST API endpoints for testing and validation.
 
-> Endpoint-level evaluation checklist. Full contracts: `../03_API/`.
+---
 
-## How to use
+## Purpose
+To verify the health, security, and correctness of all exposed API routes.
 
-Every endpoint is verifiable via Swagger (`/swagger-ui.html`), `demo-data/api-test-payloads/`,
-or Postman (`insurance-policy-claim-management-system/postman/`).
-
-## Public
-
-- [ ] `GET /api/public/stats` — platform statistics
+---
 
 ## Authentication (`/api/auth`)
+- [ ] `POST /api/auth/register` - Creates user, sends OTP.
+- [ ] `POST /api/auth/verify-otp` - Validates email & SMS OTP.
+- [ ] `POST /api/auth/login` - Authenticates, issues JWT and HttpOnly cookie.
+- [ ] `POST /api/auth/refresh` - Rotates refresh token, issues new JWT.
+- [ ] `POST /api/auth/logout` - Blacklists token, clears cookie.
+- [ ] `GET /api/auth/me` - Returns active user profile.
 
-- [ ] `POST /register` — create user, dispatch OTPs
-- [ ] `POST /verify-otp` — verify email + phone OTP → ACTIVE
-- [ ] `POST /resend-otp` — resend with cooldown
-- [ ] `POST /login` — JWT + refresh cookie
-- [ ] `POST /forgot-password` — send reset OTP
-- [ ] `POST /reset-password` — reset with OTP + new password
-- [ ] `POST /refresh` — rotate refresh token, new access token (cookie)
-- [ ] `POST /logout` — revoke refresh token
+## Plans & Pricing (`/api/plans`)
+- [ ] `GET /api/plans` - List all active policy plans (Public).
+- [ ] `POST /api/plans` - Create a new plan (Admin only).
+- [ ] `PUT /api/plans/{id}` - Update plan details (Admin only).
+- [ ] `POST /api/plans/{id}/pricing-rules` - Add pricing modifiers (Admin).
 
-## Users (`/api/users` — ADMIN)
-
-- [ ] `POST /staff` — create staff with productSpeciality
-- [ ] List / paginated search / get by id
-- [ ] `PATCH` activate / deactivate
-
-## Customers (`/api/customers`)
-
-- [ ] `POST` create profile (own), `PUT` update profile
-- [ ] `GET /profile`, `GET /{id}` (admin/staff), paginated list (admin/staff)
-
-## Products (`/api/products`)
-
-- [ ] Admin CRUD + activate/deactivate (request field `activeStatus`)
-- [ ] `GET /active` — customer-visible active products
-
-## Plans (`/api/plans`)
-
-- [ ] `GET` list, `GET /{productId}/active`, `GET /{id}`
-- [ ] `POST /wizard` — plan + coverage options + pricing rule
-- [ ] `PUT /{id}`, `PATCH` activate / deactivate
-
-## Coverage Options (`/api/admin/policy-plans/{planId}/coverage-options` — ADMIN)
-
-- [ ] CRUD
-- [ ] `POST /regenerate` — coverage ladder regeneration
-
-## Pricing Rules (`/api/admin/pricing-rules` — ADMIN)
-
-- [ ] CRUD + activate
-- [ ] `POST /preview` — preview premium for rule/customer inputs
-
-## Premium (`/api/premium`)
-
-- [ ] `POST /calculate` (CUSTOMER) — planId/coverageAmount/duration/premiumType → PremiumQuote
-- [ ] `POST /admin/calculate` (STAFF/ADMIN) — adds customerId
+## Quotes (`/api/quotes`)
+- [ ] `POST /api/quotes/generate` - Calculates premium and creates a 30-min quote (Customer).
+- [ ] `GET /api/quotes/{id}` - Retrieve quote details.
 
 ## Policies (`/api/policies`)
-
-- [ ] `POST /purchase` {quoteId, paymentReferenceId}
-- [ ] `POST /issue` (staff/admin) {customerId, quoteId, startDate}
-- [ ] `GET /my-policies`, `GET /{id}`, `GET /{id}/claims`
-- [ ] `PATCH /{id}/cancel`
-
-## Payments (`/api/payments`)
-
-- [ ] `POST /` record payment
-- [ ] `GET /my-payments`, `GET /policy/{policyId}`, `GET /{paymentId}`
+- [ ] `POST /api/policies/purchase` - Consumes quote, validates payment, creates Policy (Customer).
+- [ ] `GET /api/policies/my-policies` - List active user's policies (Customer).
+- [ ] `GET /api/policies` - List all policies in system (Staff/Admin).
+- [ ] `POST /api/policies/{id}/cancel` - Force cancel a policy (Admin).
 
 ## Claims (`/api/claims`)
+- [ ] `POST /api/claims` - Submit a new claim against a policy (Customer).
+- [ ] `POST /api/claims/{id}/upload` - Upload supporting document to Cloudinary (Customer).
+- [ ] `GET /api/claims/my-claims` - List user's claims (Customer).
+- [ ] `GET /api/claims` - List all pending claims (Staff/Admin).
+- [ ] `PUT /api/claims/{id}/recommend` - Move to `RECOMMENDED_*` (Staff).
+- [ ] `PUT /api/claims/{id}/approve` - Move to `APPROVED/REJECTED` (Admin).
 
-- [ ] `POST /raise` (multipart: claim JSON + files)
-- [ ] `GET /my-claims`, `GET /{id}`, `GET /{id}/history`
-- [ ] `PATCH /{id}/under-review` (staff)
-- [ ] `PATCH /{id}/assign` (staff)
-- [ ] `PATCH /{id}/review` {recommendedStatus, remarks} (staff)
-- [ ] `PATCH /{id}/final-decision` (admin)
-- [ ] `POST /api/document/upload/{claimId}` (customer)
-
-## Response wrappers (verified)
-
-- Success: `{ message, success, data, timeStamp }`
-- Paged: `{ content, pageNumber, pageSize, totalRecords, totalPages, lastPage, sortingType }`
-- Error: `{ timestamp, statusCode, errorType, message, requestPath }`
-- Validation error adds `fieldErrors`
-
-## Related
-
-- `../03_API/API_Flow.md` — end-to-end call sequences
-- `../../demo-data/api-test-payloads/` — request bodies
-- `../../demo-data/03-testing-flow.md` — curl walkthrough
+## System (`/api/system`)
+- [ ] `GET /api/system/health` - Basic ping check.
+- [ ] `GET /api/system/audit` - View pricing audit logs (Staff/Admin).

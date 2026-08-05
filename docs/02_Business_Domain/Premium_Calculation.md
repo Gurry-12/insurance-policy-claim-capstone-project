@@ -1,53 +1,134 @@
 # Premium Calculation
+> The authoritative premium mathematics: base risk premium, processing fee, GST, duration discounts, and exact HALF_UP rounding rules implemented via Strategy Pattern.
 
-> The authoritative premium mathematics: base risk premium, processing fee, GST, duration discounts, and HALF_UP rounding, exactly as implemented in the strategy classes.
+---
 
 ## Purpose
+Single source of truth for how premiums are computed. All other documents — quotes, policies, payments, pricing previews — reference this document rather than re-deriving the math.
 
-Single source of truth for how premiums are computed. All other documents — quotes, policies, payments, pricing previews — reference this file rather than re-deriving the math.
+---
 
 ## Overview
+A premium is computed from a coverage amount using the plan's active `PricingRule` inputs (`baseRiskRate`, `processingFee`, `gst`), the requested duration, and the plan's `PremiumType` (`ONE_TIME` or `ANNUAL`). 
+- **ANNUAL**: Customer pays a calculated amount every year.
+- **ONE_TIME**: Customer pays upfront for multiple years and receives a duration-based discount.
 
-A premium is computed from a coverage amount using the plan's active `PricingRule` inputs (`baseRiskRate`, `processingFee`, `gst`), the requested duration, and the plan's `PremiumType` (`ONE_TIME` or `ANNUAL`). The computation is implemented by two strategy classes selected by `PremiumCalculatorFactory`: `AnnualPremiumCalculator` and `OneTimePremiumCalculator`.
+---
 
 ## Business Context
+Deterministic, audit-safe pricing is non-negotiable in insurance. Every step rounds with `BigDecimal` and `RoundingMode.HALF_UP`, so the exact amount quoted is the exact amount a customer must pay — payment validation is an exact equality match against `calculatedPremium`.
 
-Deterministic, audit-safe pricing is non-negotiable in insurance. Every step rounds with `BigDecimal` and `RoundingMode.HALF_UP`, so the exact amount quoted is the exact amount a customer must pay — payment validation is an exact equality against `calculatedPremium` (see `Business_Rules.md` 4.1).
+---
 
-## Technical Design
+## Feature Flow
+```mermaid
+flowchart TD
+    Start[Request Quote: Coverage, Duration, Plan] --> Fetch[Fetch Active PricingRule]
+    Fetch --> Base[1. Calc Base = Coverage * Rate]
+    Base --> Taxable[2. Calc Taxable = Base + Fee]
+    Taxable --> GST[3. Calc GST = Taxable * GST% / 100]
+    GST --> Annual[4. Annual Premium = Taxable + GST]
+    
+    Annual --> CheckType{Premium Type?}
+    
+    CheckType -->|ANNUAL| EndAnnual[Total = Annual Premium]
+    
+    CheckType -->|ONE_TIME| Mult[Commitment = Annual * Duration]
+    Mult --> Disc[Calc Discount based on Duration]
+    Disc --> EndOneTime[Total = Commitment - Discount]
+    
+    EndAnnual --> Save[Save Quote Snapshot]
+    EndOneTime --> Save
+```
 
-### Shared annual calculation (both strategies)
+---
 
-Let `coverage` = selected coverage amount, `rate` = `baseRiskRate`, `fee` = `processingFee`, `gstPct` = `gst` percentage.
+## System Flow
+```mermaid
+flowchart TD
+    UI[Frontend] --> Controller[PremiumCalculationController]
+    Controller --> Svc[PremiumCalculationServiceImpl]
+    Svc --> Factory[PremiumCalculatorFactory]
+    Factory -->|Returns Strategy| Strategy[AnnualPremiumCalculator OR OneTimePremiumCalculator]
+    Strategy --> DB[(Quote Database)]
+    DB --> Response[Return PremiumQuote DTO]
+```
 
-1. **Base risk premium** (rounded to 0 decimals):
-   `base = round(coverage × rate)` (HALF_UP)
-2. **Processing fee** (rounded to 0 decimals): `processingFee = round(fee)`
-3. **Taxable amount** (per year): `taxable = base + processingFee`
-4. **GST** (rounded to 0 decimals): `gst = round(taxable × gstPct / 100)`
-5. **Annual premium** (cost per year): `annualPremium = taxable + gst`
-6. **Total commitment** over the full duration (rounded to 0 decimals): `totalCommitment = round(annualPremium × duration)`
+---
 
-> Note: the `gst` percentage is a field of the active `PricingRule`. Seed defaults by product type: HEALTH 0.00%, LIFE 0.00%, MOTOR/TRAVEL/INSURANCE 18.00%. The canonical "18% GST" applies whenever the product type's rule carries 18.
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Service as PremiumCalculationService
+    participant Factory as PremiumCalculatorFactory
+    participant Calculator as PremiumCalculator (Strategy)
+    
+    Client->>Service: calculate(planId, coverage, duration)
+    Service->>Service: Validate rules & fetch active PricingRule
+    Service->>Factory: getCalculator(premiumType)
+    Factory-->>Service: Return specific calculator
+    Service->>Calculator: calculatePremium(inputs)
+    Calculator-->>Service: Return PremiumQuote
+    Service->>Service: Save Quote to DB
+    Service-->>Client: Quote Details
+```
 
-### ANNUAL
+---
 
-`totalPremium = annualPremium` (cost per year). The customer pays `annualPremium` each year, up to `policyDuration` payments. No lump-sum discount is applied: `discountPercentage = 0`, `discountAmount = 0`.
+## Architecture Diagram (if applicable)
+```mermaid
+classDiagram
+    class PremiumCalculator {
+        <<interface>>
+        +calculatePremium(...) PremiumQuote
+    }
+    class AnnualPremiumCalculator {
+        +calculatePremium(...) PremiumQuote
+    }
+    class OneTimePremiumCalculator {
+        +calculatePremium(...) PremiumQuote
+        -getDurationDiscountRate(duration) BigDecimal
+    }
+    class PremiumCalculatorFactory {
+        +getCalculator(premiumType) PremiumCalculator
+    }
+    
+    PremiumCalculator <|.. AnnualPremiumCalculator
+    PremiumCalculator <|.. OneTimePremiumCalculator
+    PremiumCalculatorFactory --> PremiumCalculator : creates
+```
 
-### ONE_TIME
+---
 
-`totalCommitment = annualPremium × duration`, then:
+## Database Design
+N/A - This document focuses on mathematics. The resulting Quote snapshot is stored in the `quotes` table.
 
-7. **Duration discount rate** `d` from the schedule below.
-8. **Discount amount** (rounded to 0 decimals): `discountAmount = round(totalCommitment × d)`
-9. **Final one-time premium** (rounded to 0 decimals):
-   `totalPremium = totalCommitment − discountAmount`
+---
 
-Equivalently `totalPremium = annualPremium × duration × (1 − d)`, computed with intermediate rounding.
+## API Documentation (if applicable)
+- `POST /api/premium/calculate` (Customer)
+- `POST /api/premium/admin/calculate` (Admin)
+- Both return a `PremiumQuote` DTO.
 
-### Duration discount schedule (`OneTimePremiumCalculator.getDurationDiscountRate`)
+---
 
-| Duration (years) | Discount rate |
+## Frontend Implementation (if applicable)
+Handled in `QuoteGenerator.jsx`.
+
+---
+
+## Backend Implementation
+Implemented in `com.insurance.demo.service.strategy.*`.
+
+---
+
+## Business Rules
+
+### Duration Discount Schedule
+Applies ONLY to `ONE_TIME` policies.
+
+| Duration (years) | Discount Rate |
 |---|---|
 | ≤ 1 | 0% |
 | 2 | 2% |
@@ -57,90 +138,102 @@ Equivalently `totalPremium = annualPremium × duration × (1 − d)`, computed w
 | 10 | 12% |
 | 15 | 15% |
 | 20 | 18% |
-| else | 20% |
+| > 20 | 20% |
 
-### Rounding
+---
 
-Every `setScale` in both calculators uses `RoundingMode.HALF_UP` at scale 0 (whole rupees). Money fields are stored `precision 15, scale 2`.
+## Validation Rules
+- Duration must be inside the plan's `allowedDurations`.
+- Coverage must exactly match an active `CoverageOption`.
+- There must be an active `PricingRule` for the plan.
 
-### Admin / preview variants
+---
 
-- **Admin quote**: `POST /api/premium/admin/calculate` (`AdminPremiumCalculationRequest`) calls the same `generateQuoteInternal` and therefore the same strategy math on behalf of a customer.
-- **Pricing preview**: `POST /api/admin/pricing-rules/preview` (`PricingRuleServiceImpl.previewPremium`) is a lightweight, deliberately simplified estimate (`basePremium = coverage × rate`; `gst = processingFee × gstPct`; one-time total = `base + fee + gst`, annual total = `base × duration + fee + gst`). It is **not** the pricing used for quotes/policies — treat it as a quick "what-if" for admins configuring rules. Authoritative quote math is this document.
+## Error Handling
+- Invalid coverage/duration triggers 400 Bad Request (`Invalid duration for this plan`, `Invalid coverage amount selected`).
+- Missing pricing rule triggers 400 Bad Request (`No active pricing rule found for this plan`).
 
-## Workflow
+---
 
-1. Customer/admin selects plan, coverage, duration, premium type.
-2. `PremiumCalculationServiceImpl.generateQuoteInternal` validates plan/product active, duration in `allowedDurations`, premium type supported, coverage matches an active `CoverageOption`, and an active `PricingRule` exists.
-3. `PremiumCalculatorFactory.getCalculator(premiumType)` resolves the strategy bean (`ONE_TIME_CALCULATOR` / `ANNUAL_CALCULATOR`).
-4. Strategy computes the `PremiumQuote`; a `Quote` row is persisted with `premium = annualPremium` and `total = totalPremium`, expiring in 30 minutes.
-5. `Policy.calculatedPremium` = quote `total`; payment must equal it exactly.
+## Design Decisions
 
-### Worked example 1 — ONE_TIME, MOTOR
+- **Why Strategy pattern?** 
+  `ONE_TIME` and `ANNUAL` policies have distinct mathematical pipelines. By abstracting this into `PremiumCalculator` strategies, the core quoting service is decoupled from the math. Adding a new payment structure (e.g., `MONTHLY`) would just require a new strategy class, fulfilling the Open/Closed Principle.
+- **Why HALF_UP rounding?** 
+  Standard commercial rounding. Half rounds to the next highest number. This guarantees consistent, reproducible totals without fractional pennies getting lost in float precision.
+- **Why snapshot at quote time?** 
+  A quote must represent a legally binding offer valid for exactly 30 minutes. If the underlying `PricingRule` changes 5 minutes after a quote is generated, the quote must still honour the math calculated at generation time.
 
-`coverage = 10,00,000`, `rate = 0.030`, `fee = 150`, `gstPct = 18`, `duration = 3`.
+---
 
-- base = 10,00,000 × 0.030 = **30,000**
-- processingFee = **150**
-- taxable = 30,000 + 150 = **30,150**
-- gst = 30,150 × 18 / 100 = 5,427.0 → **5,427**
-- annualPremium = 30,150 + 5,427 = **35,577**
-- totalCommitment = 35,577 × 3 = **106,731**
-- discount (3 yr = 5%) = 106,731 × 0.05 = 5,336.55 → **5,337**
-- **totalPremium = 106,731 − 5,337 = 101,394**
+## Security (if applicable)
+Customers can only quote active plans. Admins have a special endpoint to calculate quotes for inactive/testing plans.
 
-### Worked example 2 — ANNUAL, LIFE
-
-`coverage = 50,00,000`, `rate = 0.008`, `fee = 200`, `gstPct = 0`, `duration = 10`.
-
-- base = 50,00,000 × 0.008 = **40,000**
-- processingFee = **200**
-- taxable = **40,200**
-- gst = 40,200 × 0 / 100 = **0**
-- annualPremium = **40,200**
-- totalCommitment = 40,200 × 10 = **402,000**
-- discount = **0**
-- **totalPremium (per year) = 40,200**
-
-### Worked example 3 — ONE_TIME, HEALTH
-
-`coverage = 5,00,000`, `rate = 0.025`, `fee = 100`, `gstPct = 0`, `duration = 2`.
-
-- base = 5,00,000 × 0.025 = **12,500**
-- processingFee = **100**
-- taxable = **12,600**
-- gst = **0**
-- annualPremium = **12,600**
-- totalCommitment = 12,600 × 2 = **25,200**
-- discount (2 yr = 2%) = 25,200 × 0.02 = **504**
-- **totalPremium = 25,200 − 504 = 24,696**
+---
 
 ## Code References
 
-- `service/strategy/PremiumCalculator.java` — strategy interface.
-- `service/strategy/AnnualPremiumCalculator.java` — ANNUAL math.
-- `service/strategy/OneTimePremiumCalculator.java` — ONE_TIME math and discount schedule.
-- `service/strategy/PremiumCalculatorFactory.java` — strategy resolution.
-- `serviceimpl/PremiumCalculationServiceImpl.java` — orchestration, validation, quote persistence.
-- `serviceimpl/PricingRuleServiceImpl.java` — `previewPremium` (approximation only).
+| Concern | Path |
+|---|---|
+| Strategy Interface | `src/main/java/com/insurance/demo/service/strategy/PremiumCalculator.java` |
+| Annual Strategy | `src/main/java/com/insurance/demo/service/strategy/AnnualPremiumCalculator.java` |
+| One Time Strategy | `src/main/java/com/insurance/demo/service/strategy/OneTimePremiumCalculator.java` |
 
-All under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+---
 
-Implementation detail: `../06_Backend/Premium_Calculation_Service.md`.
+## Interview Notes
+1. **Explain the Strategy Pattern.** It defines a family of algorithms, encapsulates each one, and makes them interchangeable. Here, we use it to swap between Annual and One-Time premium math dynamically based on the plan type.
+2. **How does the system handle currency precision?** Uses `BigDecimal` with scale 0 (whole rupees) and `RoundingMode.HALF_UP` for final amounts. Intermediate rates use precision 10, scale 4.
+3. **What happens if a pricing rule is updated while a user holds a valid quote?** The quote remains valid for its 30-minute window because it holds a snapshot of the rates, not a live reference.
+4. **Why is the Factory pattern used alongside Strategy?** The Factory (`PremiumCalculatorFactory`) resolves which strategy bean (`ONE_TIME_CALCULATOR` vs `ANNUAL_CALCULATOR`) to inject based on the `PremiumType` enum at runtime.
+5. **How is the One-Time discount calculated?** `totalCommitment` (Annual Premium * Duration) minus `discountAmount` (Total Commitment * Discount Rate).
+6. **Why don't we use floats or doubles for money?** They use base-2 floating point representation which cannot accurately represent base-10 decimals, leading to precision loss (e.g., 0.1 + 0.2 = 0.30000000000000004).
 
-## Diagrams
+---
 
-- Quote generation sequence: `../09_Diagrams/Sequence_Diagrams/`.
-- Premium strategy class structure: `../09_Diagrams/Class_Diagrams/`.
+## Worked Examples
 
-## Best Practices
+### 1. ONE_TIME, MOTOR
+`coverage = 10,00,000`, `rate = 0.030`, `fee = 150`, `gstPct = 18`, `duration = 3`.
+1. base = 10,00,000 × 0.030 = **30,000**
+2. processingFee = **150**
+3. taxable = 30,000 + 150 = **30,150**
+4. gst = 30,150 × 18 / 100 = 5,427.0 → **5,427**
+5. annualPremium = 30,150 + 5,427 = **35,577**
+6. totalCommitment = 35,577 × 3 = **106,731**
+7. discount (3 yr = 5%) = 106,731 × 0.05 = 5,336.55 → **5,337**
+8. **totalPremium = 106,731 − 5,337 = 101,394**
 
-- Single calculation path (strategy pattern) keeps ONE_TIME and ANNUAL consistent and testable.
-- All money arithmetic is `BigDecimal` with explicit `HALF_UP` rounding — no floating point.
-- The strategy beans are selected by name (`ONE_TIME_CALCULATOR`/`ANNUAL_CALCULATOR`), so adding a premium type is a new component + bean name.
+### 2. ANNUAL, LIFE
+`coverage = 50,00,000`, `rate = 0.008`, `fee = 200`, `gstPct = 0`, `duration = 10`.
+1. base = 50,00,000 × 0.008 = **40,000**
+2. processingFee = **200**
+3. taxable = **40,200**
+4. gst = 40,200 × 0 / 100 = **0**
+5. annualPremium = **40,200**
+6. totalCommitment = 40,200 × 10 = **402,000**
+7. discount = **0**
+8. **totalPremium (per year) = 40,200**
 
-## Future Improvements
+### 3. ONE_TIME, HEALTH
+`coverage = 5,00,000`, `rate = 0.025`, `fee = 100`, `gstPct = 0`, `duration = 2`.
+1. base = 5,00,000 × 0.025 = **12,500**
+2. processingFee = **100**
+3. taxable = **12,600**
+4. gst = **0**
+5. annualPremium = **12,600**
+6. totalCommitment = 12,600 × 2 = **25,200**
+7. discount (2 yr = 2%) = 25,200 × 0.02 = **504**
+8. **totalPremium = 25,200 − 504 = 24,696**
 
-- Move discount schedule to configuration so rates can change without code changes.
-- Explicit rounding-scale configuration and a full pricing engine.
-- See `../10_Evaluation/Future_Enhancements.md`.
+---
+
+## Related Documents
+- [Business Rules](../02_Business_Domain/Business_Rules.md)
+- [Policy Workflow](../02_Business_Domain/Policy_Workflow.md)
+
+---
+
+## Future Enhancements
+- Move the discount schedule out of code and into the database/configuration to allow dynamic adjustments without recompiling.
+- Explicit rounding-scale configuration at the application property level.

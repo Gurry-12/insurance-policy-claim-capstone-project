@@ -1,245 +1,286 @@
-# Authentication API
+</Agent System Instructions>
+<Authentication API>
+> The secure gateway to InsuranceFlow, managing registration, login, dual-OTP verification, and token lifecycles.
 
-> Public endpoints under `/api/auth` for customer registration, OTP verification, login, password reset, and refresh-token rotation.
+---
 
 ## Purpose
+This document details the Authentication API endpoints for InsuranceFlow. It handles the complete lifecycle of user identity, covering registration, login, JWT issuance, secure token refresh, and password management with dual-OTP (Email/SMS) verification.
 
-Reference for every authentication endpoint in the Insurance Policy & Claim Management System: request bodies, response shapes, validation rules, the HttpOnly refresh-token cookie contract, OTP delivery, and rate limiting. Read by frontend engineers, integration testers, and security reviewers.
+---
 
 ## Overview
+- **Registration & Verification**: Users register and verify identity via a 6-digit OTP sent to email and SMS.
+- **Login & Tokens**: Login issues a short-lived access token (JWT) and a secure HTTP-only refresh token.
+- **Token Refresh**: Seamless renewal of access tokens using the refresh token, with rotation on use.
+- **Password Management**: Forgot/Reset password flows secured by OTP.
+- **Rate Limiting**: Applied via Bucket4j per IP/email to prevent brute force attacks.
 
-All endpoints under `/api/auth/**` are **PUBLIC** — `SecurityConfig` permits them without a JWT (`requestMatchers("/api/auth/**").permitAll()`). The base URL is `http://localhost:8081/api` (backend port **8081**, `/api` prefix).
-
-Two credential systems coexist:
-
-- **Access tokens**: short-lived (default 15 min via `app.security.jwt.expiration-ms`, locally 60 s for dev iteration) stateless JWT (HS256, jjwt) carried in `Authorization: Bearer <token>`. Claims include `roles`, `fullName`, `productSpeciality`, `tokenVersion`; the token version is checked per request so deactivated users are rejected immediately.
-- **Refresh tokens**: opaque, stored in the `refresh_tokens` table, delivered exclusively as an HttpOnly cookie named `refresh_token`, rotated on every use, 7-day TTL.
+---
 
 ## Business Context
+Security is paramount in an insurance system handling sensitive user data and policies. The authentication flow ensures strict identity verification using dual OTPs and secures API access via short-lived JWTs, minimizing the attack surface while maintaining a smooth user experience.
 
-Self-service onboarding is required for customers: they register, prove ownership of email and mobile via dual OTP, and only then can log in. Password resets follow the same dual-OTP proof. Staff and admin accounts are provisioned by an admin (`POST /api/users/staff`) and activate through the same OTP flow. Business rules around account activation, OTP attempts, and session lifecycle are in `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Endpoint matrix
-
-All requests and responses use `application/json`. Auth-related requests are rate-limited per IP+email using Bucket4j (see `AppSecurityProperties`).
-
-| Method | Path | Role | Response envelope | Notes |
-|---|---|---|---|---|
-| POST | `/api/auth/register` | PUBLIC | `ApiResponseDTO<UserResponseDTO>` | `201 Created`; sends OTPs to email + phone |
-| POST | `/api/auth/verify-otp` | PUBLIC | `ApiResponseDTO<UserResponseDTO>` | Activates the account |
-| POST | `/api/auth/resend-otp` | PUBLIC | `ApiResponseDTO<ResendOtpResponseDTO>` | Only when the previous OTP expired |
-| POST | `/api/auth/login` | PUBLIC | `ApiResponseDTO<LoginResponseDTO>` | Sets the `refresh_token` cookie |
-| POST | `/api/auth/forgot-password` | PUBLIC | `ApiResponseDTO<String>` | Sends password-reset OTPs |
-| POST | `/api/auth/reset-password` | PUBLIC | `ApiResponseDTO<String>` | Resets password with both OTPs |
-| POST | `/api/auth/refresh` | Cookie only | `ApiResponseDTO<RefreshResponseDTO>` | Rotates the refresh cookie |
-| POST | `/api/auth/logout` | Cookie only | `ApiResponseDTO<String>` | Revokes token, clears cookie |
-
-### Request bodies
-
-#### POST /api/auth/register
-
-`UserRequestDTO`:
-
-```json
-{
-  "fullName": "Neha Desai",
-  "email": "neha.desai@example.com",
-  "password": "Customer@123",
-  "mobileNumber": "+919877889900"
-}
+## Feature Flow
+```mermaid
+flowchart TD
+    A[User Submits Credentials] --> B{Login or Register?}
+    B -- Register --> C[Create Pending User]
+    C --> D[Generate & Send OTP (Email/SMS)]
+    D --> E[User Enters OTP]
+    E --> F{OTP Valid?}
+    F -- Yes --> G[Activate Account]
+    F -- No --> H[Reject Registration]
+    
+    B -- Login --> I[Verify Credentials]
+    I --> J{Valid?}
+    J -- No --> K[Reject Login]
+    J -- Yes --> L[Issue Access JWT & HTTP-Only Refresh Token]
 ```
 
-Validation (from `UserRequestDTO.java`):
+---
 
-| Field | Rule |
+## System Flow
+```mermaid
+flowchart TD
+    A[React Client] --> B[AuthController]
+    B --> C[AuthService]
+    C --> D[UserRepository]
+    C --> E[OtpService (Email/SMS)]
+    C --> F[JwtTokenProvider]
+    C --> G[RefreshTokenService]
+    G --> H[(MySQL Database)]
+    F --> I[(Redis - Blacklist/Cache)]
+```
+
+---
+
+## Sequence Diagram
+> [!NOTE]
+> Please refer to `../02_Business_Domain/Authentication_Flow.md` for the comprehensive authentication sequence diagrams.
+
+---
+
+## Database Design
+- **Users Table**: Stores identity, hashed passwords, roles, and status (PENDING/ACTIVE).
+- **Refresh_Tokens Table**: Stores opaque hashed tokens mapped to users, with expiry and rotation tracking.
+
+---
+
+## API Documentation
+
+### 1. Register User
+| Field | Value |
 |---|---|
-| `fullName` | required, 2–100 chars, letters/spaces only (`^[a-zA-Z\s]*$`) |
-| `email` | required, valid email |
-| `password` | required, `^(?=.*[A-Za-z])(?=.*\d).{8,64}$` — 8–64 chars, at least one letter and one digit |
-| `mobileNumber` | required, international format `^\+[1-9]\d{7,14}$` (e.g. `+919877889900`) |
+| Purpose | Initiates user registration. Account created in PENDING state. |
+| Method | POST |
+| URL | `/api/auth/register` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com", "password": "...", "phone": "..." }` |
+| Response | `ApiResponseDTO` with user details |
+| Validation | Valid email, strong password (regex), valid phone number |
+| Possible Errors | `400 Email already in use` |
+| Business Logic | Hashes password, saves user as PENDING, generates 6-digit OTP, sends via Email & SMS. |
+| Frontend Screen | Register Page |
 
-#### POST /api/auth/verify-otp
+### 2. Verify OTP
+| Field | Value |
+|---|---|
+| Purpose | Verifies the OTP sent during registration or password reset. |
+| Method | POST |
+| URL | `/api/auth/verify-otp` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com", "otp": "123456", "context": "REGISTER" }` |
+| Response | `ApiResponseDTO` indicating success |
+| Validation | OTP must be 6 digits |
+| Possible Errors | `400 Invalid OTP`, `400 OTP Expired`, `400 Max attempts reached` |
+| Business Logic | Checks Redis/DB for OTP match, validates expiry (5 min) and attempts (<5). Activates user if registration context. |
+| Frontend Screen | OTP Verification Modal |
 
-`VerifyOtpRequest`:
+### 3. Resend OTP
+| Field | Value |
+|---|---|
+| Purpose | Generates and sends a new OTP. |
+| Method | POST |
+| URL | `/api/auth/resend-otp` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com", "context": "REGISTER" }` |
+| Response | `ApiResponseDTO` |
+| Validation | Email format |
+| Possible Errors | `404 User not found`, `429 Rate limit exceeded` |
+| Business Logic | Invalidates old OTP, generates new 6-digit OTP, resets attempts. |
+| Frontend Screen | OTP Verification Modal |
 
-```json
-{
-  "email": "neha.desai@example.com",
-  "emailOtp": "123456",
-  "phoneOtp": "654321"
-}
-```
+### 4. Login
+| Field | Value |
+|---|---|
+| Purpose | Authenticates user and issues tokens. |
+| Method | POST |
+| URL | `/api/auth/login` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com", "password": "..." }` |
+| Response | `ApiResponseDTO` containing Access JWT in body and Refresh Token in HTTP-only Cookie. |
+| Validation | Non-empty fields |
+| Possible Errors | `401 Bad credentials`, `403 Account not verified` |
+| Business Logic | Authenticates via AuthenticationManager, generates 15-min JWT, generates 7-day refresh token, attaches secure cookie. |
+| Frontend Screen | Login Page |
 
-Both OTPs are required and verified against the `otp_verifications` record.
+### 5. Refresh Token
+| Field | Value |
+|---|---|
+| Purpose | Renews the access token using a valid refresh token. |
+| Method | POST |
+| URL | `/api/auth/refresh` |
+| Auth Required | No (Relies on Cookie) |
+| Request Body | None |
+| Response | `ApiResponseDTO` with new Access JWT, new Refresh Token Cookie. |
+| Validation | Valid HTTP-Only Cookie present |
+| Possible Errors | `401 Refresh token expired`, `401 Invalid token` |
+| Business Logic | Validates refresh token from cookie, checks DB. Rotates token (invalidates old, issues new), generates new JWT. |
+| Frontend Screen | Handled silently by Axios Interceptor |
 
-#### POST /api/auth/resend-otp
+### 6. Logout
+| Field | Value |
+|---|---|
+| Purpose | Ends the user session. |
+| Method | POST |
+| URL | `/api/auth/logout` |
+| Auth Required | Yes |
+| Request Body | None |
+| Response | `ApiResponseDTO` |
+| Validation | Valid Access Token in header |
+| Possible Errors | `401 Unauthorized` |
+| Business Logic | Blacklists current access JWT in Redis, deletes refresh token from DB, clears HTTP-only cookie. |
+| Frontend Screen | Navbar/Sidebar Logout Button |
 
-`ResendOtpRequestDTO`:
+### 7. Forgot Password
+| Field | Value |
+|---|---|
+| Purpose | Initiates password reset flow. |
+| Method | POST |
+| URL | `/api/auth/forgot-password` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com" }` |
+| Response | `ApiResponseDTO` |
+| Validation | Valid email |
+| Possible Errors | `404 Email not found` |
+| Business Logic | Generates and sends OTP (context: RESET_PASSWORD). |
+| Frontend Screen | Forgot Password Page |
 
-```json
-{
-  "email": "meena.iyer@example.com",
-  "phone": "+919866778899"
-}
-```
+### 8. Reset Password
+| Field | Value |
+|---|---|
+| Purpose | Sets a new password after OTP verification. |
+| Method | POST |
+| URL | `/api/auth/reset-password` |
+| Auth Required | No |
+| Request Body | `{ "email": "x@x.com", "newPassword": "..." }` |
+| Response | `ApiResponseDTO` |
+| Validation | Password strength regex |
+| Possible Errors | `403 OTP not verified yet` |
+| Business Logic | Checks if reset flow is authorized (OTP verified flag in Redis), hashes new password, updates DB. |
+| Frontend Screen | Reset Password Page |
 
-Rejected with `400` while a valid OTP is still active; resend cooldown is 60 s.
+---
 
-#### POST /api/auth/login
+### OTP Lifecycle Table
+| Phase | Action |
+|---|---|
+| Generation | 6 random digits, mapped to Email + Context. |
+| Transmission | Sent concurrently via Gmail SMTP and Twilio SMS. |
+| Validation | Checked against stored value. Fails if attempts > 5. |
+| Expiration | Hard expiry at 5 minutes (TTL via Redis). |
 
-`LoginRequestDTO`:
+### Token Lifecycle Table
+| Token Type | Storage | TTL | Behavior on Rotation/Expiry |
+|---|---|---|---|
+| Access Token (JWT) | Memory (Frontend) | 15 min | Must call `/refresh` endpoint when expired. |
+| Refresh Token | DB (Backend) & HTTP-Only Cookie (Client) | 7 days | Rotated (replaced) upon every successful refresh call. |
 
-```json
-{
-  "email": "rajesh.sharma@example.com",
-  "password": "Customer@123"
-}
-```
+---
 
-Successful login returns `200` with an `ApiResponseDTO<LoginResponseDTO>` and sets the `refresh_token` cookie. The refresh token is `@JsonIgnore` in the DTO — it is **never** present in the JSON body.
+## Frontend Implementation
+- **Pages**: `src/pages/auth/Login.jsx`, `Register.jsx`, `ForgotPassword.jsx`
+- **Context**: `AuthContext.jsx` manages global user state and role.
+- **Interceptors**: Axios handles 401s by pausing queued requests, calling `/api/auth/refresh`, and retrying.
 
-```json
-{
-  "message": "User logged in successfully.",
-  "success": true,
-  "data": {
-    "userId": 4,
-    "fullName": "Rajesh Sharma",
-    "email": "rajesh.sharma@example.com",
-    "role": "ROLE_CUSTOMER",
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
-    "tokenType": "Bearer"
-  },
-  "timeStamp": "2026-08-03T10:00:00"
-}
-```
+---
 
-The user must be active and email/phone verified before login succeeds.
+## Backend Implementation
+- **Controllers**: `AuthController.java`
+- **Services**: `AuthService.java`, `JwtService.java`, `RefreshTokenService.java`, `OtpService.java`
+- **Security**: Filters in `SecurityConfig.java`, Token parsing in `JwtAuthenticationFilter.java`
 
-#### POST /api/auth/forgot-password
+---
 
-`ForgotPasswordRequestDTO` — only `email`.
+## Business Rules
+| Rule | Reason |
+|---|---|
+| Dual OTP Verification | Ensures high assurance of identity for insurance operations. |
+| Refresh Token Rotation | If a refresh token is stolen, using it invalidates the chain, alerting the user to re-authenticate. |
+| Token Blacklisting | Allows immediate session termination upon logout, mitigating JWT's stateless nature. |
 
-```json
-{ "email": "rajesh.sharma@example.com" }
-```
+---
 
-#### POST /api/auth/reset-password
+## Validation Rules
+- **Passwords**: Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.
+- **OTP**: Strictly 6 numeric characters.
 
-`ResetPasswordRequestDTO`:
+---
 
-```json
-{
-  "email": "rajesh.sharma@example.com",
-  "emailOtp": "123456",
-  "phoneOtp": "654321",
-  "newPassword": "NewPass@123"
-}
-```
+## Error Handling
+- Invalid login returns generic `Bad credentials` to prevent account enumeration.
+- Rate limiting returns `429 Too Many Requests`.
 
-`newPassword` follows the same rule as registration (8–64 chars, letters + digits).
+---
 
-#### POST /api/auth/refresh
+## Design Decisions
+1. **Why HTTP-Only Cookies for Refresh Tokens?**
+   Prevents XSS attacks from accessing the long-lived refresh token.
+2. **Why rotate refresh tokens on every use?**
+   It allows the system to detect token theft. If an old token is reused, the entire token family is revoked.
+3. **Why Dual OTP?**
+   Insurance platforms require high trust; verifying both email and phone covers base communication channels.
 
-No request body. Requires the `refresh_token` HttpOnly cookie; a missing or blank cookie returns `401` "Session expired. Please sign in again."
-
-Response is `ApiResponseDTO<RefreshResponseDTO>`:
-
-```json
-{
-  "message": "Session refreshed successfully.",
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "tokenType": "Bearer"
-  },
-  "timeStamp": "2026-08-03T10:10:00"
-}
-```
-
-The rotated refresh token is written back into the cookie by the controller.
-
-#### POST /api/auth/logout
-
-No request body. Revokes the refresh token server-side and clears the `refresh_token` cookie.
-
-### The refresh_token cookie contract
-
-Set by `RefreshTokenCookieManager`:
-
-| Attribute | Value | Rationale |
-|---|---|---|
-| Name | `refresh_token` | constant `COOKIE_NAME` |
-| HttpOnly | `true` | not readable by JavaScript (XSS mitigation) |
-| Path | `/api/auth` | cookie is only ever sent to refresh and logout |
-| SameSite | `Lax` | not attached to cross-site POSTs (CSRF mitigation) |
-| Secure | `app.security.jwt.refresh-cookie-secure` | `false` in dev, must be `true` over HTTPS |
-| Max-Age | 7 days | `app.security.jwt.refresh-token-ttl-days` |
-
-Refresh tokens are **rotated on every use**: each `login` and `refresh` issues a new token and writes it to the cookie. Reuse of a rotated (already consumed) token revokes the entire token family. A `CookieCsrfOriginFilter` additionally validates the `Origin` header on `POST /api/auth/refresh` and `POST /api/auth/logout`, returning `403` on mismatch.
-
-**Client requirement**: browsers only store/send the cookie when requests are made with `withCredentials: true` (axios `withCredentials`), and the server's CORS configuration must allow the frontend origin (`http://localhost:5173`).
-
-### OTP delivery
-
-- 6-digit OTPs generated per user per channel.
-- Email OTP via Gmail SMTP; SMS OTP via Twilio.
-- In local development, when Twilio is not configured, the SMS OTP is logged to the server console; both OTPs are also readable from the `otp_verifications` table.
-- OTP validity 5 minutes, max 5 attempts, resend cooldown 60 s.
-
-### Rate limits
-
-Per-IP+email Bucket4j buckets on all `/api/auth` mutating endpoints. Default capacity 5, refill 5/min (see `AppSecurityProperties.RateLimit`). Exceeding the bucket returns `429` with `errorType: "RATE_LIMITED"`.
-
-### 401 handling and the refresh dance
-
-| Scenario | HTTP | Message |
-|---|---|---|
-| Missing/expired/invalid access token | `401` | "Authentication failed. Please login again." |
-| Missing refresh cookie on `/refresh` | `401` | "Session expired. Please sign in again." |
-| Bad credentials | `401` | "Invalid credentials or account unavailable." |
-| Rate limit exceeded | `429` | rate-limit message |
-
-The SPA client (`src/api/axiosInstance.js`) reacts to `401` by running a **single-flight refresh**: it calls `POST /api/auth/refresh` once (cookie included) and replays the failed request a single time. If the refresh fails, the client dispatches `auth:unauthorized` and routes the user to `/login`. `403` dispatches `auth:forbidden`.
-
-## Workflow
-
-1. Register a customer: `POST /api/auth/register`.
-2. Activate the account: `POST /api/auth/verify-otp` with both OTPs.
-3. (Optional) resend expired OTPs: `POST /api/auth/resend-otp`.
-4. Log in: `POST /api/auth/login`; store the access token in memory (`src/api/tokenStore.js`) and keep the refresh cookie.
-5. On `401`, call `POST /api/auth/refresh` (cookie) and retry.
-6. Log out: `POST /api/auth/logout`; clear the local session.
-7. Forgotten password: `POST /api/auth/forgot-password`, then `POST /api/auth/reset-password`.
+---
 
 ## Code References
-
-| Concern | Path |
+| Component | Path |
 |---|---|
-| Controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/AuthController.java` |
-| Security rules | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/SecurityConfig.java` |
-| Refresh cookie | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/RefreshTokenCookieManager.java` |
-| Rate limits | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/RateLimitFilter.java`, `config/AppSecurityProperties.java` |
-| CSRF origin check | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/CookieCsrfOriginFilter.java` |
-| Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{UserRequestDTO,VerifyOtpRequest,ResendOtpRequestDTO,LoginRequestDTO,ForgotPasswordRequestDTO,ResetPasswordRequestDTO}.java` |
-| Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{LoginResponseDTO,RefreshResponseDTO,ResendOtpResponseDTO,UserResponseDTO}.java` |
-| Sample payloads | `demo-data/api-test-payloads/01-auth.md` |
+| Auth Controller | `com.insurance.demo.controller.AuthController` |
+| JWT Utilities | `com.insurance.demo.security.JwtUtils` |
+| OTP Service | `com.insurance.demo.service.OtpService` |
 
-## Diagrams
+---
 
-Refresh-token lifecycle and the 401 refresh dance are covered in `../09_Diagrams/` and `../08_Workflows/Authentication_Flow.md`.
+## Interview Notes
+1. **Q: How do you prevent brute-force attacks on the login API?**
+   **A:** By implementing Bucket4j rate limiting based on IP and email, along with tracking failed attempts.
+2. **Q: Explain the token refresh flow.**
+   **A:** When the short-lived JWT expires, the frontend intercepts the 401, calls the `/refresh` endpoint, which reads the HTTP-only cookie, validates the refresh token in the database, rotates it, and issues a new JWT.
+3. **Q: Why not store the JWT in local storage?**
+   **A:** Local storage is vulnerable to XSS. We store the short-lived JWT in memory, and the long-lived refresh token in an HTTP-only cookie.
+4. **Q: What happens if a refresh token is stolen?**
+   **A:** Due to refresh token rotation, when the legitimate user or attacker uses an invalidated token, the system detects a breach and revokes all tokens for that user.
+5. **Q: How does OTP verification work across distributed servers?**
+   **A:** OTPs are stored in Redis with a 5-minute TTL, making them accessible across all instances of the application.
+6. **Q: How do you handle JWT revocation on logout since JWTs are stateless?**
+   **A:** We add the JWT's unique identifier (JTI) to a Redis blacklist with a TTL matching its remaining validity time.
+7. **Q: How are passwords stored?**
+   **A:** Passwords are hashed using BCrypt before storing in the database.
+8. **Q: Why use a dedicated PENDING status for new users?**
+   **A:** It prevents unverified users from accessing the system while retaining their registration details for OTP verification.
 
-## Best Practices
+---
 
-- Refresh tokens never travel in JSON; HttpOnly + SameSite=Lax + path-scoped cookie is defense-in-depth.
-- Rotation plus family revocation bounds the impact of a stolen cookie.
-- Dual-channel OTP plus per-IP+email rate limiting mitigates account takeover and brute force.
-- Token-version checking on every request immediately blocks deactivated users.
+## Related Documents
+- `../02_Business_Domain/Authentication_Flow.md`
+- `API_Flow.md`
 
-## Future Improvements
+---
 
-- Enable `refresh-cookie-secure` and HSTS once deployed behind TLS.
-- Consider keyed rate-limit buckets per account in addition to IP.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+## Future Enhancements
+- Add WebAuthn/Passkey support for passwordless login.
+</Authentication API>

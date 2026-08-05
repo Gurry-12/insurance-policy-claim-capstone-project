@@ -1,154 +1,231 @@
 # Authentication Flow
+> The authoritative end-to-end authentication narrative: registration, dual OTP verification, login with JWT and refresh-token cookie, session restoration, and password reset.
 
-> The authoritative end-to-end authentication narrative: registration, dual email + phone OTP verification, login with JWT access token and rotating refresh-token cookie, session restoration, logout, and the forgot/reset password loop.
+---
 
 ## Purpose
+Describes how a user goes from an anonymous visitor to an authenticated, verified actor in the Insurance Policy & Claim Management System. This document covers the sub-flows for registration, login, silent token refresh, logout, and password recovery. 
 
-Describes how a user goes from anonymous visitor to authenticated, verified actor in the Insurance Policy & Claim Management System. It is the flow-level companion to the endpoint reference (`../03_API/Authentication_API.md`) and the token mechanics reference (`../06_Backend/JWT.md`). Business rules governing OTP attempts and rate limits live in `../02_Business_Domain/Business_Rules.md`.
+---
 
 ## Overview
+- **Self-Service Registration:** Customers register themselves and must verify both email (via Gmail SMTP) and phone (via Twilio SMS) before the account is activated.
+- **Login:** Issues a short-lived, stateless access token (JWT) to memory and a long-lived, opaque refresh token as an HttpOnly cookie.
+- **Session Restoration:** Axios interceptors silently refresh the JWT using the secure cookie upon token expiration (60 seconds in dev).
+- **Security First:** Rate-limiting, dual-OTP validation, token rotation on use, and instant session invalidation via `tokenVersion` claims.
 
-Every human actor — customer, internal staff, admin — authenticates the same way once provisioned. Customers self-register; staff are provisioned by an admin; the seeded admin exists from boot. An account only becomes usable after **both** the email OTP and the phone OTP are verified. After that, login issues a short-lived stateless JWT (access token) plus an opaque refresh token delivered exclusively as an HttpOnly cookie. When the access token expires (60 seconds in the committed local profile, 15 minutes by default), the frontend silently refreshes via the cookie. Logout revokes the refresh token and clears the cookie.
+---
 
 ## Business Context
+Self-service onboarding is a core requirement. Customers register and prove ownership of their contact channels. Dual-OTP verification prevents fraudulent account creation and is used to reset a forgotten password. From a security perspective, session invalidation must be immediate and stateless. Deactivating a user or resetting a password increments the `tokenVersion` claim in the database, invalidating all outstanding access and refresh tokens simultaneously.
 
-Self-service onboarding is a core requirement: customers register, prove ownership of an email address and a mobile number, and only then can transact. Dual-OTP verification prevents account creation with unowned contact channels and is the same proof used to reset a forgotten password. Session invalidation must be immediate and stateless: deactivating a user or resetting a password bumps the `tokenVersion` claim so every outstanding access token and refresh token stops working at once.
+---
 
-## Technical Design
+## Feature Flow
 
-### Flow steps
+```mermaid
+flowchart TD
+    Start([User Registration]) --> Validate[Validate Email & Mobile]
+    Validate -- Valid --> SendOTP[Send Email & SMS OTP]
+    SendOTP --> InputOTP[User Inputs OTPs]
+    InputOTP --> VerifyOTP{Verify Both OTPs?}
+    
+    VerifyOTP -- No --> Failure[Decrement Attempts, Fail]
+    VerifyOTP -- Yes --> Active[Account ACTIVE]
+    
+    Active --> Login([User Login])
+    Login --> AuthCheck{Credentials OK?}
+    AuthCheck -- No --> LoginFail[INVALID_CREDENTIALS]
+    AuthCheck -- Yes --> Tokens[Issue JWT & Refresh Cookie]
+    
+    Tokens --> Access[Make API Calls]
+    Access --> CheckExpiry{JWT Expired?}
+    CheckExpiry -- Yes --> Refresh[Silent Refresh via Cookie]
+    Refresh --> NewTokens[Issue New JWT & Rotated Cookie]
+    CheckExpiry -- No --> Success[API Response]
+    
+    Success --> Logout([Logout])
+    Logout --> ClearTokens[Revoke Token, Clear Cookie]
+    ClearTokens --> End([Unauthenticated])
+```
 
-1. **Register** — `POST /api/auth/register` (`AuthServiceImpl.registerUser`). Validates email/mobile uniqueness, hashes the password (BCrypt), creates the `AppUser` with `Role.ROLE_CUSTOMER`, `isActive=false`, `emailVerified=false`, `phoneVerified=false`, and an empty `Customer` profile. `OtpService.createAndSendOtp` generates two independent 6-digit OTPs and sends them (email via Gmail SMTP, SMS via Twilio). The account is inert until verified.
-2. **Verify** — `POST /api/auth/verify-otp` with `{email, emailOtp, phoneOtp}`. `OtpService.verifyOtp` requires **both** OTPs to match the latest unexpired record. On success `emailVerified=true`, `phoneVerified=true`, `isActive=true` — the account is now `ACTIVE`.
-3. **Resend** — `POST /api/auth/resend-otp` (`email` + `phone`). Re-sends the still-valid OTP (or regenerates one if the previous is expired/used). Blocked for active accounts and by the throttles below.
-4. **Login** — `POST /api/auth/login`. Rejects unknown email, unverified email, unverified phone, and deactivated accounts with generic `INVALID_CREDENTIALS`. On success: a JWT access token is returned in the body and the refresh token is set as the HttpOnly cookie.
-5. **Authorized requests** — the access token is sent as `Authorization: Bearer <token>`; `JwtAuthenticationFilter` validates signature, issuer, expiry (30 s clock skew), subject, and `tokenVersion` per request.
-6. **Refresh** — on a `401`, the frontend calls `POST /api/auth/refresh` (cookie only). The presented token is rotated atomically; a fresh access token is returned and a new refresh cookie is set.
-7. **Logout** — `POST /api/auth/logout` revokes the presented refresh token and clears the cookie.
-8. **Forgot password** — `POST /api/auth/forgot-password` always returns success (unknown emails get the same response to avoid account enumeration) and, when the account exists, sends fresh dual OTPs.
-9. **Reset password** — `POST /api/auth/reset-password` verifies both OTPs, re-hashes the new password, increments `tokenVersion` (invalidating all outstanding JWTs), and revokes all active refresh tokens for the user.
+---
 
-### OTP lifecycle (code-verified)
+## System Flow
 
-| Property | Value |
-|---|---|
-| Length | 6 digits, `SecureRandom` |
-| Expiry | 5 minutes (`app.otp.expiry-minutes=5`), checked against `OtpVerification.expiresAt` |
-| Attempts | Max 5; each wrong email or wrong phone OTP records a failed attempt, and after `app.security.max-otp-attempts=5` the OTP is marked used. Remaining attempts are never exposed to the client. |
-| Resend cooldown | 60 seconds since last send (`OTP_RETRY_WAIT`) |
-| Daily per-user cap | OTP sends are limited to 4 in any rolling 24-hour window (initial send + up to 3 resends) — `OTP_LIMIT_EXCEEDED` |
-| Endpoint rate limit | Bucket4j per client IP + email: OTP endpoints 5/min (capacity/refill 5), register 5/min, login 5/min, forgot 3/min, reset 5/min, refresh 10/min (`application.properties` `app.security.rate-limit.*`) |
-| SMS fallback | When Twilio is not configured (`app.twilio.*` blank), `SmsService` logs the phone OTP to the console: "Twilio is not configured. Phone OTP for {phone} is {otp}" |
-| Resend semantics | An unexpired OTP is re-sent as-is; an expired or used OTP triggers a new pair |
+```mermaid
+flowchart TD
+    Front[Frontend React] -->|POST /api/auth/login| Ctrl[AuthController]
+    Ctrl --> Svc[AuthServiceImpl]
+    Svc --> Rep[UserRepository]
+    Rep --> DB[(MySQL DB)]
+    DB -->|AppUser Record| Rep
+    Rep --> Svc
+    Svc --> JwtSvc[JwtService]
+    JwtSvc -->|Generate Access Token| Svc
+    Svc --> RefreshSvc[RefreshTokenService]
+    RefreshSvc -->|Create Refresh Token| Svc
+    Svc --> Ctrl
+    Ctrl -->|Access Token + Set-Cookie| Front
+```
 
-### Token lifecycle
+---
 
-- **Access token**: HS256 JWT (`jjwt`), claims `roles`/`fullName`/`productSpeciality`/`tokenVersion` (the token payload carries `sub`, `iss`, `iat`, `exp`, `jti`, `role`, `tokenVersion`). Expiry: 15 minutes by default (`app.security.jwt.expiration-ms=900000`); the committed local `application.properties` sets `60000` ms = **60 seconds** for faster dev iteration. Stored in memory only on the client (never `localStorage`).
-- **Refresh token**: opaque 256-bit random value, stored as a SHA-256 hash in `refresh_tokens`, delivered as the HttpOnly `refresh_token` cookie scoped to `Path=/api/auth`, 7-day TTL. Rotated on every use; presenting an already-rotated (revoked) token is treated as a replay and revokes the user's entire session family. `POST /api/auth/refresh` rotates; `POST /api/auth/logout` revokes.
-- **Silent restore**: on app boot, if `ss_has_session` is set, `AuthContext` calls `/auth/refresh` to obtain a fresh access token from the cookie.
-- **Frontend refresh**: `src/api/axiosInstance.js` runs a single-flight refresh on any non-auth `401`, retries the original request once, and dispatches `auth:token-refreshed` / `auth:unauthorized` / `auth:forbidden` / `api:error` events.
-
-### Endpoints
-
-All under `POST /api/auth/*` (public, backend port **8081**, `/api` prefix). Full contracts: `../03_API/Authentication_API.md`.
-
-| Path | Purpose |
-|---|---|
-| `/register` | Create customer account, send dual OTPs |
-| `/verify-otp` | Verify email + phone OTP, activate account |
-| `/resend-otp` | Resend OTPs |
-| `/login` | Authenticate, issue access token + refresh cookie |
-| `/refresh` | Rotate refresh cookie, return fresh access token |
-| `/logout` | Revoke refresh token, clear cookie |
-| `/forgot-password` | Send password-reset OTPs |
-| `/reset-password` | Verify OTPs, set new password, invalidate sessions |
-
-## Workflow
-
-1. User opens `/register`, submits full name, email, 10-digit mobile, password (8–64 chars, at least one letter and one digit). Frontend guards password strength and mobile format; backend re-validates.
-2. Backend creates the inactive account and sends the email OTP + phone OTP (console fallback when Twilio is unconfigured).
-3. User opens `/verify-otp` (the emailed staff link deep-links there) and enters both 6-digit codes. Both must pass within 5 minutes; wrong attempts consume the attempt budget.
-4. Account flips to `ACTIVE`; the UI redirects to `/login`.
-5. On login the JWT is stored in memory and `ss_user`/`ss_has_session` markers are set. The refresh cookie is set by the browser.
-6. Requests carry `Bearer <access>`. At 60 s (local) the token expires; the first `401` triggers `/auth/refresh` and a silent retry.
-7. On logout the refresh token is revoked server-side, the cookie is cleared, and the client wipes its in-memory token and markers.
-8. Forgotten password: `/forgot-password` → both OTPs arrive → `/reset-password` (email + phone OTP + new password) → session family revoked, user signs in again.
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
-    participant U as User / Browser
-    participant F as Frontend (React)
-    participant A as AuthController / AuthServiceImpl
+    participant U as User
+    participant F as Frontend (Axios)
+    participant A as AuthController
     participant O as OtpService
     participant R as RefreshTokenService
+    participant DB as Database
 
-    U->>F: Submit /register
-    F->>A: POST /api/auth/register (email, mobile, password)
-    A->>A: Hash password, save inactive user + empty Customer
-    A->>O: createAndSendOtp(user)
-    O-->>U: Email OTP (SMTP) + Phone OTP (Twilio / console)
-    U->>F: Enter both OTPs on /verify-otp
-    F->>A: POST /api/auth/verify-otp (emailOtp, phoneOtp)
-    A->>O: verifyOtp(user, emailOtp, phoneOtp)
-    O-->>A: both match, not expired, attempts < 5
-    A->>A: emailVerified=true, phoneVerified=true, isActive=true
-    A-->>F: 200 ACCOUNT_ACTIVATED
-    U->>F: /login
+    %% Registration & OTP
+    U->>F: Submit /register (email, mobile, password)
+    F->>A: POST /api/auth/register
+    A->>DB: Save User (isActive=false)
+    A->>O: generateAndSendOtp()
+    O-->>U: Email (SMTP) + SMS (Twilio) OTPs
+    U->>F: Enter both OTPs
+    F->>A: POST /api/auth/verify-otp
+    A->>O: Verify both OTPs
+    A->>DB: Set isActive=true, phoneVerified=true, emailVerified=true
+    A-->>F: 200 OK
+
+    %% Login & Tokens
+    U->>F: Login
     F->>A: POST /api/auth/login
-    A->>R: createRefreshToken(user)
-    A-->>F: access token (JWT) + Set-Cookie refresh_token (HttpOnly)
-    F->>A: GET /api/... (Authorization: Bearer JWT)
-    Note over A: tokenVersion checked per request
-    alt JWT expired (60 s locally)
-        F->>A: POST /api/auth/refresh (cookie)
-        A->>R: rotate(rawToken)
-        A-->>F: new access token + rotated refresh cookie
-    end
-    U->>F: Logout
-    F->>A: POST /api/auth/logout (cookie)
-    A->>R: revoke(rawToken)
-    A-->>F: 200 + Clear-Cookie refresh_token
+    A->>A: Validate credentials
+    A->>R: createRefreshToken()
+    R->>DB: Save hashed refresh token
+    A-->>F: Access Token (JWT) + HttpOnly Refresh Cookie
 
-    alt Forgot password
-        U->>F: /forgot-password
-        F->>A: POST /api/auth/forgot-password (email)
-        A->>O: sendOrResendOtp(user)
-        O-->>U: fresh dual OTPs
-        U->>F: /reset-password (both OTPs + new password)
-        F->>A: POST /api/auth/reset-password
-        A->>A: verify OTPs, bump tokenVersion, revokeAllForUser
-        A-->>F: 200 PASSWORD_RESET_SUCCESS
+    %% Access & Silent Refresh
+    F->>A: GET /api/user (Bearer JWT)
+    alt JWT Expired
+        A-->>F: 401 Unauthorized
+        F->>A: POST /api/auth/refresh (Cookie)
+        A->>R: rotateRefreshToken()
+        R->>DB: Revoke old, save new token
+        A-->>F: New JWT + New Refresh Cookie
+        F->>A: Retry GET /api/user (Bearer New JWT)
     end
+    A-->>F: 200 API Response
+
+    %% Logout
+    U->>F: Logout
+    F->>A: POST /api/auth/logout (Cookie)
+    A->>R: revokeToken()
+    R->>DB: Delete/Revoke Refresh Token
+    A-->>F: 200 OK + Clear-Cookie
 ```
 
-## Code References
+---
 
-- `controller/AuthController.java` — `/api/auth` endpoints, cookie handling.
-- `serviceimpl/AuthServiceImpl.java` — register, login, verify, resend, forgot/reset orchestration.
-- `verification/OtpService.java`, `verification/OtpAttemptRecorder.java`, `verification/EmailService.java`, `verification/SmsService.java` — OTP generation, delivery, attempts.
-- `security/JwtService.java`, `security/RefreshTokenService.java`, `security/JwtAuthenticationFilter.java`, `security/CustomUserDetailsService.java` — token mechanics.
-- `config/RefreshTokenCookieManager.java`, `config/RateLimitFilter.java`, `config/AppSecurityProperties.java`, `config/DataInitializer.java` — cookie, throttles, seed admin.
-- `config/SecurityAuditLogger.java` — `LOGIN_SUCCESS/FAILED`, `ACCOUNT_ACTIVATED/DEACTIVATED`, `REFRESH_*`, `PASSWORD_RESET`, `LOGOUT` events.
-- Frontend: `src/pages/auth/{Register,VerifyOtp,Login,ForgotPassword}.jsx`, `src/context/AuthContext.jsx`, `src/api/axiosInstance.js`, `src/api/tokenStore.js`.
+## Database Design
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+| Entity | Purpose | Relationships |
+|---|---|---|
+| `AppUser` | Core user identity (Admin, Staff, Customer). | One-to-One with `Customer` or `StaffSpeciality`. |
+| `OtpVerification` | Stores OTP codes, expiry, attempts. | Linked by email/phone. |
+| `RefreshToken` | Tracks refresh sessions per user. | Many-to-One to `AppUser`. |
 
-## Diagrams
+**Why this design?**
+Storing OTPs in the DB allows for rate-limiting, attempt-tracking, and robust multi-channel verification. Hashing refresh tokens ensures that a database leak doesn't expose active sessions.
 
-- Token lifecycle sequence (access/refresh): `../06_Backend/JWT.md`.
-- Request/response flows per endpoint: `../03_API/Authentication_API.md`.
-- Activity diagrams for account onboarding: `../09_Diagrams/Activity_Diagrams/`.
+---
 
-## Best Practices
+## Business Rules
 
-- Generic failure messages (`INVALID_CREDENTIALS`, uniform forgot-password response) prevent account enumeration.
-- Dual-channel OTP with attempt budgets, resend cooldowns, and per-IP+email buckets makes brute force impractical.
-- `tokenVersion` gives instant, stateless revocation of every outstanding credential on deactivation or password reset.
-- Refresh tokens are opaque, hashed at rest, cookie-delivered, rotated on use, and family-revoked on replay — never touch JavaScript.
+| Rule | Description | Why it exists |
+|---|---|---|
+| **Dual OTP Validation** | Both email and phone OTPs must be verified to activate the account. | Ensures communication lines are valid for claim processing and reset ops. |
+| **Silent Token Refresh** | 401 triggers an automatic retry using the refresh token cookie. | Prevents constant user re-authentication without relying on insecure LocalStorage. |
+| **Token Versioning** | Deactivation or password reset bumps `tokenVersion`. | Instantly invalidates all outstanding JWTs and refresh tokens. |
+| **Cookie Exclusivity** | Refresh token is only sent as `HttpOnly` cookie. | Protects long-lived credentials from XSS attacks. |
+| **OTP Attempt Cap** | Max 5 failed attempts per OTP. | Thwarts brute-force attacks. |
 
-## Future Improvements
+---
 
-- Move OTP transport to a channel-of-choice flow (SMS-first with email fallback).
-- Hardware keys / TOTP as a second factor.
-- Distributed rate limiting (Redis) for horizontal scale.
-- See `../10_Evaluation/Future_Enhancements.md`.
+## Validation Rules
+
+- **Registration Input:** Email must be valid and unique. Mobile must be 10 digits and unique. Password must be 8-64 chars with at least 1 letter and 1 digit.
+- **OTP Input:** Must be exactly 6 digits.
+- **Business Logic:** Both email and phone must have unexpired, matching OTP records with attempts < 5.
+
+### OTP Lifecycle
+| Property | Rule |
+|---|---|
+| Length | 6 digits, generated securely (`SecureRandom`) |
+| Expiry | 5 minutes |
+| Attempts | Max 5 failed attempts allowed before marking as used |
+| Resend Cooldown | 60 seconds since last dispatch |
+| Daily Cap | Max 4 sends per 24 hours per user |
+
+### Token Lifecycle
+| Token | Storage | TTL | Rotation |
+|---|---|---|---|
+| Access (JWT) | In-memory (React State) | 60s (Dev) / 15m (Prod) | Issued on login and refresh |
+| Refresh | HttpOnly Cookie + Hashed in DB | 7 days | Rotated upon every refresh API call |
+
+---
+
+## Error Handling
+
+| Scenario | HTTP Status | Action / Meaning |
+|---|---|---|
+| Unverified Email/Phone | `401 Unauthorized` | `INVALID_CREDENTIALS` (Generic to prevent enumeration) |
+| Invalid Credentials | `401 Unauthorized` | `INVALID_CREDENTIALS` |
+| Token Expired | `401 Unauthorized` | Triggers silent Axios refresh |
+| Invalid Refresh Token | `401 Unauthorized` | Triggers forced logout |
+| OTP Rate Limit Exceeded | `429 Too Many Requests` | Wait for cooldown |
+
+---
+
+## Design Decisions
+
+- **Why separate Access and Refresh tokens?** 
+  Access tokens (JWTs) are stateless and cannot be revoked without a centralized check. By making them short-lived, we minimize exposure. Refresh tokens act as the central control point for session invalidation.
+- **Why HttpOnly Cookies?**
+  Storing tokens in `localStorage` makes them accessible to JavaScript, exposing them to XSS attacks. HttpOnly cookies cannot be read by JS, drastically improving security.
+- **Why rotate Refresh Tokens?**
+  Token rotation ensures that if a refresh token is stolen, the attacker and the legitimate user will both try to use it. The system detects a reused token, assumes compromise, and revokes all sessions for the user.
+- **Why use a `tokenVersion` claim?**
+  Instead of blacklisting every individual JWT (which requires Redis/DB lookups on every request), we compare the JWT's `tokenVersion` to the database's `tokenVersion`. If they don't match (e.g., password reset), the token is invalid.
+
+---
+
+## Interview Notes
+
+1. **How do you secure JWTs in React?**
+   > Store them in memory, never in localStorage. Use an HttpOnly cookie for the long-lived refresh token.
+2. **How does the system handle concurrent logouts everywhere?**
+   > Incrementing the `tokenVersion` in the DB instantly invalidates all existing JWTs and refresh tokens.
+3. **What happens if a refresh token is stolen?**
+   > Because we use refresh token rotation, when the attacker uses it, a new token is issued. When the legitimate user uses the old token, the backend detects replay and revokes the entire session family.
+4. **Why do we return a generic error on login failure?**
+   > To prevent account enumeration attacks. An attacker shouldn't know if an email exists in the system or not.
+5. **How is the forgot password flow secured?**
+   > It requires the same dual OTP validation (Email + SMS) as registration, ensuring the requester owns both contact methods.
+6. **How does Axios handle silent token refresh?**
+   > An Axios response interceptor catches `401` errors, calls `/api/auth/refresh` (sending the cookie), updates the in-memory token, and replays the failed request.
+7. **What rate limits apply to authentication?**
+   > Bucket4j limits OTP sends to 5/min, login 5/min, and refresh 10/min based on IP + Email combinations.
+8. **Why are refresh tokens hashed in the database?**
+   > If the database is compromised, the opaque refresh tokens cannot be used by the attacker to impersonate users, acting similarly to hashed passwords.
+
+---
+
+## Related Documents
+- [JWT Technical Design](../06_Backend/JWT.md)
+- [Authentication API](../03_API/Authentication_API.md)
+- [Business Rules](../02_Business_Domain/Business_Rules.md)
+
+---
+
+## Future Enhancements
+- Implement WebAuthn (Passkeys / Hardware Keys) as a second factor.
+- Migrate rate-limiting to a distributed Redis cache for horizontal scaling.
+- Support "Magic Link" passwordless login.

@@ -1,81 +1,48 @@
-# Performance Review
+<Performance>
+> Optimization strategies and database tuning in the InsuranceFlow backend.
 
-> **Status: analysis.** A review of the current implementation with concrete recommendations. No code has been changed for this document. Relocated from the legacy flat `docs/` tree; the canonical home is now `06_Backend/`.
+---
 
-## Current-state observations
+## Purpose
+Documents the mechanisms used to ensure the application remains fast and responsive under load, specifically focusing on database interactions and concurrency.
 
-### 1. Eager `@ManyToOne` associations (4)
+---
 
-These relations are mapped `EAGER` and are loaded for **every** entity read:
+## Overview
+- **Read-Only Transactions**: Optimizing Hibernate for read operations.
+- **Fetch Strategies**: Managing `EAGER` vs `LAZY` loading to avoid N+1 queries.
+- **Frontend Coordination**: Parallel loading.
 
-- `PremiumPayment → Policy` (`policy`)
-- `CoverageOption → PolicyPlan` (`policyPlan`)
-- `PricingRule → PolicyPlan` (`policyPlan`)
-- `PolicyPlan → InsuranceProduct` (`insuranceProduct`)
+---
 
-Impact:
-- Every `PremiumPayment` fetch also loads the full `Policy` (which itself has lazy collections) even when the caller only needs the payment row.
-- Every `CoverageOption` / `PricingRule` fetch loads its `PolicyPlan`, and every `PolicyPlan` fetch loads its `InsuranceProduct`.
-- All four are `@JsonIgnore`d, so the extra data never reaches JSON — it is pure overhead.
+## Performance Considerations
+| Aspect | Strategy | Benefit |
+|---|---|---|
+| Transactions | `@Transactional(readOnly=true)` | Disables dirty checking, saves memory and CPU |
+| Token Validation | Redis caching | Bypasses MySQL for every API request |
+| Queries | Derived Queries / Pagination | Prevents loading entire tables into memory |
 
-**Recommendation:** switch to `LAZY`. All call sites that read these relations sit inside `@Transactional` service methods, except `PremiumCalculationServiceImpl.generateQuoteInternal` (non-transactional), which would need `@Transactional(readOnly = true)` on its public entry points. After that change, lazy loading remains safe even with OSIV disabled. See [`../07_Design_Patterns/Decision_Records.md`](../07_Design_Patterns/Decision_Records.md) (ADR-008).
+---
 
-### 2. Open Entity Manager in View (OSIV)
+## Database Fetch Strategies
+- **EAGER vs LAZY**: By default, JPA `@ManyToOne` is `EAGER`. If a `Claim` has 4 `@ManyToOne` relationships (User, Policy, Reviewer, Document), fetching 10 claims might result in 40 additional queries (The N+1 problem).
+- **Mitigation**: We explicitly configure associations to `LAZY` where possible, or use `@Query("SELECT c FROM Claim c JOIN FETCH c.policy")` to load everything in a single SQL statement.
 
-Spring Boot 4.0.6 enables OSIV by default (`spring.jpa.open-in-view`, `matchIfMissing=true`). Consequences:
+---
 
-- The Hibernate session is bound to the request thread for its **entire** lifetime, not just the transaction.
-- Lazy access can (and currently does) happen outside `@Transactional` — convenient but keeps connections/sessions alive longer and masks transaction-boundary mistakes.
+## Frontend Coordination
+- **Parallel Loading**: Dashboard pages require data from multiple endpoints (stats, recent claims, user profile). The frontend uses `Promise.all([api.getStats(), api.getClaims()])` to execute these requests concurrently, reducing total load time.
 
-**Recommendation:** after making all lazy access transaction-scoped (item 1 + `PremiumCalculationServiceImpl`), set `spring.jpa.open-in-view=false` explicitly and document the transaction boundaries.
+---
 
-### 3. List endpoints and N+1
+## Design Decisions
+- **Why readOnly transactions?** When a service method only reads data, setting `readOnly=true` tells Hibernate it doesn't need to track entity changes (dirty checking). This significantly reduces memory usage and speeds up the transaction.
+- **Known issues / Roadmap**: 
+  - *Issue*: Some heavy admin dashboard queries currently aggregate data in memory.
+  - *Roadmap*: Implement native SQL aggregations or materialized views for dashboard statistics.
 
-- `ClaimRepository` already uses `@EntityGraph(attributePaths={...})` on its paged/list finders to fetch the policy → customer/user and plan → product graphs in one query — good.
-- `CoverageOptionServiceImpl.getCoverageOptions` and pricing lookups use derived `findByPolicyPlanId(...)` queries (fine).
-- Plan detail assembly (`PolicyPlanServiceImpl` / `PricingRuleServiceImpl`) fetches plan, then coverage options, then durations, then pricing separately — acceptable at capstone scale but produces several queries per request. The `@EntityGraph` pattern could be applied here too.
+---
 
-### 4. `/api/public/stats` — 4 COUNT queries per hit
-
-`PublicServiceImpl.getStats()` issues 4 COUNT queries (active products, active plans, total policies, processed claims) on **every** landing-page load. Trivial to cache (see [`Caching.md`](Caching.md)). Recommendation: cache with a 60s TTL.
-
-### 5. Pagination & query validation
-
-- All list endpoints are server-side paginated (`PageResponseDTO<T>` with `pageNumber` (0-based), `pageSize`, sorting) and bounded by `PaginationValidator` (`MAX_PAGE_SIZE=100`, whitelisted sort fields/directions).
-- Customer-facing lists (`my-policies`, `my-claims`, `my-payments`) are returned in full (unpaged) — acceptable given single-customer volumes.
-
-### 6. File uploads
-
-- Claim documents upload **synchronously** to Cloudinary inside the claim request (multipart). Large files increase request latency. Acceptable at capstone scope; a queue/async path is the scale-out option (documented in [`../07_Design_Patterns/Decision_Records.md`](../07_Design_Patterns/Decision_Records.md), ADR-011).
-
-### 7. DTO mapping
-
-- Services use `ModelMapper` and hand-written `convertToResponseDTO` helpers. Negligible cost; the hand-written mappers are explicit and readable.
-
-### 8. Frontend
-
-- **No code splitting / no lazy routes** — all page bundles load up front. This was a deliberate decision (instant navigation, `PageTransition` disabled). Trade-off: larger initial bundle (~single bundle). Fine for this app size; revisit if the bundle grows.
-- Tables use a **stale-while-loading** strategy (dimmed previous rows while the next page loads) — keeps the UI responsive and avoids skeleton flash.
-- `big.js` is declared in `package.json` but unused; `framer-motion`'s `PageTransition` and `ThemeToggle` stub are unused. Minor dead-weight cleanup candidates (no functional impact).
-- `claimService.uploadDocuments` duplicates `claimDocumentService.uploadClaimDocuments` — a maintenance nit, not a performance issue.
-
-## N+1 audit result
-
-After auditing the relation-access sites (`serviceimpl/**`), **every** lazy-relation access is inside a `@Transactional` method except the one non-transactional quote path already called out in item 1. No hidden N+1 loops were found in controllers or DTO mapping.
-
-## Recommended priority order
-
-| # | Change | Effort | Impact |
-|---|--------|--------|--------|
-| 1 | Cache `/api/public/stats` (60s) | S | Saves 4 queries/landing hit |
-| 2 | `EAGER→LAZY` on 4 relations + `@Transactional(readOnly=true)` on quote service | S | Removes eager overhead on every payment/coverage/pricing/plan read |
-| 3 | `spring.jpa.open-in-view=false` after (2) | S | Hardens transaction boundaries |
-| 4 | `@EntityGraph` for plan-detail assembly | M | Cuts plan-browse query count |
-| 5 | Cache catalog endpoints (Caffeine) | M | See [`Caching.md`](Caching.md) |
-| 6 | Async Cloudinary upload | L | Only if uploads get heavy |
-
-## See also
-
-- [`Caching.md`](Caching.md)
-- [`../04_Database/Indexing.md`](../04_Database/Indexing.md) — index recommendations for the read paths above
-- [`../07_Design_Patterns/Decision_Records.md`](../07_Design_Patterns/Decision_Records.md)
+## Related Documents
+- [../06_Backend/Repositories.md](Repositories.md)
+- [../06_Backend/Caching.md](Caching.md)

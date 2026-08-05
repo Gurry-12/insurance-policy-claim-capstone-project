@@ -1,171 +1,129 @@
-# Plan API
+</Agent System Instructions>
+<Plan API>
+> Structuring the insurance offerings: managing coverage plans and their configurable options.
 
-> Endpoints under `/api/plans` for creating, updating, activating, and querying insurance plans, including the wizard that creates a plan, its coverage options, and pricing rule in one call.
+---
 
 ## Purpose
+This document details the Plan API, handling the creation, retrieval, and management of Insurance Plans and their associated Coverage Options.
 
-Reference for plan management endpoints: the wizard create payload (`planDetails` / `coverageOptions` / `pricingRule`), the update payload, activation lifecycle, listing, and pagination. Covers `allowedDurations` and `supportedPremiumType`.
+---
 
 ## Overview
+- **Admin Management**: Creation of plans (often via a multi-step wizard) and toggling their active status.
+- **Public Retrieval**: Fetching active plans within a specific product category.
+- **Coverage Options**: Managing the granular benefits attached to a specific plan.
 
-A plan is a concrete product offering: it belongs to a product, defines the set of allowed durations (`allowedDurations`), a supported premium type (`supportedPremiumType`), terms and conditions, and a list of coverage options (sum-insured ladder). Base URL: `http://localhost:8081/api`.
+---
 
 ## Business Context
+Plans are the specific packages customers buy (e.g., "Gold Health Plan"). They belong to a broad Product category (e.g., "Health"). Plans define the base limits and terms, while Coverage Options define specific features (e.g., "Dental Cover", "Room Rent Limit").
 
-Plans represent what a customer can actually buy. The premium calculator only accepts a `coverageAmount` that exactly matches an active coverage option of the plan, a `duration` inside `allowedDurations`, and the plan's `supportedPremiumType`. Domain rules are in `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Endpoint matrix
-
-| Method | Path | Role | Response envelope | Notes |
-|---|---|---|---|---|
-| POST | `/api/plans/wizard` | ADMIN | `ApiResponseDTO<PlanWizardResponseDTO>` | `201 Created`; plan + coverage + pricing in one call |
-| PUT | `/api/plans/{planId}` | ADMIN | `ApiResponseDTO<PlanResponseDTO>` | Cannot update an inactive plan |
-| PATCH | `/api/plans/{planId}/activate` | ADMIN | `ApiResponseDTO<PlanResponseDTO>` | No body |
-| PATCH | `/api/plans/{planId}/deactivate` | ADMIN | `ApiResponseDTO<PlanResponseDTO>` | No body |
-| GET | `/api/plans/active` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<List<PlanResponseDTO>>` | All active plans |
-| GET | `/api/plans/{productId}/active` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<List<PlanResponseDTO>>` | Active plans under a product |
-| GET | `/api/plans/{planId}` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<PlanResponseDTO>` | — |
-| GET | `/api/plans/page` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PageResponseDTO<PlanResponseDTO>>` | Paginated + filters |
-
-### Wizard create — `PlanWizardRequestDTO`
-
-The wizard wraps a `PlanRequestDTO`, a list of `CoverageOptionRequestDTO`, and a `PricingRuleRequestDTO`:
-
-```json
-{
-  "planDetails": {
-    "productId": 2,
-    "planName": "Drive Safe Pro",
-    "allowedDurations": [1, 2, 3],
-    "supportedPremiumType": "ANNUAL",
-    "termsAndConditions": "Own damage and third-party cover. No-claim bonus up to 20% on renewal.",
-    "activeStatus": true
-  },
-  "coverageOptions": [
-    { "coverageAmount": 1000000.00, "label": "Base Cover", "displayOrder": 1, "activeStatus": true },
-    { "coverageAmount": 2000000.00, "label": "Silver Cover", "displayOrder": 2, "activeStatus": true },
-    { "coverageAmount": 3000000.00, "label": "Gold Cover", "displayOrder": 3, "activeStatus": true }
-  ],
-  "pricingRule": {
-    "planId": null,
-    "baseRiskRate": 0.0180,
-    "processingFee": 450.00,
-    "gst": 18.00,
-    "effectiveFrom": "2026-08-03T00:00:00",
-    "effectiveTo": null,
-    "remarks": "Demo plan created from test payload."
-  }
-}
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Admin Creates Product] --> B[Admin Creates Plan]
+    B --> C[Admin Adds Coverage Options]
+    C --> D[Admin Adds Pricing Rules]
+    D --> E[Plan Activated]
+    E --> F[Customer Views Plan Details]
 ```
 
-The `planId` inside `pricingRule` is ignored (set to `null`) because the rule is bound to the newly created plan.
+---
 
-`PlanWizardResponseDTO`:
+## API Documentation
 
-```json
-{
-  "policyPlanId": 7,
-  "planName": "Drive Safe Pro",
-  "coverageOptionIds": [19, 20, 21],
-  "pricingRuleId": 7
-}
-```
-
-### Update — `PlanRequestDTO`
-
-`PUT /api/plans/{planId}` accepts the same `PlanRequestDTO` used inside the wizard:
-
-```json
-{
-  "productId": 1,
-  "planName": "Health Shield",
-  "allowedDurations": [1, 2, 3, 5],
-  "supportedPremiumType": "ANNUAL",
-  "termsAndConditions": "Coverage is subject to hospitalisation in a network hospital. Updated terms for the demo.",
-  "activeStatus": true
-}
-```
-
-Validation (from `PlanRequestDTO.java`):
-
-| Field | Rule |
+### 1. Create Plan (Admin)
+| Field | Value |
 |---|---|
-| `productId` | required |
-| `planName` | required, letters/spaces only |
-| `allowedDurations` | required, set of integers (stored in `policy_plan_durations`) |
-| `supportedPremiumType` | required, `PremiumType` enum: `ONE_TIME`, `ANNUAL` |
-| `termsAndConditions` | required |
-| `activeStatus` | required boolean |
+| Purpose | Creates a new plan under an existing product. |
+| Method | POST |
+| URL | `/api/admin/plans` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "productId": 1, "name": "Gold", "description": "Premium coverage", "minAge": 18, "maxAge": 65, "policyTermMonths": 12 }` |
+| Response | `ApiResponseDTO` with Plan ID |
+| Validation | Valid Product ID, Age range validation (`minAge < maxAge`). |
+| Possible Errors | `404 Product Not Found`, `400 Validation Error` |
+| Business Logic | Saves Plan entity, links to Product. |
+| Frontend Screen | Admin Plan Wizard (Step 1) |
 
-### Response — `PlanResponseDTO`
-
-```json
-{
-  "planId": 7,
-  "productId": 2,
-  "productName": "Drive Safe Pro",
-  "planName": "Drive Safe Pro",
-  "planVersion": 1,
-  "allowedDurations": [1, 2, 3],
-  "supportedPremiumType": "ANNUAL",
-  "coverageOptions": [
-    { "id": 19, "coverageAmount": 1000000.00, "label": "Base Cover", "displayOrder": 1, "isActive": true }
-  ],
-  "termsAndConditions": "Own damage and third-party cover. No-claim bonus up to 20% on renewal.",
-  "isActive": true,
-  "createdDate": "2026-08-03T10:00:00"
-}
-```
-
-### Paginated list
-
-`GET /api/plans/page`:
-
-| Query param | Default | Notes |
-|---|---|---|
-| `pageNumber` | `0` | |
-| `pageSize` | `10` | |
-| `sortBy` | `createdDate` | |
-| `sortDirection` | `desc` | |
-| `productId` | — | optional filter |
-| `isActive` | — | optional boolean filter |
-| `planName` | — | optional partial match |
-| `minCoverageAmount` / `maxCoverageAmount` | — | optional coverage range |
-| `minPremiumAmount` / `maxPremiumAmount` | — | optional premium range |
-
-## Workflow
-
-1. Admin creates a plan with coverage options and pricing in one call: `POST /api/plans/wizard`.
-2. Admin refines plan details: `PUT /api/plans/{planId}`.
-3. Admin toggles availability: `PATCH /api/plans/{planId}/activate` / `.../deactivate`.
-4. All roles browse: `GET /api/plans/active`, `GET /api/plans/{productId}/active`, `GET /api/plans/{planId}`.
-5. Staff/admin administer: `GET /api/plans/page`.
-
-## Code References
-
-| Concern | Path |
+### 2. Get Active Plans by Product
+| Field | Value |
 |---|---|
-| Controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/PolicyPlanController.java` |
-| Wizard request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/PlanWizardRequestDTO.java` |
-| Plan request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/PlanRequestDTO.java` |
-| Coverage option request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/CoverageOptionRequestDTO.java` |
-| Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{PlanResponseDTO,PlanWizardResponseDTO,CoverageOptionResponseDTO}.java` |
-| Coverage option admin API | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/CoverageOptionController.java` |
-| Sample payloads | `demo-data/api-test-payloads/04-plans.md`, `05-coverage-options.md` |
+| Purpose | Retrieves all ACTIVE plans for a specific product category to display to customers. |
+| Method | GET |
+| URL | `/api/plans/{productId}/active` |
+| Auth Required | No (Public) |
+| Request Body | None |
+| Response | List of active plans |
+| Validation | Valid Product ID |
+| Possible Errors | `404 Product Not Found` |
+| Business Logic | Queries `findByProductIdAndStatus(id, ACTIVE)`. |
+| Frontend Screen | Product Browse Page |
 
-## Diagrams
+### 3. Get Plan Details
+| Field | Value |
+|---|---|
+| Purpose | Fetches full plan details including Coverage Options. |
+| Method | GET |
+| URL | `/api/plans/{planId}` |
+| Auth Required | No (Public) |
+| Request Body | None |
+| Response | Plan details + Coverage array |
+| Validation | Valid Plan ID |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Joins Plan and CoverageOption entities. |
+| Frontend Screen | Plan Details Page |
 
-Plan structure and the plan-versioning relationship are described in `../04_Database/Table_Descriptions.md` and `../01_System_Architecture/Database_Architecture.md`.
+### 4. Toggle Plan Status (Admin)
+| Field | Value |
+|---|---|
+| Purpose | Activates or Deactivates a plan. |
+| Method | PATCH |
+| URL | `/api/admin/plans/{id}/toggle-status` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | Updated Plan Status |
+| Validation | Admin role check |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Flips status between ACTIVE and INACTIVE. |
+| Frontend Screen | Admin Plan Management |
 
-## Best Practices
+### 5. Manage Coverage Options (Admin)
+| Field | Value |
+|---|---|
+| Purpose | CRUD endpoints for defining benefits of a plan. |
+| Method | POST, PUT, DELETE |
+| URL | `/api/admin/plans/{planId}/coverage` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "coverageName": "Dental", "coverageAmount": 5000 }` |
+| Response | Updated Coverage List |
+| Validation | Must not exceed Plan total limits. |
+| Possible Errors | `400 Invalid Coverage Limit` |
+| Business Logic | Updates the one-to-many relationship of CoverageOptions. |
+| Frontend Screen | Admin Plan Wizard (Step 2) |
 
-- One wizard call keeps plan, coverage options, and pricing rule transactionally consistent.
-- Enums (`PremiumType`) and explicit `allowedDurations` prevent invalid premium configurations at the boundary.
-- Plan versioning (`planVersion`) preserves the exact configuration used by existing policies.
+---
 
-## Future Improvements
+## Design Decisions
+1. **Why is `/active` public but `/toggle` secured?**
+   Customers need to view available plans without logging in (for SEO and marketing), but only admins can control what is sold.
+2. **One-to-Many Coverage Options:**
+   Instead of a flat table with boolean flags (e.g., `hasDental`, `hasVision`), using a separate `CoverageOption` entity allows dynamic creation of benefits without altering the database schema.
 
-- Consider a dedicated plan version history endpoint for auditability.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+---
+
+## Interview Notes
+1. **Q: How are plans related to products in the database?**
+   **A:** It's a Many-to-One relationship. Many plans (Gold, Silver) map to one Product (Health).
+2. **Q: What happens to existing policies if a plan is deactivated?**
+   **A:** Existing policies remain active. Deactivating a plan only prevents *new* quotes and purchases from being generated for that plan.
+
+---
+
+## Related Documents
+- `Product_API.md`
+- `Pricing_API.md`
+</Plan API>

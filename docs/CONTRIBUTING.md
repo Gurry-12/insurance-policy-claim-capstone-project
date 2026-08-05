@@ -1,75 +1,156 @@
-# Documentation Standards
+# Documentation Standards & Contributing Guide
 
-This file is the contract for every document in this `docs/` tree.
-
-**Rules of the repository**
-1. **One source of truth per topic.** Every topic has exactly one authoritative
-   document. Everything else links to it. Do not re-explain a topic that already
-   has a home — reference it.
-2. **No duplication.** If two documents would explain the same thing, merge them
-   into the authoritative document and link.
-3. **Everything is code-verified.** Facts stated here are checked against the
-   source (`.java`, `.jsx`, `pom.xml`, `package.json`, `application.properties`)
-   and against `docs/CONTRIBUTING.md#fact-sheet`. If you find a mismatch, fix the
-   stale doc, not the fact sheet.
-4. **Follow the template.** Every document uses the sections in the
-   [template](#document-template); shorter concept cards in `12_Knowledge_Base/`
-   may trim to a fixed set of sections.
-5. **Use stable file names and relative links.** Links between docs use relative
-   paths from the current file (`../04_Database/Table_Descriptions.md`).
+> The absolute source of truth and rulebook for contributing to InsuranceFlow's documentation.
 
 ---
 
-## Document Template
-
-Every in-depth document uses this structure (skip a section with a `_N/A_` note
-if it genuinely does not apply; keep the heading anyway for consistency).
-
-```markdown
-# <Title>
-
-> <one-line elevator pitch of the doc>
-
 ## Purpose
-Why this document exists and who reads it.
+This document defines the strict formatting, structural, and factual rules that all documentation in this project must adhere to. It exists to ensure that every technical document remains enterprise-grade, interview-friendly, and completely accurate to the codebase.
+
+---
 
 ## Overview
-High-level explanation of the topic.
+- **One source of truth per topic.** Never duplicate explanations; reference them.
+- **Code-verified.** Every fact stated in this directory must match the code.
+- **Template-driven.** Every document MUST follow the 20-section Enterprise Document Template.
 
-## Business Context
-Why this module/feature exists in the business domain.
+---
 
-## Technical Design
-Architecture and implementation details.
+## Document Template (ALWAYS follow this exactly)
 
-## Workflow
-Step-by-step execution (numbered list), referencing endpoints or functions.
-
-## Code References
-Table or list of the important classes/files with their paths.
-
-## Diagrams
-Where to find the relevant diagrams (docs/09_Diagrams/...) or an inline Mermaid block.
-
-## Best Practices
-Why the chosen implementation approach is good; what to keep doing.
-
-## Future Improvements
-Possible enhancements; link to docs/10_Evaluation/Future_Enhancements.md when relevant.
-```
-
-Knowledge-base concept cards (`12_Knowledge_Base/`) use this shorter card:
+When creating or modifying a document, you MUST use the following structure. Skip sections only if genuinely not applicable (e.g., an architectural concept doc may not have an API section), but maintain the template's order and spirit.
 
 ```markdown
-# <Concept>
+# <[Title]>
+> [One-line elevator pitch]
 
-## What It Is
-## Why It Is Used
-## Where It Is Used in This Project
-## Related Files
-## Related Docs
-## Common Interview Questions
+---
+
+## Purpose
+Why this module/feature exists. What business problem does it solve. Who reads this document.
+
+---
+
+## Overview
+High-level explanation in plain English. No implementation details. 3-5 bullet points max.
+
+---
+
+## Business Context
+The real-world business scenario. Why does this feature exist from the business perspective? Include a real example.
+
+---
+
+## Feature Flow
+The user-facing flow. Show as a simple vertical flowchart (Mermaid flowchart TD). 
+Every major feature MUST show: Start → Validation → Business Logic → Database → Response → Possible Failures.
+
+---
+
+## System Flow
+How the backend processes the request internally.
+Show as Mermaid flowchart TD: Frontend → Controller → Service → Repository → Database → Response.
+
+---
+
+## Sequence Diagram
+A Mermaid sequenceDiagram showing the full interaction between components.
+
+---
+
+## Architecture Diagram (if applicable)
+Component relationships as Mermaid diagram.
+
+---
+
+## Database Design
+Explain entities, relationships, constraints, WHY relationships were chosen.
+Use tables. Do NOT just paste ER diagrams — EXPLAIN them.
+
+---
+
+## API Documentation (if applicable)
+For every endpoint: Purpose, Method, URL, Auth, Request body, Response body, Validation, Possible errors, Business logic, Frontend screen.
+
+---
+
+## Frontend Implementation (if applicable)
+Pages, Components, Hooks, Services. Where each feature is implemented.
+
+---
+
+## Backend Implementation
+Controller, Service, Repository, Entity, DTOs, Mapper, Important methods.
+
+---
+
+## Business Rules
+Every rule with WHY it exists. Use a table.
+
+---
+
+## Validation Rules
+Input, Business, Database, Security validations.
+
+---
+
+## Error Handling
+Failures, exceptions, HTTP status codes, frontend behavior.
+
+---
+
+## Design Decisions
+WHY this design? WHY not another approach? Trade-offs.
+This is the MOST IMPORTANT section for interviews.
+
+---
+
+## Security (if applicable)
+Authentication, Authorization, JWT, RBAC, how security applies to this feature.
+
+---
+
+## Code References
+Table of important files with their paths (no code copied).
+
+---
+
+## Interview Notes
+5-8 interview questions with concise answers specific to this document's topic.
+
+---
+
+## Related Documents
+Cross-links to related docs. No duplicate explanations.
+
+---
+
+## Future Enhancements
+Documented improvements only. No code. No placeholders.
 ```
+
+---
+
+## Writing Style Rules
+1. Write for a developer with 1-2 years of experience.
+2. Use simple English. Never use academic language.
+3. Short paragraphs (3-4 lines max).
+4. Prefer bullet points over long prose.
+5. Prefer diagrams over paragraphs — put Mermaid diagram FIRST, then explain.
+6. Every section answers: What? Why? How? Where? When? Example? Trade-offs?
+7. Never say "JWT is a JSON Web Token" — say "In this project, JWT is issued after login and used to authenticate every API request".
+8. Always relate concepts back to the specific codebase.
+9. Use tables for comparisons, rules, and structured data.
+10. Include worked examples for complex calculations/flows.
+11. Make it interview-friendly throughout.
+
+---
+
+## Naming & Linking Conventions
+- File names: `Upper_Case_With_Underscores.md`.
+- Internal links are relative: `../02_Business_Domain/Business_Rules.md`.
+- Code references always include the full path from the repo root: `insurance-policy-claim-management-system/src/main/...`.
+- Ports, roles, and enum names must match the Fact Sheet exactly.
 
 ---
 
@@ -102,98 +183,54 @@ Knowledge-base concept cards (`12_Knowledge_Base/`) use this shorter card:
 
 ---
 
-## Fact Sheet (code-verified, do not contradict)
+## Fact Sheet (Code-Verified, DO NOT CONTRADICT)
 
 **Stack**
-- Backend: Java 17, Spring Boot **4.0.6**, Spring Data JPA/Hibernate, Spring
-  Security, `jjwt 0.12.6`, ModelMapper 3.2.0, Bucket4j 8.10.1, Lombok, MySQL
-  Connector, springdoc-openapi 3.0.2, Cloudinary HTTP SDK 1.39.0, Twilio 11.0.0.
-- Frontend: React **19**, Vite **8**, React Router **7**, Bootstrap **5.3** +
-  bootstrap-icons, Axios, react-hook-form, react-hot-toast, Framer Motion,
-  jsPDF (+ autotable), date-fns, big.js, jwt-decode, nprogress.
+- Backend: Java 17, Spring Boot **4.0.6**, Spring Data JPA/Hibernate, Spring Security, `jjwt 0.12.6`, ModelMapper 3.2.0, Bucket4j 8.10.1, Lombok, MySQL Connector, springdoc-openapi 3.0.2, Cloudinary HTTP SDK 1.39.0, Twilio 11.0.0.
+- Frontend: React **19**, Vite **8**, React Router **7**, Bootstrap **5.3** + bootstrap-icons, Axios, react-hook-form, react-hot-toast, Framer Motion, jsPDF (+ autotable), date-fns, big.js, jwt-decode, nprogress.
 - Database: MySQL 8, schema `insurance_db`, `spring.jpa.hibernate.ddl-auto=update`.
 - Ports: backend **8081** (`/api` prefix), frontend dev server **5173**, MySQL **3306**.
 - Swagger/OpenAPI: `/swagger-ui.html`, `/v3/api-docs` (when `app.security.swagger-enabled=true`).
 
 **Security**
 - BCrypt password hashing (`PasswordEncoder`).
-- Stateless JWT access tokens: HS256 (`jjwt`), claims `roles`/`fullName`/
-  `productSpeciality`/`tokenVersion`; expiry 100 min, 30 s clock skew, token
-  version checked per request.
-- Opaque refresh tokens in `refresh_tokens` table, delivered as HttpOnly
-  `refresh_token` cookie, rotated on every use, reuse → whole family revoked,
-  7-day TTL, `POST /api/auth/refresh`, `POST /api/auth/logout`.
-- Dual OTP (email + SMS), 6 digits, 5-min expiry, max attempts 5, resend
-  cooldown 60 s, per-IP+email rate limits (Bucket4j).
+- Stateless JWT access tokens: HS256 (`jjwt`), claims `roles`/`fullName`/`productSpeciality`/`tokenVersion`; expiry 15 min (60 s locally), 30 s clock skew, token version checked per request.
+- Opaque refresh tokens in `refresh_tokens` table, delivered as HttpOnly `refresh_token` cookie, SHA-256 hashed in DB, rotated on every use, reuse → whole family revoked, 7-day TTL.
+- Dual OTP (email + SMS), 6 digits, 5-min expiry, max attempts 5, resend cooldown 60 s, per-IP+email rate limits (Bucket4j).
 - Roles: `ROLE_ADMIN`, `ROLE_INTERNAL_STAFF`, `ROLE_CUSTOMER`.
-- Seeded admin: `admin@insurance.com` / `Admin@123` (created by `DataInitializer`,
-  controllable via `app.security.seed-admin.enabled`).
-- Access-token expiry is configured via `app.security.jwt.expiration-ms`
-  (default `900000` ms = 15 min in `AppSecurityProperties`; the committed local
-  `application.properties` sets `60000` ms = 60 s for faster dev iteration).
+- Seeded admin: `admin@insurance.com` / `Admin@123`.
 
 **Domain enums (stored as STRING)**
 - `Role` {ROLE_ADMIN, ROLE_INTERNAL_STAFF, ROLE_CUSTOMER}
 - `ProductType` {HEALTH, MOTOR, LIFE, TRAVEL, INSURANCE}
 - `PremiumType` {ONE_TIME, ANNUAL}
 - `PolicyStatus` {PENDING_PAYMENT, ACTIVE, EXPIRED, CANCELLED}
-- `ClaimStatus` {SUBMITTED, UNDER_REVIEW, RECOMMENDED_FOR_APPROVAL,
-  RECOMMENDED_FOR_REJECTION, APPROVED, REJECTED}
+- `ClaimStatus` {SUBMITTED, UNDER_REVIEW, RECOMMENDED_FOR_APPROVAL, RECOMMENDED_FOR_REJECTION, APPROVED, REJECTED}
 - `PaymentMode` {UPI, CARD, NET_BANKING, CASH}
 - `PaymentStatus` {PENDING, SUCCESS, FAILED}
 - `QuoteStatus` {CREATED, USED, EXPIRED, CANCELLED}
 - `PricingRuleStatus` {ACTIVE, INACTIVE}
-- (`Gender`, `RoundingRule` are dead/unused enums — do not reference as features.)
 
-**Entities (16)**
-`AppUser`, `RefreshToken`, `Customer`, `StaffSpeciality`, `OtpVerification`,
-`InsuranceProduct`, `PolicyPlan`, `CoverageOption`, `PricingRule`,
-`PricingAuditLog`, `Quote`, `Policy`, `PremiumPayment`, `Claim`,
-`ClaimDocument`, `ClaimStatusHistory`. Backend package
-`com.insurance.demo` with subpackages `controller`, `service`, `serviceimpl`,
-`repository`, `model`, `dto` (`request`/`response`), `config`, `security`,
-`verification`, `enums`, `exception`, `util`, `service/strategy`.
+**Entities (16 / 17 Tables)**
+`AppUser`, `RefreshToken`, `Customer`, `StaffSpeciality`, `OtpVerification`, `InsuranceProduct`, `PolicyPlan`, `CoverageOption`, `PricingRule`, `PricingAuditLog`, `Quote`, `Policy`, `PremiumPayment`, `Claim`, `ClaimDocument`, `ClaimStatusHistory`.
 
-**Key business rules (details in `02_Business_Domain/Business_Rules.md`)**
-- Policy purchase requires active user + active product/plan; policy starts
-  `PENDING_PAYMENT`, payment activates it.
-- HEALTH products: no duplicate ACTIVE or PENDING_PAYMENT policy per customer+plan.
-  Non-HEALTH: no duplicate PENDING_PAYMENT per customer+plan.
-- Claims only on ACTIVE policies; incident date within policy period; amount ≤
-  remaining cover; ≥1 document required (Cloudinary).
+**Backend Package Root**
+`com.insurance.demo` (with subpackages: controller, service, repository, model, dto, config, security, etc.)
+
+**Key Business Rules**
+- Policy purchase requires active user + active product/plan; starts `PENDING_PAYMENT`, payment exactly equal to calculated premium activates it.
+- HEALTH products: no duplicate ACTIVE or PENDING_PAYMENT policy per customer+plan. Non-HEALTH: no duplicate PENDING_PAYMENT per customer+plan.
+- Claims only on ACTIVE policies; incident date within policy period; amount ≤ remaining cover; ≥1 document required (Cloudinary).
 - Staff review claims matching their `productSpeciality`; admin makes final decision.
 - Cancellation blocked while open claims exist.
-- Premium: `base = coverage × baseRiskRate`; `taxable = base + processingFee`;
-  `gst = 18% of taxable`; ANNUAL total = `taxable + gst`; ONE_TIME total =
-  `annualPremium × duration × (1 − durationDiscount)` with duration discounts
-  (e.g. 2yr 2%, 3yr 5%, 5yr 8%, 10yr 12%); rounding HALF_UP.
+- Quote: 30-minute validity, single-use.
+- Premium Strategy Pattern: `PremiumCalculator` interface, `AnnualPremiumCalculator`, `OneTimePremiumCalculator`.
 
 **Frontend**
-- Routes defined centrally in `src/App.jsx`; guards: `ProtectedRoute`,
-  `GuestRoute`, `RoleProtectedRoute`, `DashboardRedirect`.
+- Routes in `src/App.jsx`; guards: `ProtectedRoute`, `RoleProtectedRoute`.
 - Role namespaces: `/admin/*`, `/staff/*`, `/customer/*`.
-- Auth state: `src/context/AuthContext.jsx` + `src/api/tokenStore.js`
-  (in-memory token; `sessionStorage` flags `ss_user`/`ss_has_session`).
-- Axios: `src/api/axiosInstance.js` — Bearer header, single-flight refresh on
-  401 with one retry, event dispatch (`auth:token-refreshed`,
-  `auth:unauthorized`, `auth:forbidden`, `api:error`).
-- Role theming (implemented in `src/index.css`): admin blue `#2563eb`,
-  staff violet `#7c3aed`, customer teal `#0d9488`, light + dark themes.
-- Services in `src/services/*.js` (one per resource). Hooks in `src/hooks/`
-  (incl. `useApiTable`, `useApiForm`, `useClientPagination`, PDF export hooks).
+- Auth state: Context + `tokenStore.js` (in-memory).
+- Axios interceptors attach Bearer token and refresh on 401.
 
-**External services**
-- Cloudinary (claim document upload), Twilio (SMS OTP), Gmail SMTP (email OTP,
-  password reset links). Config via `env.properties` at backend root
-  (gitignored) and `.env*` in the UI (gitignored; `.env.example` committed).
-
----
-
-## Naming & Linking Conventions
-
-- File names: `Upper_Case.md`, one topic per file.
-- Internal links are relative: `../02_Business_Domain/Business_Rules.md`.
-- Code references always include the full path from the repo root:
-  `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/PremiumCalculator.java`.
-- Never link to `imp-doc/` (deprecated) — it is being removed.
-- Ports, roles, and enum names must match the Fact Sheet exactly.
+**External Services**
+- Cloudinary (claims folder), Twilio (SMS), Gmail SMTP (Email).

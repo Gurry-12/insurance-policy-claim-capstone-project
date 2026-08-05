@@ -1,124 +1,177 @@
 # Admin Flow
+> The admin's operational narrative: catalog management, user provisioning, policy oversight, and final claim adjudication.
 
-> The admin's operational narrative: seeding, staff provisioning, catalogue management (products, plans, coverage, pricing), customer/policy oversight, policy issuance, and final claim decisions.
+---
 
 ## Purpose
+Explains how a `ROLE_ADMIN` operator manages the platform via the admin console. The Admin holds exclusive control over the business catalog (products, plans, coverage, pricing) and acts as the final decision-maker for claims.
 
-Explains how a `ROLE_ADMIN` operator runs the platform through the `/admin/*` console. It is the flow narrative for the endpoints in `../03_API/*` (users, products, plans, coverage, pricing, policies, claims, payments) and implements the business rules in `../02_Business_Domain/Business_Rules.md`. Admin is the only role that can manage users and catalogue items and make final claim decisions.
+---
 
 ## Overview
+- **User Management:** Provision staff members (assigning specialities) and toggle customer account access.
+- **Catalog Management:** Create and toggle products, configure policy plans via a step-by-step wizard, and manage coverage tiers.
+- **Pricing:** Create and swap active pricing rules, previewing premium impacts before pushing changes live.
+- **Adjudication:** Review staff recommendations and issue the final `APPROVED` or `REJECTED` decision on claims.
 
-A seeded admin signs in and from the dashboard (`/admin/dashboard`) reaches every administration surface: user and customer directories, product/plan/coverage/pricing management, all policies and payments, and claim adjudication. Staff are created with a `productSpeciality` and activate through the same dual-OTP flow as customers. The admin alone can create/activate/deactivate products and plans, manage pricing rules, and set a claim's final `APPROVED`/`REJECTED` status.
+---
 
 ## Business Context
+To maintain integrity and prevent fraud, structural changes to the business must be centralized. Only the admin can dictate what products are sold and at what price. For claims, the admin acts as the final authority, ensuring that the staff's investigation aligns with company policy before money is authorized for payout.
 
-Separation of duties is the design goal. Staff investigate and recommend; admin decides. Only the admin holds catalogue control (what is sold, at what price, under which coverage options) and user control (who may log in). All of the admin's sensitive actions — user activation/deactivation, claim decisions — are written to the `SecurityAuditLogger` and claim/pricing audit trails for accountability.
+---
 
-## Technical Design
-
-### Access
-
-- Backend port **8081**, `/api` prefix; every endpoint below is `@PreAuthorize("hasRole('ADMIN')")` unless noted.
-- Seeded admin: `admin@insurance.com` / `Admin@123`, created by `config/DataInitializer.java` (controllable via `app.security.seed-admin.enabled`). The seed log reminds operators to change the default password; the operator password reset uses the public dual-OTP flow (`/forgot-password` → `/reset-password`).
-- Frontend namespace `/admin/*` is guarded by `RoleProtectedRoute allowedRole={ROLES.ADMIN}`.
-
-### Capability matrix
-
-| Capability | UI route | Endpoint |
-|---|---|---|
-| Login / session | `/login` | `POST /api/auth/login` |
-| Dashboard | `/admin/dashboard` | aggregate views from the services below |
-| List / paginate users | `/admin/users`, `/admin/users/:id` | `GET /api/users`, `GET /api/users/page`, `GET /api/users/{id}` |
-| Activate / deactivate user | `/admin/users/:id` | `PATCH /api/users/{id}/activate`, `PATCH /api/users/{id}/deactivate` |
-| Create staff (with `productSpeciality`) | `/admin/users/create` | `POST /api/users/staff` |
-| View customers | `/admin/customers`, `/admin/customers/:id` | `GET /api/customers`, `GET /api/customers/page`, `GET /api/customers/{customerId}` |
-| Manage products | `/admin/products`, `/admin/products/create`, `/admin/products/edit/:id`, `/admin/products/:id` | `POST /api/products`, `PUT /api/products/{id}`, `PATCH /api/products/{id}/activate`, `PATCH /api/products/{id}/deactivate`, `GET /api/products/{id}`, `GET /api/products/page` |
-| Manage plans | `/admin/plans`, `/admin/plans/create`, `/admin/plans/edit/:id`, `/admin/plans/:id` | `POST /api/plans/wizard`, `PUT /api/plans/{planId}`, `PATCH /api/plans/{planId}/activate`, `PATCH /api/plans/{planId}/deactivate`, `GET /api/plans/{planId}`, `GET /api/plans/page` |
-| Manage coverage options | plan detail page | `POST/PUT/GET /api/admin/policy-plans/{planId}/coverage-options[...]`, `PATCH .../{optionId}/activate`, `.../deactivate`, `DELETE .../{optionId}`, `POST .../regenerate` |
-| Manage pricing rules | plan detail / pricing screens | `POST /api/admin/pricing-rules`, `PUT /{ruleId}`, `GET /{ruleId}`, `GET ?planId=&status=`, `PATCH /{ruleId}/activate`, `PATCH /{ruleId}/deactivate`, `DELETE /{ruleId}`, `GET /{ruleId}/history`, `GET /plan/{planId}/active`, `POST /preview` |
-| Admin premium preview | — | `POST /api/premium/admin/calculate` (`generateQuoteForCustomer`) |
-| View all policies | `/admin/policies`, `/admin/policies/:id` | `GET /api/policies`, `GET /api/policies/{policyId}`, `GET /api/policies/customer/{customerId}`, `GET /api/policies/{policyId}/claims` |
-| Issue policy | `/admin/policies/issue` | `POST /api/policies/issue` |
-| Cancel policy | `/admin/policies/:id` | `PATCH /api/policies/{policyId}/cancel` |
-| View claims / make final decision | `/admin/claims`, `/admin/claims/:id` | `GET /api/claims`, `GET /api/claims/{claimId}`, `GET /api/claims/{claimId}/history`, `PATCH /api/claims/{claimId}/final-decision` |
-| View payments | `/admin/payments` | `GET /api/payments/page`, `GET /api/payments/{id}`, `GET /api/payments/policy/{id}` |
-
-### Notes on admin-specific behaviour
-
-- **Create staff** (`UserServiceImpl.createInternalStaffUser`): role `ROLE_INTERNAL_STAFF`, `productSpeciality` stored on the `StaffSpeciality` entity, `isActive=false`; an OTP is sent and the staff member activates it themselves. There is no admin-initiated staff password setter — staff passwords are reset through the same public `/forgot-password` → `/reset-password` dual-OTP flow.
-- **User lifecycle** (`UserServiceImpl.activateUser/deactivateUser`): cannot operate on the admin's own account. Deactivation bumps `tokenVersion` and revokes all active refresh tokens, instantly logging the user out everywhere.
-- **Pricing rules** (`PricingRuleServiceImpl`): each plan keeps exactly one `ACTIVE` rule; the admin must deactivate the current rule before activating a replacement. Every create/update/activate/deactivate writes a `PricingAuditLog` row. Referenced rules cannot be deleted.
-- **Final claim decision** (`ClaimServiceImpl.finalDecision`): only from `RECOMMENDED_FOR_APPROVAL` / `RECOMMENDED_FOR_REJECTION`, and only to `APPROVED` / `REJECTED`; terminal states are immutable.
-- **Issue policy** (`PolicyServiceImpl.issuePolicy`): requires a complete customer profile and an owned, `CREATED`, unexpired quote; produces `PENDING_PAYMENT`. The admin is not bound by staff speciality scoping.
-
-## Workflow
-
-1. **Seed admin login** — `admin@insurance.com` / `Admin@123` on `/login`; change the password immediately via `/forgot-password`.
-2. **Provision staff** — `/admin/users/create` → `POST /api/users/staff` with name, email, mobile, password, and `productSpeciality` (HEALTH/MOTOR/LIFE/TRAVEL/INSURANCE). The new staff account activates via its OTP.
-3. **Manage users & customers** — `/admin/users` (activate/deactivate any account except your own), `/admin/customers` (browse profile completeness before issuing).
-4. **Manage catalogue** — create/edit products (`ProductType`), create plans via the wizard (allowed durations, supported premium type, coverage regeneration), toggle plan/product active state, and configure coverage options per plan.
-5. **Configure pricing** — create a rule for a plan (or accept product-type defaults), preview its premium impact, deactivate the old active rule, activate the new one; review `GET /{ruleId}/history` for the audit trail.
-6. **Oversee operations** — view all policies (`/admin/policies`), payments (`/admin/payments`), and claims (`/admin/claims`); drill into detail pages; issue policies for walk-in customers with a valid quote (`/admin/policies/issue`); cancel policies (blocked while open claims exist).
-7. **Adjudicate claims** — on a claim detail page, read the staff recommendation and remarks, then `PATCH .../final-decision` with `APPROVED` or `REJECTED` (the only legal values).
+## Feature Flow
 
 ```mermaid
 flowchart TD
-    Start([Admin logs in]) --> Seed[admin@insurance.com / Admin@123]
-    Seed --> Dash[/admin/dashboard/]
-
-    Dash --> Staff[Create staff with productSpeciality]
-    Staff --> StaffOTP[Staff activates via dual OTP]
-
-    Dash --> Users[Manage users: activate / deactivate]
-    Users --> UsersLock[tokenVersion bump + refresh tokens revoked]
-
-    Dash --> Products[Manage products]
-    Products --> Plans[Manage plans + coverage options]
-    Plans --> Pricing[Manage pricing rules]
-
-    Pricing --> PrCheck{Plan has an\nACTIVE rule?}
-    PrCheck -- no --> PrActive[New rule created ACTIVE]
-    PrCheck -- yes --> PrInactive[New rule created INACTIVE]
-    PrInactive --> PrSwap[Deactivate current rule, then activate new one]
-    PrActive --> PrAudit[PricingAuditLog written]
-    PrSwap --> PrAudit
-
-    Dash --> Policies[View all policies / customers]
-    Policies --> Issue[Issue policy via quote]
-    Issue --> Pending[Policy PENDING_PAYMENT]
-
-    Dash --> Claims[View all claims]
-    Claims --> Decision{Staff already\nrecommended?}
-    Decision -- yes --> Final[Final decision APPROVED / REJECTED]
-    Decision -- no --> Block[Blocked: must be reviewed first]
-    Final --> History[ClaimStatusHistory recorded]
+    Start([Admin Logs In]) --> Dash[Admin Dashboard]
+    
+    Dash --> Catalog[Catalog Management]
+    Catalog --> Prod[Manage Products]
+    Prod --> Plans[Manage Plans & Coverages]
+    Plans --> Price[Swap Active Pricing Rule]
+    
+    Dash --> Users[User Management]
+    Users --> Provision[Create Staff w/ Speciality]
+    Users --> Toggle[Activate/Deactivate Customers]
+    
+    Dash --> Ops[Operations]
+    Ops --> Issue[Issue Policy for Walk-ins]
+    Ops --> Claims[Claim Adjudication]
+    
+    Claims --> WaitRec{Is Recommended?}
+    WaitRec -- No --> Block[Wait for Staff]
+    WaitRec -- Yes --> Final[Final Approve / Reject]
 ```
 
-## Code References
+---
 
-- `controller/{UserController,InsuranceProductController,PolicyPlanController,CoverageOptionController,PricingRuleController,PolicyController,ClaimController,PremiumPaymentController,PremiumCalculationController}.java`.
-- `serviceimpl/{UserServiceImpl,InsuranceProductServiceImpl,PolicyPlanServiceImpl,CoverageOptionServiceImpl,PricingRuleServiceImpl,PolicyServiceImpl,ClaimServiceImpl,PremiumPaymentServiceImpl,PremiumCalculationServiceImpl}.java`.
-- `config/DataInitializer.java` (seed admin), `config/SecurityAuditLogger.java`, `serviceimpl/RefreshTokenService` usage in `UserServiceImpl`.
-- Frontend: `src/pages/admin/**` (`AdminDashboard`, `users/*`, `customers/*`, `products/*`, `plans/*`, `policies/*`, `claims/*`, `payments/*`).
+## Admin Console Architecture
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+```mermaid
+flowchart LR
+    subgraph Frontend - React
+        Dashboard --> ProductManager
+        Dashboard --> UserManager
+        Dashboard --> ClaimReview
+    end
+    
+    subgraph Backend - Spring Boot
+        ProductManager --> InsuranceProductController
+        ProductManager --> PricingRuleController
+        UserManager --> UserController
+        ClaimReview --> ClaimController
+    end
+    
+    subgraph Database
+        InsuranceProductController --> DB[(MySQL)]
+        PricingRuleController --> DB
+        UserController --> DB
+        ClaimController --> DB
+    end
+```
 
-## Diagrams
+---
 
-- Claim adjudication sequence: `../08_Workflows/Claim_Flow.md`.
-- Pricing lifecycle: `../08_Workflows/Pricing_Flow.md`, `../02_Business_Domain/Pricing_Rules.md`.
-- Supporting activity diagrams: `../09_Diagrams/Activity_Diagrams/`.
+## Sequence Diagram (Pricing Update)
 
-## Best Practices
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant API as PricingRuleService
+    participant DB as Database
+    
+    A->>API: Create New Pricing Rule (Draft)
+    API->>DB: Save Status=INACTIVE
+    A->>API: Preview Premium Impact
+    API-->>A: Show Calculated Example
+    
+    A->>API: Activate New Rule
+    API->>DB: Find current ACTIVE rule
+    API->>DB: Deactivate old rule
+    API->>DB: Set new rule ACTIVE
+    API->>DB: Write PricingAuditLog
+    API-->>A: Success
+```
 
-- Separation of duties: staff recommend, admin decides; the final-decision endpoint accepts only `APPROVED`/`REJECTED` and only after a staff recommendation.
-- Catalogue edits never mutate in-force contracts — quotes and policies carry pricing snapshots, so price changes only affect future purchases.
-- Every privilege escalation (activation/deactivation, password reset) is audit-logged and bumps `tokenVersion`.
-- One-active-rule-per-plan keeps pricing unambiguous and forces explicit "swap" operations.
+---
 
-## Future Improvements
+## Database Design (Catalog)
 
-- Admin-initiated staff password reset with forced change on first login.
-- Approval workflows with comments and rework loops for rejected claims.
-- Bulk policy issuance and CSV export for reporting.
-- See `../10_Evaluation/Future_Enhancements.md`.
+| Entity | Purpose | Admin Actions |
+|---|---|---|
+| `ProductType` | Broad category (e.g., MOTOR). | Create, Toggle Active. |
+| `PolicyPlan` | Specific offering (e.g., Comprehensive). | Create via Wizard, Configure Coverages. |
+| `PricingRule` | Math variables (rates, GST, fees). | Create, Swap Active, Audit. |
+| `StaffSpeciality` | Links staff user to a ProductType. | Assigned on creation. |
+
+**Why this design?**
+Isolating `PricingRule` from `PolicyPlan` allows the admin to update prices for the upcoming year without recreating the entire plan or mutating historical policies that were sold under the old rule.
+
+---
+
+## Business Rules
+
+| Rule | Description | Why it exists |
+|---|---|---|
+| **One Active Pricing Rule** | A plan can only have exactly one `ACTIVE` rule at a time. | Prevents ambiguity during quote generation. |
+| **Terminal Claim Decisions** | Admin can only approve/reject if a staff member has recommended it first. | Enforces Separation of Duties. |
+| **Immutable Quotes** | Updating a pricing rule does NOT affect previously generated quotes. | Honors the price promised to the customer. |
+| **No Self-Deactivation** | An admin cannot deactivate their own account. | Prevents locking everyone out of the system. |
+
+---
+
+## Validation Rules
+
+- **Staff Creation:** Requires valid email, phone, and a valid `ProductType` enum for the speciality.
+- **Pricing Activation:** Fails if the plan doesn't exist. Safely transitions the old rule to inactive atomically.
+- **Claim Decision:** Validates the claim is currently in a `RECOMMENDED_*` state.
+
+---
+
+## Error Handling
+
+| Scenario | HTTP Status | Behavior |
+|---|---|---|
+| Missing Admin Role | 403 Forbidden | Access Denied by Spring Security `@PreAuthorize`. |
+| Adjudicating un-reviewed claim | 400 Bad Request | Blocked by state machine validation. |
+| Deactivating active policy | 400 Bad Request | Policies with open claims cannot be cancelled. |
+
+---
+
+## Design Decisions
+
+- **Why doesn't the admin set staff passwords?**
+  To maintain zero-knowledge security, the admin provisions the account, but the staff member receives an OTP and sets their own password using the public forgot-password flow.
+- **Why is there a Pricing Audit Log?**
+  Price changes drastically affect revenue. Logging who changed the base risk rate, and when, is critical for compliance and business intelligence.
+- **Why are products "toggled" rather than deleted?**
+  Soft-deletion (Active/Inactive flags) prevents referential integrity errors (foreign key constraint failures) for historical policies tied to retired products.
+
+---
+
+## Interview Notes
+
+1. **How is Admin access secured?**
+   > Through Spring Security `@PreAuthorize("hasRole('ADMIN')")` on backend controllers, and a `RoleProtectedRoute` wrapper in React.
+2. **How does the system ensure only one pricing rule is active?**
+   > When an admin activates a new rule, a single `@Transactional` method fetches the currently active rule, deactivates it, activates the new one, and writes an audit log.
+3. **What is Separation of Duties in the context of this app?**
+   > Staff members investigate claims and recommend an outcome, but only Admins can make the final binding decision to approve or reject. Neither can do both.
+4. **How do you handle deleting products that have existing policies?**
+   > We don't delete them. We implement soft-deletes via an `isActive` boolean flag. If toggled false, it hides the product from new customers but preserves historical database relationships.
+5. **How is the seed admin created?**
+   > Via a `DataInitializer` bean that runs on application startup, checks if the admin email exists, and creates it if not.
+
+---
+
+## Related Documents
+- [Claim Flow](Claim_Flow.md)
+- [Pricing Flow](Pricing_Flow.md)
+
+---
+
+## Future Enhancements
+- Export functionality for policy and claim reports (CSV/Excel).
+- Bulk upload mechanism for updating pricing catalogs.

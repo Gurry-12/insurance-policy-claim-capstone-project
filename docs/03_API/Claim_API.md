@@ -1,200 +1,204 @@
-# Claim API
+</Agent System Instructions>
+<Claim API>
+> Managing the truth: from customer incident submission through staff investigation to admin final approval.
 
-> Endpoints under `/api/claims` for raising, tracking, reviewing, and finally deciding insurance claims, plus document upload under `/api/document/upload/{claimId}`.
+---
 
 ## Purpose
+This document explains the API for managing Insurance Claims. It details the state-machine transitions a claim undergoes, document upload procedures, and role-specific endpoints for processing claims.
 
-Reference for the claim lifecycle: raising a claim with multipart document upload, customer and staff listings, the staff review chain (under-review → assign → review), the admin final decision, status history, and the document upload endpoint. Includes the role matrix, `ClaimRequestDTO`, `ClaimReviewRequestDTO`, `ClaimResponseDTO`, and `ClaimHistoryResponseDTO`.
+---
 
 ## Overview
+- **Customer Submission**: Customers can file claims against active policies and upload supporting documents.
+- **Staff Processing**: Internal staff review claims, request details, and provide recommendations (Approve/Reject).
+- **Admin Decision**: Admins review staff recommendations and make the final, binding decision.
+- **Cloud Storage**: Claim documents are uploaded securely to Cloudinary.
 
-Claims follow a state machine: `SUBMITTED → UNDER_REVIEW → RECOMMENDED_FOR_APPROVAL/REJECTION → APPROVED/REJECTED`. Customers raise claims with at least one supporting document; internal staff evaluate and recommend; an admin makes the final decision. Base URL: `http://localhost:8081/api`.
+---
 
 ## Business Context
+Claims processing is the most critical operational workflow in an insurance system. It requires strict RBAC (Role-Based Access Control) to ensure segregation of duties: a customer submits, a staff member investigates, and a separate admin approves. This prevents fraud and errors.
 
-Claims are only valid against `ACTIVE` policies, with the claim amount capped by remaining coverage and the incident date inside the policy period. Staff only work claims matching their `productSpeciality`. Rules are detailed in `../02_Business_Domain/Claim.md` and `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Endpoint matrix and role matrix
-
-| Method | Path | Role | Response envelope |
-|---|---|---|---|
-| POST | `/api/claims/raise` | CUSTOMER | `ApiResponseDTO<ClaimResponseDTO>` (`201 Created`) |
-| GET | `/api/claims/my-claims` | CUSTOMER | `ApiResponseDTO<List<ClaimResponseDTO>>` |
-| GET | `/api/claims` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PageResponseDTO<ClaimResponseDTO>>` |
-| GET | `/api/claims/{claimId}` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<ClaimResponseDTO>` |
-| GET | `/api/claims/{claimId}/history` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<PageResponseDTO<ClaimHistoryResponseDTO>>` |
-| PATCH | `/api/claims/{claimId}/under-review` | INTERNAL_STAFF | `ApiResponseDTO<ClaimResponseDTO>` |
-| PATCH | `/api/claims/{claimId}/assign` | INTERNAL_STAFF | `ApiResponseDTO<ClaimResponseDTO>` |
-| PATCH | `/api/claims/{claimId}/review` | INTERNAL_STAFF | `ApiResponseDTO<ClaimResponseDTO>` |
-| PATCH | `/api/claims/{claimId}/final-decision` | ADMIN | `ApiResponseDTO<ClaimResponseDTO>` |
-| POST | `/api/document/upload/{claimId}` | CUSTOMER | `ApiResponseDTO<List<ClaimDocumentResponseDTO>>` |
-
-### Raise a claim — multipart/form-data
-
-`POST /api/claims/raise` consumes `multipart/form-data` with two parts:
-
-| Part | Type | Notes |
-|---|---|---|
-| `claim` | JSON string (`ClaimRequestDTO`) | `Content-Type` of the part is `application/json` |
-| `files` | one or more files | JPEG/PNG/PDF, max 5 MB each, at least one required |
-
-`ClaimRequestDTO`:
-
-```json
-{
-  "policyId": 2,
-  "claimAmount": 45000.00,
-  "claimReason": "Rear bumper dent in parking lot collision",
-  "incidentDate": "2026-08-01"
-}
+## Feature Flow
+```mermaid
+stateDiagram-v2
+    [*] --> SUBMITTED: Customer Raises Claim
+    SUBMITTED --> UNDER_REVIEW: Staff Assigns Self
+    UNDER_REVIEW --> RECOMMENDED_FOR_APPROVAL: Staff Recommends
+    UNDER_REVIEW --> RECOMMENDED_FOR_REJECTION: Staff Recommends
+    RECOMMENDED_FOR_APPROVAL --> APPROVED: Admin Approves
+    RECOMMENDED_FOR_APPROVAL --> REJECTED: Admin Overrides
+    RECOMMENDED_FOR_REJECTION --> REJECTED: Admin Rejects
+    RECOMMENDED_FOR_REJECTION --> APPROVED: Admin Overrides
+    APPROVED --> [*]
+    REJECTED --> [*]
 ```
 
-Validation: `policyId`, `claimAmount` (positive), `incidentDate` required; `claimReason` required non-blank.
+---
 
-cURL example:
+## API Documentation
 
-```bash
-curl -X POST http://localhost:8081/api/claims/raise \
-  -H "Authorization: Bearer <customer-token>" \
-  -F "claim={\"policyId\":2,\"claimAmount\":45000,\"claimReason\":\"Rear bumper dent\",\"incidentDate\":\"2026-08-01\"}" \
-  -F "files=@incident_photo.jpg"
-```
-
-### Raise-claim validation
-
-- Policy must be `ACTIVE`.
-- `claimAmount` ≤ remaining coverage (`selectedCoverage` − already-outstanding claims).
-- `incidentDate` within the policy period and not in the future.
-- At least one supporting document required (stored via Cloudinary).
-
-### Review — `ClaimReviewRequestDTO`
-
-Used by both staff review and admin final decision:
-
-```json
-{
-  "recommendedStatus": "RECOMMENDED_FOR_APPROVAL",
-  "remarks": "All documentation verified. Claim is valid."
-}
-```
-
-- Staff `review`: `recommendedStatus` must be `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`; the claim must be assigned to the calling staff member and in `UNDER_REVIEW`.
-- Admin `final-decision`: `recommendedStatus` must be `APPROVED` or `REJECTED`; the claim must be in a `RECOMMENDED_*` state. Final decisions cannot be reversed.
-
-### Response — `ClaimResponseDTO`
-
-```json
-{
-  "claimId": 1,
-  "claimNumber": "CLM-2N4P6Q9R",
-  "policyId": 1,
-  "policyNumber": "POL-HLTH-00001",
-  "claimAmount": 45000.00,
-  "claimReason": "Rear bumper dent in parking lot collision",
-  "incidentDate": "2026-08-01",
-  "claimStatus": "SUBMITTED",
-  "staffRemarks": null,
-  "adminRemarks": null,
-  "customerName": "Rajesh Sharma",
-  "createdDate": "2026-08-03T10:00:00",
-  "updatedDate": "2026-08-03T10:00:00",
-  "documents": [
-    {
-      "documentName": "incident_photo.jpg",
-      "documentType": "image/jpeg",
-      "documentReference": "https://res.cloudinary.com/..."
-    }
-  ],
-  "assignedStaffId": null,
-  "assignedStaffName": null
-}
-```
-
-`assignedStaffId`/`assignedStaffName` are omitted (`@JsonInclude(NON_NULL)`) until a claim is assigned.
-
-### History — `ClaimHistoryResponseDTO`
-
-```json
-{
-  "historyId": 1,
-  "previousStatus": "SUBMITTED",
-  "newStatus": "UNDER_REVIEW",
-  "remarks": "Claim under review",
-  "updatedBy": "staff@insurance.com",
-  "updatedDate": "2026-08-03T10:05:00"
-}
-```
-
-### Document upload — `ClaimDocumentResponseDTO`
-
-`POST /api/document/upload/{claimId}` accepts `multipart/form-data` with a `files` part and returns:
-
-```json
-{
-  "message": "Supporting documents uploaded successfully.",
-  "success": true,
-  "data": [
-    {
-      "documentName": "report.pdf",
-      "documentType": "application/pdf",
-      "documentReference": "https://res.cloudinary.com/..."
-    }
-  ],
-  "timeStamp": "2026-08-03T10:10:00"
-}
-```
-
-### Claim status lifecycle
-
-```
-SUBMITTED → UNDER_REVIEW → RECOMMENDED_FOR_APPROVAL → APPROVED
-                                  or
-                        RECOMMENDED_FOR_REJECTION → REJECTED
-```
-
-`ClaimStatus` values: `SUBMITTED`, `UNDER_REVIEW`, `RECOMMENDED_FOR_APPROVAL`, `RECOMMENDED_FOR_REJECTION`, `APPROVED`, `REJECTED`.
-
-### List query params
-
-- `GET /api/claims`: `pageNumber`, `pageSize`, `sortBy` (default `createdDate`), `sortDirection` (default `desc`), optional `customerId`, `status`, `minClaimAmount`, `maxClaimAmount`.
-- `GET /api/claims/{claimId}/history`: `pageNumber`, `pageSize`, `sortBy` (default `id`), `sortDirection` (default `desc`), optional `updatedBy`, `status`.
-
-Internal staff see only claims whose policy product type matches their `productSpeciality`.
-
-## Workflow
-
-1. Customer raises a claim with documents: `POST /api/claims/raise`.
-2. Customer tracks: `GET /api/claims/my-claims`, `GET /api/claims/{claimId}/history`.
-3. Staff moves it to review: `PATCH /api/claims/{claimId}/under-review`.
-4. Staff assigns it to self: `PATCH /api/claims/{claimId}/assign`.
-5. Staff recommends: `PATCH /api/claims/{claimId}/review`.
-6. Admin finalizes: `PATCH /api/claims/{claimId}/final-decision`.
-7. Customer may attach more documents: `POST /api/document/upload/{claimId}`.
-
-## Code References
-
-| Concern | Path |
+### 1. Raise Claim
+| Field | Value |
 |---|---|
-| Claim controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/ClaimController.java` |
-| Document controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/ClaimDocumentController.java` |
-| Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{ClaimRequestDTO,ClaimReviewRequestDTO}.java` |
-| Response DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{ClaimResponseDTO,ClaimHistoryResponseDTO,ClaimDocumentResponseDTO}.java` |
-| Claim status enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/ClaimStatus.java` |
-| Sample payloads | `demo-data/api-test-payloads/10-claims.md` |
+| Purpose | Submits a new claim against a policy. |
+| Method | POST |
+| URL | `/api/claims/raise` |
+| Auth Required | Yes (Customer) |
+| Request Body | `multipart/form-data`: `policyId`, `amountClaimed`, `description`, `files[]` |
+| Response | `ApiResponseDTO` with Claim ID |
+| Validation | Policy must be ACTIVE. Amount cannot exceed policy coverage limit. |
+| Possible Errors | `400 Policy inactive`, `400 Amount exceeds coverage` |
+| Business Logic | Validates policy limits, creates Claim entity (SUBMITTED), uploads files to Cloudinary, links document URLs to claim. |
+| Frontend Screen | Submit Claim Page |
 
-## Diagrams
+### 2. Get My Claims
+| Field | Value |
+|---|---|
+| Purpose | Fetch all claims filed by the customer. |
+| Method | GET |
+| URL | `/api/claims/my-claims` |
+| Auth Required | Yes (Customer) |
+| Request Body | None |
+| Response | List of claims |
+| Validation | JWT User context |
+| Possible Errors | `401 Unauthorized` |
+| Business Logic | Fetch where `userId == token.userId`. |
+| Frontend Screen | Customer Dashboard |
 
-Claim state machine and audit-trail design are documented in `../04_Database/Table_Descriptions.md` and `../08_Workflows/Claim_Lifecycle.md`.
+### 3. Get Claim by ID
+| Field | Value |
+|---|---|
+| Purpose | Fetch detailed view of a claim. |
+| Method | GET |
+| URL | `/api/claims/{id}` |
+| Auth Required | Yes |
+| Request Body | None |
+| Response | Claim details + attached documents URLs |
+| Validation | RBAC: Must be owner, staff, or admin. |
+| Possible Errors | `403 Forbidden`, `404 Not Found` |
+| Business Logic | Joins claim and document tables. |
+| Frontend Screen | Claim Details Page |
 
-## Best Practices
+### 4. Get Claim History
+| Field | Value |
+|---|---|
+| Purpose | Fetch the audit trail / status changes of a claim. |
+| Method | GET |
+| URL | `/api/claims/{id}/history` |
+| Auth Required | Yes |
+| Request Body | None |
+| Response | List of audit logs (Date, Old Status, New Status, Updated By) |
+| Validation | RBAC check |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Queries `ClaimHistory` entity. |
+| Frontend Screen | Claim Timeline UI |
 
-- Mandatory documents at raise time prevents non-evidenced claims.
-- The staff recommendation + admin final-decision split enforces separation of duties.
-- Every transition is recorded in `ClaimStatusHistory`, producing a full audit trail.
+### 5. Assign Claim (Staff)
+| Field | Value |
+|---|---|
+| Purpose | Staff assigns a SUBMITTED claim to themselves. |
+| Method | PATCH |
+| URL | `/api/claims/{id}/assign` |
+| Auth Required | Yes (Staff) |
+| Request Body | None |
+| Response | Updated Claim |
+| Validation | Claim must be SUBMITTED. Role must be Staff. |
+| Possible Errors | `400 Claim already assigned` |
+| Business Logic | Updates `assignedStaffId`, status changes to `UNDER_REVIEW`. |
+| Frontend Screen | Staff Dashboard |
 
-## Future Improvements
+### 6. Mark Under Review (Staff)
+| Field | Value |
+|---|---|
+| Purpose | Explicit state transition to show active investigation. |
+| Method | PATCH |
+| URL | `/api/claims/{id}/under-review` |
+| Auth Required | Yes (Staff) |
+| Request Body | `{ "notes": "Contacted hospital." }` |
+| Response | Updated Claim |
+| Validation | Must be assigned staff member. |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Appends notes, ensures status is UNDER_REVIEW. |
+| Frontend Screen | Staff Claim Panel |
 
-- Consider document-type whitelist and file-size configuration centralization.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+### 7. Staff Review / Recommend
+| Field | Value |
+|---|---|
+| Purpose | Staff makes a formal recommendation. |
+| Method | PATCH |
+| URL | `/api/claims/{id}/review` |
+| Auth Required | Yes (Staff) |
+| Request Body | `{ "recommendation": "APPROVE", "remarks": "Documents verified." }` |
+| Response | Updated Claim |
+| Validation | Claim must be UNDER_REVIEW. |
+| Possible Errors | `400 Invalid state transition` |
+| Business Logic | Changes state to RECOMMENDED_FOR_APPROVAL or REJECTION. Records history. |
+| Frontend Screen | Staff Recommendation Modal |
+
+### 8. Final Decision (Admin)
+| Field | Value |
+|---|---|
+| Purpose | Admin makes the final binding decision. |
+| Method | PATCH |
+| URL | `/api/claims/{id}/final-decision` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "decision": "APPROVE", "finalRemarks": "Approved." }` |
+| Response | Updated Claim |
+| Validation | Claim must be in a RECOMMENDED state. |
+| Possible Errors | `400 Invalid state transition` |
+| Business Logic | Sets state to APPROVED/REJECTED. Triggers notification event. |
+| Frontend Screen | Admin Approval Queue |
+
+### 9. Document Upload
+| Field | Value |
+|---|---|
+| Purpose | Upload additional documents to an existing claim. |
+| Method | POST |
+| URL | `/api/document/upload/{claimId}` |
+| Auth Required | Yes |
+| Request Body | `multipart/form-data`: `file` |
+| Response | URL of uploaded document |
+| Validation | File size < 5MB, specific types (PDF, JPG). |
+| Possible Errors | `400 File too large` |
+| Business Logic | Streams to Cloudinary `insurance_claims` folder, saves URL to DB. |
+| Frontend Screen | Upload Component |
+
+---
+
+## Business Rules
+| Rule | Reason |
+|---|---|
+| State Machine Enforcement | A claim cannot jump from SUBMITTED to APPROVED without staff recommendation. Enforces segregation of duties. |
+| Coverage Limit Check | Prevents claims exceeding the total coverage amount of the policy. |
+| External Storage | Saving documents directly in the DB causes bloat; Cloudinary provides efficient CDN delivery. |
+
+---
+
+## Design Decisions
+1. **Why explicit state transition endpoints?**
+   Instead of a generic `PUT /claims/{id}` where the frontend passes the status, having specific endpoints like `/review` and `/final-decision` encapsulates business logic, ensures only allowed roles can trigger specific transitions, and makes the code self-documenting.
+2. **Why separate document upload?**
+   While initial claim raising accepts multipart data, having a separate upload endpoint allows staff or customers to attach additional evidence later without modifying the core claim data.
+
+---
+
+## Interview Notes
+1. **Q: How do you handle file uploads in the Spring Boot backend?**
+   **A:** We use `MultipartFile` in the controller to receive the file, stream it to Cloudinary using their SDK, and store the resulting secure URL in our MySQL database.
+2. **Q: How is the claim state machine enforced?**
+   **A:** By explicitly checking the current status in the Service layer before allowing an update. If a staff member tries to recommend an already APPROVED claim, an `InvalidStateException` is thrown.
+3. **Q: Why separate the Staff recommendation from the Admin approval?**
+   **A:** This is a crucial business requirement called 'Segregation of Duties'. It prevents internal fraud by requiring two separate individuals (one investigator, one approver) to authorize financial payouts.
+4. **Q: How does RBAC apply to fetching a claim by ID?**
+   **A:** The system checks the user's role. If CUSTOMER, it verifies the claim belongs to them. If STAFF/ADMIN, it bypasses the ownership check and grants access.
+
+---
+
+## Related Documents
+- `API_Flow.md`
+- `Policy_API.md`
+</Claim API>

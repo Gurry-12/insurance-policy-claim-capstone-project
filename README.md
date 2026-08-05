@@ -1,66 +1,87 @@
-# Insurance Policy & Claim Management System
+# InsuranceFlow: Enterprise Policy & Claim Management System
 
-A full-stack insurance management platform with role-based workflows for policy administration, premium payments, and claim processing.
+> A comprehensive, full-stack insurance platform providing self-service policy administration, deterministic premium pricing, and role-based claim workflows.
 
-## Architecture
+## Overview
+InsuranceFlow is a production-shaped digital insurance platform designed to eliminate manual, disconnected insurance processes. It empowers customers to browse products, generate instant exact-amount quotes, securely purchase policies, and raise claims with document evidence. Behind the scenes, it provides an orchestrated, role-based workflow where internal staff assess claims based on product specialization, and administrators govern the product catalog and pricing rules.
 
+## What This Project Demonstrates
+- **Advanced Architecture Patterns**: Utilizes Strategy (Premium Calculation), Factory, Adapter, and layered services.
+- **Enterprise Security Model**: Implements stateless JWT access tokens, opaque rotating refresh tokens (HttpOnly), dual OTP verification (Email/SMS), rate limiting via Bucket4j, and comprehensive role-based access control (RBAC).
+- **Full-Stack Proficiency**: Seamlessly bridges a modern React 19 SPA with a robust Spring Boot 4 backend, maintaining strict DTO validation and a typed, component-driven frontend architecture.
+- **Data Integrity**: Enforces strict business rules like exact-amount premium matching, duplicate-policy guards, remaining-cover claim checks, and complete audit histories for pricing and claims.
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    User[Customer / Staff / Admin] -->|HTTPS| SPA[React 19 SPA :5173]
+    SPA -->|Axios /api proxy| API[Spring Boot 4 API :8081]
+    API --> DB[(MySQL 8\ninsurance_db)]
+    API --> Redis[(Redis\nToken Cache)]
+    API --> Cloudinary[Cloudinary\nDoc Storage]
+    API --> Twilio[Twilio\nSMS OTP]
+    API --> Gmail[Gmail SMTP\nEmail OTP]
 ```
-capstone-project/
-├── insurance-policy-claim-management-system/   # Backend (Spring Boot REST API)
-└── insurance-policy-claim-management-app-ui/    # Frontend (React + Vite)
-```
 
-## Backend
+## The Role Model
+| Role | Primary Actions |
+|---|---|
+| **Customer** | Browses the catalog, generates quotes, purchases policies, pays premiums, and submits claims with document evidence. |
+| **Internal Staff** | Monitors a specialized claim review queue (e.g., Health, Motor), assesses claims, issues policies, and recommends claim approval/rejection. |
+| **Admin** | Governs the system catalog (Products, Plans, Coverage Options, Pricing Rules), manages user accounts, and makes final claim decisions. |
 
-- **Stack:** Java 17, Spring Boot 4.0.6, Spring Security (JWT), Spring Data Redis, Spring Data JPA + Hibernate, MySQL, Redis
-- **Features:** Role-based auth (ADMIN / INTERNAL_STAFF / CUSTOMER), dual-token authentication (15m JWT + 7d HttpOnly Refresh Token), Redis token caching & stateful blacklisting, product & plan management, policy lifecycle, premium calculation with strategy pattern, claim submission & multi-step review, Cloudinary document upload, OTP via Twilio SMS & Gmail SMTP
-- **Port:** `http://localhost:8081/api`
-
-## Frontend
-
-- **Stack:** React 19, Vite, React Router 7, React Hook Form, Axios, Bootstrap 5, Framer Motion, jsPDF
-- **Features:** Themed UI with dark/light mode, role-specific dashboards, real-time form validation, data tables with pagination/filtering/sorting, PDF export, responsive layouts, automatic Axios token refresh interceptor
-- **Port:** `http://localhost:5173`
-
-## Quick Start
+## Quick Start (4 Steps)
 
 > [!IMPORTANT]
-> **See [RUN_GUIDE.md](./RUN_GUIDE.md) for full step-by-step terminal commands, Docker Compose instructions, and troubleshooting tips.**
+> Requires Java 17, Node 20+, Docker (for Redis/MySQL), and Maven. See [`docs/11_Developer_Guide/Setup.md`](./docs/11_Developer_Guide/Setup.md) for detailed prerequisites and environment variables.
 
-### 1. Infrastructure (Redis via Docker Desktop + Local MySQL Workbench)
+### 1. Start Infrastructure (Redis & MySQL)
 ```bash
-# Start Redis container (port 6379) via Docker Desktop; uses your local MySQL server on port 3306
+# Starts Redis on port 6379 and ensures MySQL is running on 3306
 docker-compose up -d
 ```
 
-### 2. Backend (Spring Boot)
+### 2. Start Backend (Spring Boot)
 ```bash
 cd insurance-policy-claim-management-system
-# Create env.properties (see RUN_GUIDE.md for template)
-./mvnw spring-boot:run   # On Windows: .\mvnw.cmd spring-boot:run
+# Copy env.properties.example to env.properties and fill credentials
+./mvnw spring-boot:run
 ```
 
-### 3. Frontend (React + Vite)
+### 3. Start Frontend (React + Vite)
 ```bash
 cd insurance-policy-claim-management-app-ui
 npm install
 npm run dev
 ```
 
-## Roles
+### 4. Load Seed Data
+The backend `DataInitializer` automatically creates the seed admin user `admin@insurance.com` / `Admin@123`. 
+For extended test data, execute the SQL scripts found in [`demo-data/`](./demo-data/).
 
-| Role | Capabilities |
-|------|-------------|
-| **ADMIN** | Manage products, plans, users, coverage options, pricing rules; final claim approval/denial |
-| **INTERNAL_STAFF** | Review claims, recommend decisions, issue policies, manage customer payments |
-| **CUSTOMER** | Browse products, purchase policies, make payments, raise and track claims |
+## Documentation Navigation: Who Should Read What?
+| Audience | Read These Files |
+|---|---|
+| **Recruiters** | [`docs/10_Evaluation/Project_Summary.md`](./docs/10_Evaluation/Project_Summary.md) (One-page overview) |
+| **Interviewers** | [`docs/01_System_Architecture/High_Level_Architecture.md`](./docs/01_System_Architecture/High_Level_Architecture.md), [`docs/10_Evaluation/Interview_Questions.md`](./docs/10_Evaluation/Interview_Questions.md) |
+| **Developers** | [`docs/README.md`](./docs/README.md) (Master Hub), [`docs/11_Developer_Guide/Setup.md`](./docs/11_Developer_Guide/Setup.md) |
 
-## Changelog
+## Tech Stack Summary
+| Layer | Technologies |
+|---|---|
+| **Backend** | Java 17, Spring Boot 4.0.6, Spring Security, JWT (jjwt 0.12.6), Spring Data JPA, Hibernate, Bucket4j |
+| **Frontend** | React 19, Vite 8, React Router 7, Bootstrap 5.3, Axios, react-hook-form, Framer Motion, jsPDF |
+| **Infrastructure** | MySQL 8, Redis, Cloudinary HTTP SDK, Twilio SDK, Gmail SMTP |
 
-See [CHANGELOG.md](./CHANGELOG.md) for a history of recent changes.
+## Key Project Numbers
+- **16** Entities / **17** Tables
+- **~60** REST Endpoints
+- **13** Controllers
+- **3** Auth Roles (Admin, Staff, Customer)
+- **5** Product Types (HEALTH, MOTOR, LIFE, TRAVEL, INSURANCE)
 
-## Documentation
-
-- [`docs/`](./docs/README.md) — full documentation hub (architecture, API, database, business domain, workflows, developer guide, evaluation material)
-- [`demo-data/`](./demo-data/) — seed SQL, API test payloads, testing flow, and the evaluator demo walkthrough
-- [`screenshots/`](./screenshots/) — UI screenshots per role
+## Essential Links
+- 📖 [Full Documentation (`docs/`)](./docs/README.md)
+- 🧪 [Demo Data & API Payloads (`demo-data/`)](./demo-data/)
+- 🖼️ [UI Screenshots (`screenshots/`)](./screenshots/)

@@ -1,89 +1,82 @@
-# Security
+<Security>
+> Comprehensive security configuration and defense-in-depth mechanisms for InsuranceFlow.
+
+---
 
 ## Purpose
+This document explains the security architecture of the Spring Boot backend, covering authentication, authorization, protection against common web vulnerabilities, and request filtering.
 
-This document is the single source of truth for the HTTP security layer: the filter chain, authentication provider, password hashing, CORS and CSRF posture, rate limiting, security headers, and the audit event model. Token mechanics (JWT and refresh-token rotation) are detailed in JWT.md; the overall security architecture is described in the architecture document.
+---
 
 ## Overview
+- **Filter Chain**: Custom security filters applied to every request.
+- **RBAC**: Role-Based Access Control enforcing `ROLE_ADMIN`, `ROLE_INTERNAL_STAFF`, and `ROLE_CUSTOMER`.
+- **Passwords**: Hashed using BCrypt.
+- **Protection**: CORS configured, CSRF disabled for stateless API, rate limiting enabled.
 
-Security is configured declaratively in `com.insurance.demo.config.SecurityConfig` (`@EnableMethodSecurity`, stateless sessions, CSRF disabled, hardened headers) and enforced by three custom filters registered in a fixed order inside the security chain. Authentication is JWT-based for the API and refresh-token-cookie based for the auth endpoints. All password storage uses BCrypt. Rate limiting uses Bucket4j and is applied only to unauthenticated authentication endpoints.
+---
 
 ## Business Context
+Insurance data is highly sensitive. The application must ensure that customers only see their own policies, staff can manage claims, and admins can configure the system, while protecting against brute-force, XSS, and CSRF attacks.
 
-The application is a stateless JSON API consumed by a single front end (`http://localhost:5173`). CSRF is disabled because the access token is carried in the `Authorization` header, not a cookie, so the classic CSRF vector does not apply to API calls; the one cookie-authenticated surface (`/api/auth/refresh`, `/api/auth/logout`) is protected by the refresh cookie being HTTP-only, `SameSite=Lax`, scoped to `/api/auth`, and by origin validation in `CookieCsrfOriginFilter`. Rate limiting on login/registration/OTP endpoints is required because those are the brute-force and abuse surface before any token exists.
+---
 
-## Technical Design
+## System Flow
+```mermaid
+flowchart TD
+    A[Incoming HTTP Request] --> B[RateLimitingFilter]
+    B --> C[CorsFilter]
+    C --> D[SecurityFilterChain]
+    D --> E[JwtAuthenticationFilter]
+    E --> F[AuthorizationFilter]
+    F --> G[Controller Endpoint]
+```
 
-### Filter chain
+---
 
-Order in the chain (each added with `addFilterBefore`):
+## Security Rules Table
+| Endpoint Pattern | HTTP Method | Required Role |
+|---|---|---|
+| `/api/auth/**` | POST | Permit All |
+| `/api/admin/**` | ALL | `ROLE_ADMIN` |
+| `/api/staff/**` | ALL | `ROLE_INTERNAL_STAFF`, `ROLE_ADMIN` |
+| `/api/customer/**` | ALL | `ROLE_CUSTOMER` |
+| `/api/public/**` | GET | Permit All |
 
-1. `CookieCsrfOriginFilter` — validates the Origin/Referer against the allowed origin for state-changing requests that carry the refresh cookie; logs `CSRF_REJECTED` on mismatch.
-2. `RateLimitFilter` — applies Bucket4j limits to the seven auth paths; on limit breach responds `429` with a `Retry-After` header and logs `RATE_LIMIT_TRIGGERED`.
-3. `JwtAuthenticationFilter` — parses and validates the `Authorization: Bearer` token, then populates the `SecurityContext`; invalid/expired tokens are logged as `TOKEN_INVALID` and the request continues unauthenticated.
-4. `UsernamePasswordAuthenticationFilter` (framework) — effectively unused for API calls because the login flow authenticates manually in `AuthServiceImpl` via `AuthenticationManager`.
+---
 
-Both custom filters are registered in Spring Security's internal chain via `addFilterBefore`; `FilterRegistrationBean` entries disable servlet-container auto-registration so ordering is deterministic.
+## Backend Implementation
+- **SecurityConfig**: Defines the filter chain, CORS settings, and route authorizations.
+- **BCrypt**: Uses a work factor of 10. Hashing makes passwords irreversible; the work factor slows down brute-force attacks.
+- **Bucket4j**: Rate limiting implemented per IP + Email combination.
+- **DataInitializer**: Seeds the initial admin account (`admin@insurance.com` / `Admin@123`) if no admin exists on startup.
 
-### Authentication
+---
 
-- `DaoAuthenticationProvider` backed by `CustomUserDetailsService` (`findByEmailAndIsActiveTrue`), with `BCryptPasswordEncoder` as the `PasswordEncoder`.
-- `AppUserDetails` adapts `AppUser` to `UserDetails`; its authority is `appUser.getRole().name()` and it carries the user's `tokenVersion` for stateless revocation checks.
-- Login, registration, OTP verification, and refresh flows use `AuthenticationManager`/`DaoAuthenticationProvider` for credential checks and `JwtService` for token issuance.
+## Design Decisions
+- **Why disable CSRF for APIs?** Because we use stateless Bearer tokens for authentication, which are not subject to CSRF. However, if any endpoint relies solely on cookies, we use `CookieCsrfOriginFilter`.
+- **Why Bucket4j?** Provides efficient token-bucket algorithm rate limiting without heavy external dependencies, although Redis can be used for distributed rate limiting.
+- **Why CORS restrictions?** Only allows the frontend dev server (`http://localhost:5173`) and specific production domains to interact with the API, with `credentials=true` for the HttpOnly refresh cookie.
+- **Security Headers**: HSTS, CSP, and X-Frame-Options are configured to prevent framing (clickjacking) and enforce secure connections.
 
-### Authorization
-
-- `@EnableMethodSecurity` enables `@PreAuthorize` at the controller/service level.
-- `SecurityConfig.authorizeHttpRequests` additionally pins URL-level roles (`hasRole`/`hasAnyRole`) per endpoint group. `OPTIONS` is permitted globally for CORS preflight.
-- Public surfaces: `/api/auth/**`, `/api/public/**`, and (when `app.security.swagger-enabled` is true) Swagger UI and `/v3/api-docs/**`. All other requests require authentication.
-- `JwtAuthenticationFilter.shouldNotFilter` mirrors these public prefixes so unauthenticated endpoints never incur token parsing.
-
-### Session and password policy
-
-- `SessionCreationPolicy.STATELESS`; no server-side sessions.
-- Passwords are BCrypt-encoded at registration and staff creation; `passwordEncoder` bean is a fresh `BCryptPasswordEncoder` (strength 10 default).
-- `AppUser.tokenVersion` is incremented on password reset and account deactivation/activation so outstanding tokens are invalidated without a token blacklist.
-
-### CORS and CSRF
-
-- `CorsConfig` allows exactly one origin (`app.security.cors-allowed-origin`, default `http://localhost:5173`), methods `GET/POST/PUT/PATCH/DELETE/OPTIONS`, all headers, and credentials.
-- CSRF protection is disabled via `AbstractHttpConfigurer::disable`; the mitigation posture is documented in the Business Context section.
-
-### Rate limiting (Bucket4j)
-
-- `RateLimitFilter` limits the paths `/api/auth/login`, `/register`, `/verify-otp`, `/resend-otp`, `/forgot-password`, `/reset-password`, `/refresh`.
-- Buckets are keyed by endpoint group + client IP + email parsed from the body, so rotating IP or email alone cannot bypass the limit.
-- Group defaults (capacity / refill-per-minute): login, otp, forgot, reset, register = 5/5; refresh = 10/5. All configurable under `app.security.rate-limit.*`.
-- Buckets are in-memory per instance; idle buckets are purged every 5 minutes after 10 minutes of inactivity.
-- On breach: `429 Too Many Requests`, `Retry-After` seconds, JSON body with `errorType=RATE_LIMITED`.
-
-### Security headers
-
-`SecurityConfig` sets: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, and HSTS (includeSubDomains, 1 year).
-
-### Audit events
-
-All security events go to the dedicated `SECURITY_AUDIT` logger via `SecurityAuditLogger` so they can be routed to a separate sink. Event names: `LOGIN_SUCCESS`, `LOGIN_FAILED`, `ACCOUNT_DISABLED`, `ACCOUNT_ACTIVATED`, `ACCOUNT_DEACTIVATED`, `TOKEN_INVALID`, `PASSWORD_RESET`, `RATE_LIMIT_TRIGGERED`, `REFRESH_TOKEN_ISSUED`, `REFRESH_TOKEN_ROTATED`, `REFRESH_REUSE_DETECTED`, `REFRESH_TOKEN_INVALID`, `REFRESH_TOKEN_PURGED`, `LOGOUT`, `CSRF_REJECTED`.
-
-## Workflow
-
-1. A request enters the chain; `CookieCsrfOriginFilter` checks cross-site state-change attempts when the refresh cookie is present.
-2. `RateLimitFilter` meters auth endpoints and rejects abuse with 429.
-3. `JwtAuthenticationFilter` validates the bearer token and, if valid, sets the `SecurityContext`.
-4. `SecurityConfig` authorizes the URL; `@PreAuthorize` enforces finer-grained role checks in the handler.
-5. `exceptionHandling` delegates both authentication-entry-point and access-denied failures to `GlobalExceptionHandler` so they are serialized with the uniform error body.
+---
 
 ## Code References
+| Component | Path |
+|---|---|
+| SecurityConfig | `com.insurance.demo.config.SecurityConfig` |
 
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/SecurityConfig.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/CorsConfig.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/AppSecurityProperties.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/RateLimitFilter.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/CookieCsrfOriginFilter.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/SecurityAuditLogger.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/security/CustomUserDetailsService.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/security/AppUserDetails.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/security/JwtAuthenticationFilter.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/RefreshTokenCookieManager.java`
+---
 
-Related: [JWT](JWT.md), [Security Architecture](../01_System_Architecture/Security_Architecture.md), [Exception Handling](Exception_Handling.md)
+## Interview Notes
+1. **How is security configured in Spring Boot 3+?** By defining a `SecurityFilterChain` bean instead of extending `WebSecurityConfigurerAdapter`.
+2. **What is BCrypt and why use it?** A password hashing function that includes a salt and a configurable work factor to resist dictionary and brute-force attacks.
+3. **How do you prevent brute force on login?** We use Bucket4j to rate limit login attempts based on IP and email, and lock the account after 5 failed attempts.
+4. **Why is CSRF disabled?** Our primary auth is via Authorization header (stateless), not session cookies, making standard CSRF attacks ineffective.
+5. **How does CORS work in this app?** We globally configure allowed origins, methods, and headers, and explicitly allow credentials so the frontend can send the HttpOnly refresh cookie.
+6. **What does the DataInitializer do?** It runs on startup and creates a default admin user if the database has no admin users, ensuring system accessibility.
+
+---
+
+## Related Documents
+- [../06_Backend/JWT.md](JWT.md)

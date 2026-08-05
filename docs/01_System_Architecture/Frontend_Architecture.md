@@ -1,152 +1,160 @@
 # Frontend Architecture
+> System overview of the React SPA: routing, state management, API integration, and theming.
 
-> System overview of the React single-page application: routing and role guards, layout system, state management, API integration, and theming.
+---
 
 ## Purpose
+Explains how the frontend module (`insurance-policy-claim-management-app-ui`) is structured and how its components interact. Designed for UI developers to understand state flow, routing logic, and HTTP interception.
 
-Explains how the frontend module (`insurance-policy-claim-management-app-ui`) is structured and how its pieces connect, for engineers working on UI pages or on the API integration layer. This is an overview document; implementation detail lives in the [`05_Frontend/`](../05_Frontend/Routing.md) docs.
+---
 
 ## Overview
+- **Tech Stack**: React 19, Vite 8, React Router 7, Bootstrap 5.3, Axios.
+- **State Management**: React Context (`AuthContext`, `ThemeContext`) and custom hooks (no Redux).
+- **Routing**: Client-side routing with strong role-based guards.
+- **Design**: Component-driven with role-based theming.
 
-The frontend is a **React 19 single-page application** built with Vite 8, React Router 7, Bootstrap 5.3 + bootstrap-icons, and Axios. It deliberately uses **no external state-management library** (no Redux/Zustand) and **no lazy-loaded routes** — state comes from Context + local hooks, and all pages are statically imported so navigation is instant. It has no shared backend state; every page renders from the REST API.
+---
 
 ## Business Context
+The frontend is the face of the application for three distinct user groups: Customers, Internal Staff, and Administrators. It must securely provide tailored workspaces while preventing unauthorized access to restricted features. The role-based theming ensures users always know which context they are operating in.
 
-Customers, staff, and administrators need a single responsive portal with role-specific workspaces. The frontend enforces the same separation of duties as the backend: a customer never sees staff actions, a staff member never reaches admin-only pricing screens, and the visual theme changes per role so users immediately know which workspace they are in.
+---
 
-## Technical Design
-
-### Application structure
-
+## Feature Flow
 ```mermaid
-flowchart TB
-    subgraph ENTRY["Entry"]
-        MAIN["main.jsx<br/>ThemeProvider → AuthProvider → BrowserRouter → App"]
-    end
-
-    subgraph ROUTING["Routing (App.jsx)"]
-        APP["Route table + guards"]
-        G["GuestRoute"]
-        P["ProtectedRoute"]
-        R["RoleProtectedRoute"]
-        D["DashboardRedirect"]
-    end
-
-    subgraph LAYOUT["Layout system"]
-        UL["UnifiedLayout<br/>Sidebar + TopNavbar + Outlet"]
-    end
-
-    subgraph NS["Role namespaces"]
-        A["/admin/*"]
-        S["/staff/*"]
-        C["/customer/*"]
-    end
-
-    subgraph STATE["State"]
-        AC["AuthContext"]
-        TS["tokenStore (in-memory)"]
-        TC["ThemeContext"]
-    end
-
-    subgraph API["API layer"]
-        SV["services/*.js"]
-        AX["axiosInstance<br/>request/response interceptors"]
-        AD["apiAdapter<br/>envelope parsing"]
-    end
-
-    MAIN --> APP
-    APP --> G
-    APP --> P
-    APP --> D
-    P --> UL
-    UL --> A & S & C
-    A & S & C --> AC
-    AC --> TS
-    A & S & C --> TC
-    A & S & C --> SV --> AX --> AD
+flowchart TD
+    A[User accesses URL] --> B{Route Guard}
+    B -- GuestRoute --> C[Public Pages (Login/Register)]
+    B -- ProtectedRoute --> D{Has Token?}
+    D -- No --> E[Redirect to Login]
+    D -- Yes --> F{RoleProtectedRoute}
+    F -- Role Match --> G[Render Page Component]
+    F -- Role Mismatch --> H[Redirect to Unauthorized]
 ```
 
-### Routing and role guards
+---
 
-All routes are defined centrally in `src/App.jsx`. Three guard components wrap the route tree:
+## System Flow (SPA Architecture)
+```mermaid
+flowchart TB
+    subgraph UI Components
+        Pages --> Layouts
+        Layouts --> SharedComponents
+    end
 
-| Guard | Behavior |
-|---|---|
-| `GuestRoute` | Public pages (`/`, `/login`, `/register`, `/forgot-password`, `/verify-otp`); authenticated users are redirected to their role home. |
-| `ProtectedRoute` | Requires an authenticated session; otherwise redirects to `/login`, preserving the intended destination. Shows a loading screen while the session is restored. |
-| `RoleProtectedRoute` | Enforces one role per route block; the wrong role redirects to that user's own dashboard or `/unauthorized`. |
-| `DashboardRedirect` | Maps `/dashboard` to the correct role home. |
+    subgraph State Management
+        AuthContext
+        ThemeContext
+        CustomHooks
+    end
 
-Role namespaces mirror the backend roles: `/admin/*`, `/staff/*`, `/customer/*`. Roles are defined in `src/utils/roles.js` as `ROLE_ADMIN`, `ROLE_INTERNAL_STAFF`, `ROLE_CUSTOMER`. Detail: [`../05_Frontend/Routing.md`](../05_Frontend/Routing.md).
+    subgraph API Layer
+        Services
+        AxiosInterceptor
+        TokenStore
+    end
 
-### Layout system
+    Pages --> AuthContext
+    Pages --> CustomHooks
+    CustomHooks --> Services
+    Services --> AxiosInterceptor
+    AxiosInterceptor --> TokenStore
+    AxiosInterceptor -.-> |HTTP| BackendAPI
+```
 
-Authenticated pages render inside `UnifiedLayout` (`src/components/layouts/UnifiedLayout.jsx`), the main shell composed of `Sidebar` and `TopNavbar` with an `<Outlet/>`. Navigation items, portal title, and theme class are role-driven. Detail: [`../05_Frontend/Layout.md`](../05_Frontend/Layout.md).
+---
 
-### State management
+## Route Structure
+```mermaid
+flowchart LR
+    App --> Guest["Guest Routes<br/>(/, /login)"]
+    App --> Protected["Protected Routes"]
+    Protected --> Admin["/admin/*<br/>(Products, Roles)"]
+    Protected --> Staff["/staff/*<br/>(Claims, Policies)"]
+    Protected --> Customer["/customer/*<br/>(Buy, Claims)"]
+```
 
-- **AuthContext** (`src/context/AuthContext.jsx`) holds `{ token, user, isAuthenticated, isRestoring, login, logout }`. The access token is kept **in memory** in `src/api/tokenStore.js` (never `localStorage`), while non-sensitive session flags (`ss_user`, `ss_has_session`) mark that a session exists. On boot the context silently restores the session via the HttpOnly refresh cookie (`/auth/refresh`).
-- **ThemeContext** (`src/context/ThemeContext.jsx`) manages light/dark theme applied via `data-theme` on `<html>`.
-- Everything else is local component/hook state. Reusable hooks in `src/hooks/` (`useApiTable`, `useApiForm`, `useClientPagination`, PDF export hooks, and more) drive tables, forms, and reports.
+---
 
-Detail: [`../05_Frontend/State_Management.md`](../05_Frontend/State_Management.md).
+## Component Hierarchy
+```mermaid
+flowchart TD
+    Main[main.jsx] --> App[App.jsx]
+    App --> Theme[ThemeProvider]
+    Theme --> Auth[AuthProvider]
+    Auth --> Router[BrowserRouter]
+    Router --> Layout[UnifiedLayout]
+    Layout --> Sidebar
+    Layout --> TopNavbar
+    Layout --> Outlet[Page Component]
+```
 
-### API integration layer
+---
 
-- `src/api/axiosInstance.js` — the single Axios instance. The request interceptor attaches the Bearer token, handles `FormData` content type, and starts the NProgress bar. The response interceptor parses the `ApiResponseDTO<T>` / `PageResponseDTO<T>` envelopes, and on a `401` performs a **single-flight refresh** (`POST /auth/refresh`, one shared promise, one retry) then replays the request. It dispatches window events: `auth:token-refreshed`, `auth:unauthorized`, `auth:forbidden`, `api:error`, consumed by `GlobalApiHandler`.
-- `src/api/apiAdapter.js` — normalizes success and error envelopes so services receive plain payloads.
-- `src/services/*.js` — one service per resource (auth, user, customer, product, plan, coverageOption, pricingRule, quote, policy, payment, claim, claimDocument, dashboard, public).
-- `src/api/tokenStore.js` — in-memory access-token holder.
+## API Layer & Axios Interceptors
+```mermaid
+flowchart TD
+    Req[Initiate Request] --> I1[Request Interceptor]
+    I1 --> |Add Bearer Token| API[Backend API]
+    API --> I2[Response Interceptor]
+    I2 --> |2xx Success| Success[Return Data]
+    I2 --> |401 Unauthorized| Refresh[Call /auth/refresh]
+    Refresh --> |Success| Retry[Retry Original Request]
+    Refresh --> |Failure| Logout[Dispatch Logout Event]
+```
 
-Detail: [`../05_Frontend/API_Integration.md`](../05_Frontend/API_Integration.md).
+---
 
-### Theming
+## Role Theming
+Visual cues are critical for preventing user error. The app uses `data-theme` on the root element.
+- **Admin**: Blue (`#2563eb`) - Signifies control and configuration.
+- **Staff**: Violet (`#7c3aed`) - Signifies internal processing and review.
+- **Customer**: Teal (`#0d9488`) - Friendly, consumer-facing.
 
-Role-based theming implemented in `src/index.css`: admin blue `#2563eb`, staff violet `#7c3aed`, customer teal `#0d9488`, each with light and dark variants. Detail: [`../05_Frontend/Layout.md`](../05_Frontend/Layout.md).
+---
 
-## Workflow
+## Error Handling
+- **401 Unauthorized**: Intercepted by Axios. Triggers a silent token refresh. If refresh fails, user is logged out and redirected to `/login`.
+- **403 Forbidden**: Handled globally, redirects the user to an `/unauthorized` page or displays a toast.
+- **500 Server Error**: Caught by the API adapter and displayed to the user via a global toast notification.
 
-1. `index.html` loads `main.jsx`, which mounts providers in order: `ThemeProvider`, `AuthProvider`, `BrowserRouter`, `App`.
-2. `App` renders global handlers (`GlobalApiHandler`, `GlobalToaster`) and the route table with guards.
-3. `GuestRoute` shows auth pages to anonymous users; `ProtectedRoute` requires a session; `RoleProtectedRoute` scopes `/admin/*`, `/staff/*`, `/customer/*`.
-4. A page calls a `src/services/*.js` function; the service calls `axiosInstance`, which attaches the token and parses the envelope.
-5. On `401` the instance silently refreshes the token once and retries; on failure it dispatches `auth:unauthorized` and the session ends.
-6. `AuthContext` publishes the token/user; `ThemeContext` applies light/dark styling; `GlobalToaster` surfaces notifications.
+---
 
-## Code References
+## Design Decisions
+| Decision | Rationale | Trade-offs |
+|---|---|---|
+| **No Redux** | Application state is mostly server state. React Context is sufficient for global UI state (auth, theme). | Lacks time-travel debugging, but vastly reduces boilerplate. |
+| **React Context** | Perfect for low-frequency updates like authentication status and current theme. | Not suited for high-frequency changing data. |
+| **Axios Interceptors** | Centralizes token injection and silent refresh logic, keeping components completely ignorant of token management. | Can be complex to debug during concurrent failed requests. |
+| **In-Memory Token Store** | Prevents XSS attacks from easily reading the JWT from `localStorage`. | Token is lost on hard reload (but silently restored via HttpOnly refresh cookie). |
 
-| Concern | File (repo-root-relative path) |
-|---|---|
-| Route table & guards | `insurance-policy-claim-management-app-ui/src/App.jsx` |
-| App bootstrap / provider order | `insurance-policy-claim-management-app-ui/src/main.jsx` |
-| Auth state | `insurance-policy-claim-management-app-ui/src/context/AuthContext.jsx` |
-| In-memory token store | `insurance-policy-claim-management-app-ui/src/api/tokenStore.js` |
-| HTTP layer & interceptors | `insurance-policy-claim-management-app-ui/src/api/axiosInstance.js` |
-| Envelope parsing | `insurance-policy-claim-management-app-ui/src/api/apiAdapter.js` |
-| Theme state | `insurance-policy-claim-management-app-ui/src/context/ThemeContext.jsx` |
-| Main layout shell | `insurance-policy-claim-management-app-ui/src/components/layouts/UnifiedLayout.jsx` |
-| Role constants | `insurance-policy-claim-management-app-ui/src/utils/roles.js` |
+---
 
-## Diagrams
+## Interview Notes
+**Q1: Why did you choose React Context over Redux for state management?**
+A: Redux is overkill for this app. We only have two pieces of truly global state: Authentication and Theme. The rest of the state is either local UI state or server state, which we manage with custom hooks and API calls. Context provides a simpler, boilerplate-free solution.
 
-- Inline application-structure diagram above.
-- Detailed component / page inventories: [`../05_Frontend/Component_Architecture.md`](../05_Frontend/Component_Architecture.md).
+**Q2: How do you handle JWT tokens on the frontend?**
+A: The access token is stored in memory (`tokenStore.js`), not in `localStorage`, to prevent XSS theft. It is injected into requests via an Axios request interceptor. The refresh token is stored in an HttpOnly cookie.
 
-## Best Practices
+**Q3: Explain the Axios interceptor logic for token refresh.**
+A: The response interceptor catches 401 errors. If a 401 occurs, it pauses the request, calls the refresh endpoint using the HttpOnly cookie, updates the in-memory token, and then replays the original failed request.
 
-- Single Axios instance centralizes token handling, refresh-on-401, and event dispatch — pages never manage auth headers themselves.
-- In-memory access token plus HttpOnly refresh cookie keeps the long-lived credential out of JavaScript-visible storage.
-- Role-guarded namespaces plus role-driven theming give each actor an unambiguous, isolated workspace.
-- Reusable hooks and service modules keep pages thin and consistent.
+**Q4: How is route protection implemented?**
+A: We use wrapper components (`ProtectedRoute` and `RoleProtectedRoute`). If a user accesses a protected route without a token, they are redirected to login. If they lack the correct role, they are redirected to an unauthorized page.
 
-## Future Improvements
+**Q5: Why aren't you using lazy loading for routes?**
+A: We prioritized instant navigation. Since the app is relatively small, the entire bundle size is manageable. As the application grows, we can introduce `React.lazy()` for code splitting at the route level.
 
-- Route-level code splitting once the route count grows.
-- A typed API contract (e.g. OpenAPI-generated client) to replace hand-written services.
-- See [`../10_Evaluation/Future_Enhancements.md`](../10_Evaluation/Future_Enhancements.md).
+---
 
-## See Also
+## Related Documents
+- [High Level Architecture](High_Level_Architecture.md)
+- [Folder Structure](Folder_Structure.md)
 
-- [`High_Level_Architecture.md`](High_Level_Architecture.md) — system context and request flow.
-- [`Security_Architecture.md`](Security_Architecture.md) — how frontend token handling fits the security model.
-- [`../05_Frontend/Routing.md`](../05_Frontend/Routing.md) — implementation detail.
+---
+
+## Future Enhancements
+- Implement React Query (TanStack Query) to manage server state, caching, and background refetching.
+- Implement route-level code splitting using `React.lazy()` and `Suspense`.

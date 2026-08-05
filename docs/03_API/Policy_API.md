@@ -1,142 +1,230 @@
-# Policy API
+</Agent System Instructions>
+<Policy API>
+> The core engine for issuing, managing, and cancelling insurance policies across customers and administrators.
 
-> Endpoints under `/api/policies` for purchasing, issuing, listing, fetching, canceling policies, and reading a policy's claims.
+---
 
 ## Purpose
+This document outlines the API endpoints related to Insurance Policies. It covers the entire lifecycle from premium calculation (generating quotes) and policy purchase, to policy retrieval and cancellation by both customers and internal staff/admins.
 
-Reference for policy lifecycle endpoints: purchase from a quote, manual issue by staff/admin, customer and admin listings, single-policy lookup, claims-by-policy, and cancellation. Documents `PolicyPurchaseRequestDTO`, `PolicyIssueRequestDTO`, `PolicyResponseDTO`, and the policy status lifecycle.
+---
 
 ## Overview
+- **Premium Calculation**: Generates temporary quotes based on plan details and applicant age.
+- **Purchase Policy**: Converts a quote into an active policy with verified payment.
+- **Customer Access**: Fetching active and historical policies.
+- **Admin/Staff Access**: Comprehensive viewing and manual policy issuance.
+- **Cancellation**: Secure endpoints for terminating active policies.
 
-A policy is created `PENDING_PAYMENT` from a validated quote, becomes `ACTIVE` once a SUCCESS payment is recorded, and can be `CANCELLED` (when no open claims exist) or eventually `EXPIRED`. Base URL: `http://localhost:8081/api`.
+---
 
 ## Business Context
+The policy API is the revenue driver of the system. It handles the critical conversion of a user's interest (Quote) into a binding contract (Policy). Strict validation ensures that the exact calculated premium is paid, and that policies correctly transition between states (PENDING_PAYMENT → ACTIVE → CANCELLED).
 
-Policies bind a customer, a plan (with a specific version and pricing rule), a selected coverage, a duration, and a start date. Duplicate-policy and claim-gating rules are described in `../02_Business_Domain/Policy.md` and `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Endpoint matrix
-
-| Method | Path | Role | Response envelope | Notes |
-|---|---|---|---|---|
-| POST | `/api/policies/purchase` | CUSTOMER | `ApiResponseDTO<PolicyResponseDTO>` | `201 Created`; from a quote |
-| POST | `/api/policies/issue` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PolicyResponseDTO>` | `201 Created`; manual issue |
-| GET | `/api/policies/my-policies` | CUSTOMER | `ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>>` | Own policies |
-| GET | `/api/policies/customer/{customerId}` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>>` | By customer |
-| GET | `/api/policies` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PageResponseDTO<PolicyResponseDTO>>` | Filters: `customerId`, `status`, `policyNumber` |
-| GET | `/api/policies/{policyId}` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<PolicyResponseDTO>` | Ownership enforced for customers |
-| GET | `/api/policies/{policyId}/claims` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<List<ClaimResponseDTO>>` | Delegates to claim service |
-| PATCH | `/api/policies/{policyId}/cancel` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PolicyResponseDTO>` | Blocked while open claims exist |
-
-### Purchase — `PolicyPurchaseRequestDTO`
-
-```json
-{
-  "quoteId": 4,
-  "paymentReferenceId": null
-}
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Customer Selects Plan] --> B[Calculate Premium API]
+    B --> C[Generate Quote]
+    C --> D[Initiate Payment]
+    D --> E[Purchase Policy API]
+    E --> F{Validate Payment Amount}
+    F -- Exact Match --> G[Issue Policy & Set ACTIVE]
+    F -- Mismatch --> H[Reject Purchase]
 ```
 
-`quoteId` is required. `paymentReferenceId` is optional. The `quoteId` comes from `POST /api/premium/calculate`. The customer's profile must be complete (nominee, address, city, state). The policy is created in `PENDING_PAYMENT`.
+---
 
-### Issue — `PolicyIssueRequestDTO`
-
-```json
-{
-  "customerId": 3,
-  "quoteId": 3,
-  "startDate": "2026-07-25"
-}
+## System Flow
+```mermaid
+flowchart TD
+    A[Controller] --> B[PolicyService]
+    B --> C[PremiumCalculatorFactory]
+    C --> D[Annual/OneTime Calculator Strategy]
+    D --> B
+    B --> E[PolicyRepository]
+    E --> F[(Database)]
 ```
 
-`customerId`, `quoteId`, and `startDate` are required; `startDate` must be past or present (`@PastOrPresent`).
+---
 
-### Purchase/issue validation
-
-From `PolicyServiceImpl` (`validateQuoteForPurchase` + duplicate checks):
-
-- The quote must belong to the target customer, be `CREATED`, and not be expired (see `Pricing_API.md#quote-expiry`).
-- The plan and its product must be active.
-- HEALTH products: no duplicate `ACTIVE` or `PENDING_PAYMENT` policy for the same customer+plan.
-- Non-HEALTH products: no duplicate `PENDING_PAYMENT` policy for the same customer+plan.
-
-### Response — `PolicyResponseDTO`
-
-```json
-{
-  "policyId": 1,
-  "policyNumber": "POL-HLTH-00001",
-  "customerId": 4,
-  "customerName": "Rajesh Sharma",
-  "planId": 1,
-  "planName": "Health Shield",
-  "startDate": "2026-07-25",
-  "endDate": "2027-07-25",
-  "policyStatus": "PENDING_PAYMENT",
-  "totalPremiumPaid": 0.00,
-  "productType": "HEALTH",
-  "selectedCoverage": 1000000.00,
-  "premiumType": "ANNUAL",
-  "policyDuration": 1,
-  "premiumRateUsed": 0.0180,
-  "processingFeeUsed": 450.00,
-  "gstUsed": 90.00,
-  "calculatedPremium": 18540.00,
-  "planVersion": 1,
-  "pricingRuleId": 1,
-  "quoteId": 8,
-  "purchaseDate": "2026-08-03T10:00:00",
-  "createdDate": "2026-08-03T10:00:00",
-  "remainingClaimAmount": 1000000.00
-}
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant User
+    participant Controller as PolicyController
+    participant QuoteDB as Redis/DB
+    participant PolicyDB as MySQL
+    
+    User->>Controller: POST /api/premium/calculate
+    Controller-->>User: Returns Quote Details (30 min validity)
+    
+    User->>Controller: POST /api/policies/purchase (Quote ID, Payment Info)
+    Controller->>QuoteDB: Validate Quote Validity & Amount
+    alt Valid
+        Controller->>PolicyDB: Create Policy Status=ACTIVE
+        Controller-->>User: 200 OK (Policy Issued)
+    else Invalid Quote or Payment Mismatch
+        Controller-->>User: 400 Bad Request
+    end
 ```
 
-Field notes:
+---
 
-- `policyNumber` is a human-friendly unique identifier.
-- `policyStatus` is one of `PolicyStatus`: `PENDING_PAYMENT`, `ACTIVE`, `EXPIRED`, `CANCELLED`.
-- `endDate = startDate + duration` years.
-- `calculatedPremium` is the amount a payment must match exactly to activate the policy.
-- `planVersion` and `pricingRuleId` freeze the configuration used at purchase time.
-- `remainingClaimAmount` = `selectedCoverage` minus approved/outstanding claims.
+## API Documentation
 
-### List query params (shared)
-
-`pageNumber` (default `0`), `pageSize` (default `10`), `sortBy` (default `id`), `sortDirection` (default `desc`).
-
-## Workflow
-
-1. Customer requests a quote (`POST /api/premium/calculate`) and obtains a `quoteId`.
-2. Customer purchases: `POST /api/policies/purchase` → policy `PENDING_PAYMENT`.
-3. Customer (or staff on their behalf) pays: `POST /api/payments` → policy becomes `ACTIVE`.
-4. Staff/admin can also issue directly: `POST /api/policies/issue`.
-5. Customer tracks: `GET /api/policies/my-policies`; staff/admin use `GET /api/policies` or `GET /api/policies/customer/{customerId}`.
-6. Customer views claims against a policy: `GET /api/policies/{policyId}/claims`.
-7. Staff/admin cancel: `PATCH /api/policies/{policyId}/cancel` (rejected while open claims exist).
-
-## Code References
-
-| Concern | Path |
+### 1. Calculate Premium (Quote Generation)
+| Field | Value |
 |---|---|
-| Controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/PolicyController.java` |
-| Service | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/serviceimpl/PolicyServiceImpl.java` |
-| Request DTOs | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/{PolicyPurchaseRequestDTO,PolicyIssueRequestDTO}.java` |
-| Response DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/PolicyResponseDTO.java` |
-| Policy status enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/PolicyStatus.java` |
-| Sample payloads | `demo-data/api-test-payloads/08-policies.md` |
+| Purpose | Generates a quote for a specific plan based on user parameters. |
+| Method | POST |
+| URL | `/api/premium/calculate` |
+| Auth Required | Yes |
+| Request Body | `{ "planId": 1, "applicantAge": 30, "premiumType": "ANNUAL", "coverageAmount": 500000 }` |
+| Response | `ApiResponseDTO` with quote details, calculated premium, and `quoteId` |
+| Validation | Valid plan ID, age within plan limits |
+| Possible Errors | `404 Plan not found`, `400 Age out of bounds` |
+| Business Logic | Uses `PremiumCalculatorFactory` to select the strategy, applies base rate, age multiplier, and taxes. Saves temporary quote. |
+| Frontend Screen | Plan Configuration Page |
 
-## Diagrams
+### 2. Purchase Policy
+| Field | Value |
+|---|---|
+| Purpose | Finalizes purchase by converting a quote to a policy. |
+| Method | POST |
+| URL | `/api/policies/purchase` |
+| Auth Required | Yes |
+| Request Body | `{ "quoteId": "12345", "paymentReference": "PAY-999", "amountPaid": 12000.00 }` |
+| Response | `ApiResponseDTO` with generated Policy ID and status |
+| Validation | Amount paid must EXACTLY match quote amount. |
+| Possible Errors | `400 Payment mismatch`, `400 Quote expired/used` |
+| Business Logic | Validates quote. Creates Policy entity. Marks quote as USED. |
+| Frontend Screen | Checkout Page |
 
-Policy lifecycle and claim relationships are documented in `../04_Database/Table_Descriptions.md` and `../08_Workflows/Policy_Lifecycle.md`.
+### 3. Get My Policies
+| Field | Value |
+|---|---|
+| Purpose | Fetches all policies belonging to the logged-in customer. |
+| Method | GET |
+| URL | `/api/policies/my-policies` |
+| Auth Required | Yes (Customer) |
+| Request Body | None |
+| Response | `ApiResponseDTO` containing list of policies |
+| Validation | JWT validation |
+| Possible Errors | `401 Unauthorized` |
+| Business Logic | Extracts user ID from JWT, fetches matching records. |
+| Frontend Screen | Customer Dashboard |
 
-## Best Practices
+### 4. Get Policy by ID
+| Field | Value |
+|---|---|
+| Purpose | Retrieves full details of a specific policy. |
+| Method | GET |
+| URL | `/api/policies/{id}` |
+| Auth Required | Yes |
+| Request Body | None |
+| Response | `ApiResponseDTO` with policy details, coverage, history |
+| Validation | User must own policy OR be Admin/Staff. |
+| Possible Errors | `403 Forbidden`, `404 Not Found` |
+| Business Logic | RBAC check on policy ownership. |
+| Frontend Screen | Policy Details Page |
 
-- Policies are always created from a validated, single-use quote, so the financial terms are immutable snapshots.
-- `planVersion`/`pricingRuleId` snapshots keep historical policies auditable even when plans change.
-- Duplicate-policy rules are enforced server-side per product type.
+### 5. Cancel Policy
+| Field | Value |
+|---|---|
+| Purpose | Cancels an active policy. |
+| Method | PATCH |
+| URL | `/api/policies/{id}/cancel` |
+| Auth Required | Yes |
+| Request Body | `{ "reason": "No longer needed" }` |
+| Response | `ApiResponseDTO` |
+| Validation | Policy must be ACTIVE. Must be owner or admin. |
+| Possible Errors | `400 Policy already cancelled` |
+| Business Logic | Updates status to CANCELLED, calculates refund if applicable (based on business rules). |
+| Frontend Screen | Policy Details Page |
 
-## Future Improvements
+### 6. Admin Issue Policy (Manual)
+| Field | Value |
+|---|---|
+| Purpose | Allows admin to bypass payment flow and manually issue a policy (e.g., corporate bulk sales). |
+| Method | POST |
+| URL | `/api/admin/policies/issue` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "userId": 10, "planId": 5, "premiumType": "ONE_TIME" }` |
+| Response | `ApiResponseDTO` |
+| Validation | Valid user and plan. |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Creates policy directly in ACTIVE status. |
+| Frontend Screen | Admin Dashboard |
 
-- Consider policy renewal and end-to-end policy-number formatting configuration.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+### 7. View All Policies (Admin)
+| Field | Value |
+|---|---|
+| Purpose | Fetch all policies system-wide with pagination. |
+| Method | GET |
+| URL | `/api/admin/policies` |
+| Auth Required | Yes (Admin) |
+| Request Body | None (Query Params: page, size) |
+| Response | Paginated `ApiResponseDTO` |
+| Validation | Admin role check. |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Fetches paginated records. |
+| Frontend Screen | Admin Policy Management |
+
+### 8. View Policies (Staff)
+| Field | Value |
+|---|---|
+| Purpose | Fetch policies for staff review, specifically for claim validation context. |
+| Method | GET |
+| URL | `/api/staff/policies` |
+| Auth Required | Yes (Staff) |
+| Request Body | None |
+| Response | `ApiResponseDTO` |
+| Validation | Staff role check. |
+| Possible Errors | `403 Forbidden` |
+| Business Logic | Read-only access to policies. |
+| Frontend Screen | Staff Dashboard |
+
+---
+
+## Backend Implementation
+- **Controllers**: `PolicyController.java`, `AdminPolicyController.java`
+- **Services**: `PolicyService.java`, `PremiumCalculatorService.java`
+- **Design Pattern**: Strategy Pattern for `PremiumCalculator` (Annual vs. One-Time).
+
+---
+
+## Business Rules
+| Rule | Reason |
+|---|---|
+| Payment Exact Match | Prevents underpayment or overpayment edge cases during policy creation. |
+| Quote Expiry | 30-minute validity ensures users don't hold favorable rates if pricing rules change. |
+| Strategy Pattern | Different premium types (Annual vs One-Time) require different mathematical models and tax applications. |
+
+---
+
+## Design Decisions
+1. **Why separate quote generation and purchase endpoints?**
+   Ensures the calculation is cleanly separated from the financial transaction, allowing the frontend to show a breakdown before commitment.
+2. **Why use the Strategy Pattern for Premium Calculation?**
+   It allows the system to easily add new payment models (e.g., Monthly, Quarterly) without modifying the core service, respecting the Open-Closed Principle.
+
+---
+
+## Interview Notes
+1. **Q: How does the system ensure the user pays the correct amount?**
+   **A:** The `/purchase` endpoint compares the provided payment amount directly against the backend-stored Quote value. If there is even a cent difference, the transaction is rejected.
+2. **Q: Explain the Strategy pattern used here.**
+   **A:** We use a `PremiumCalculatorFactory` to instantiate either `AnnualPremiumCalculator` or `OneTimePremiumCalculator` based on the request. Both implement the `PremiumCalculator` interface.
+3. **Q: How are expired quotes handled?**
+   **A:** Quotes have a TTL. When querying a quote ID during purchase, if it doesn't exist or is marked EXPIRED, the transaction fails.
+4. **Q: How is authorization handled for viewing a policy?**
+   **A:** The service layer extracts the authenticated user's ID. If the role is CUSTOMER, it ensures `policy.getUserId() == authUserId`. Admins bypass this check.
+
+---
+
+## Future Enhancements
+- Automated renewal crons for ANNUAL premium policies.
+</Policy API>

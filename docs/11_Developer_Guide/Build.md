@@ -1,67 +1,56 @@
-# Build
+# Build Guide
+> Compiling and packaging the InsuranceFlow system for deployment.
 
-> How to build backend and frontend artifacts, and how to run the tests.
+---
 
 ## Purpose
+Instructions for compiling source code into deployable artifacts (JAR files for backend, static HTML/JS for frontend).
 
-Reproducible builds of both modules.
+---
 
-## Backend
+## Backend Build (Maven)
 
-```bash
-cd insurance-policy-claim-management-system
+The backend is packaged as an executable Spring Boot fat JAR containing all dependencies and an embedded Tomcat server.
 
-# Full build (runs tests)
-./mvnw clean package
+### Commands
 
-# Skip tests for a fast build
-./mvnw clean package -DskipTests
+| Command | What it does |
+|---------|--------------|
+| `mvn clean` | Deletes the `/target` directory to ensure a fresh build. |
+| `mvn compile` | Compiles Java source files into `.class` files. |
+| `mvn test` | Runs all JUnit and Mockito tests. |
+| `mvn clean install -DskipTests` | Cleans, compiles, and packages into a `.jar`, skipping tests for speed. |
 
-# Run only the tests
-./mvnw test
-```
+### Build Artifact
+- **Location:** `./target/insuranceflow-0.0.1-SNAPSHOT.jar`
+- **Run the artifact:** `java -jar target/insuranceflow-0.0.1-SNAPSHOT.jar`
 
-Artifact: `target/insurance-policy-claim-management-system-0.0.1-SNAPSHOT.jar`
-(a Spring Boot fat jar with embedded Tomcat).
+---
 
-### Tests
+## Frontend Build (npm / Vite)
 
-- `src/test/java/com/insurance/demo/JwtSecurityIntegrationTest.java` — JWT auth
-  end-to-end (login → authenticated request, invalid/expired token handling).
-- `src/test/java/com/insurance/demo/RefreshTokenIntegrationTest.java` — refresh
-  rotation, reuse detection / family revocation, logout.
-- Test profile `src/test/resources/application-test.properties`; tests use
-  `@SpringBootTest` + Spring Test support. They expect a reachable MySQL (same
-  `env.properties` credentials).
+The frontend is compiled using Vite into heavily optimized static assets (HTML, CSS, JS) suitable for hosting on Nginx, Apache, or CDN.
 
-## Frontend
+### Commands
 
-```bash
-cd insurance-policy-claim-management-app-ui
+| Command | What it does |
+|---------|--------------|
+| `npm run build` | Compiles React code, transpiles modern JS, and bundles assets via Vite. |
+| `npm run preview` | Boots a local static server to test the production build before deployment. |
 
-npm install
-npm run build          # production build to dist/
-npm run lint           # ESLint
-```
+### Build Artifact
+- **Location:** `./dist/` directory.
+- This folder contains `index.html` and an `/assets` folder with minified chunks.
+- **Note:** You cannot simply open `index.html` in a browser via `file://`. It must be served over HTTP.
 
-Artifact: `dist/` — static assets served by any web server (Vite emits hashed
-filenames, CSP via `.env.production`).
+---
 
-### Previewing the production build
+> [!IMPORTANT]
+> **Environment Variables during Build**
+> The frontend `npm run build` command bakes `VITE_` prefixed environment variables directly into the static JS files. Ensure your `.env.production` is set correctly *before* building.
 
-```bash
-npm run preview
-```
+---
 
-## CI notes
-
-- `npm ci` instead of `npm install` for reproducible frontend installs.
-- Maven wrapper pins the Maven version; CI should use `./mvnw`.
-- Both modules are independent; build frontend → serve statically, build
-  backend → run as a service (see `Deployment.md`).
-
-## Related
-
-- `Run.md` — running locally
-- `Deployment.md` — production deployment
-- `../00_Project_Overview/Tech_Stack.md` — versions
+## Related Documents
+- [Deployment Guide](./Deployment.md)
+- [Environment Configuration](./Environment.md)

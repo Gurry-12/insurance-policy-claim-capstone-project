@@ -1,76 +1,54 @@
 # Features Checklist
+> Evaluator checklist to verify all system features function as designed.
 
-> Evaluation checklist of every implemented feature. Sources: `Features.md`,
-> the frontend pages, and the API docs.
+---
 
-## How to use
+## Purpose
+A comprehensive, interactive checklist for Q&A, testing, and evaluation of the InsuranceFlow system, grouped by user roles.
 
-Go through the list; each item is verifiable via the UI (`screenshots/`),
-endpoints (`03_API/`), or demo data (`demo-data/`).
+---
 
-## Authentication & Users
+## 1. Authentication & Security (All Users)
+- [ ] **Registration:** User can register with valid email and password.
+- [ ] **Dual OTP:** Registration triggers Email and SMS OTP.
+- [ ] **Login:** User can login and receives a JWT (stored securely).
+- [ ] **Token Refresh:** Waiting 1 minute (dev expiry) and navigating auto-refreshes the token.
+- [ ] **Rate Limiting:** Attempting to login >5 times in a minute triggers 429 Too Many Requests.
+- [ ] **Logout:** Logs user out, destroys HttpOnly cookie, blacklists token in Redis.
 
-- [ ] Registration with dual OTP (email + SMS) verification
-- [ ] OTP resend with 60 s cooldown and 5-attempt limit
-- [ ] Login issuing JWT + refresh cookie; logout
-- [ ] Forgot / reset password via OTP
-- [ ] Refresh-token rotation and reuse detection
-- [ ] Admin creates staff accounts with product speciality
-- [ ] User activate/deactivate; token-version revocation
-- [ ] Seed admin auto-creation (`admin@insurance.com` / `Admin@123`)
+## 2. Customer Features
+- [ ] **View Plans:** Can browse active `PolicyPlans`.
+- [ ] **Generate Quote:** Can fill details and generate a price quote.
+- [ ] **Purchase Policy:** Can convert an active quote into an `ACTIVE` policy using exact `BigDecimal` payment.
+- [ ] **Duplicate Prevention:** Cannot purchase a second active policy of the same `ProductType`.
+- [ ] **View My Policies:** Dashboard displays active and expired policies.
+- [ ] **Download PDF:** Can generate and download a jsPDF summary of the policy.
+- [ ] **Submit Claim:** Can submit a claim against an active policy.
+- [ ] **Upload Document:** Can attach images/PDFs to the claim (uploads to Cloudinary).
+- [ ] **Track Claim:** Can view real-time status of submitted claims.
 
-## Catalog
+## 3. Internal Staff Features
+- [ ] **Dashboard:** Can view system-wide policy counts and pending claims.
+- [ ] **View All Policies:** Can search and view any customer's policy details.
+- [ ] **Claim Review (Maker):** Can review a `SUBMITTED` claim.
+- [ ] **Claim Recommendation:** Can change claim status to `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`.
+- [ ] **Pricing Audit:** Can view the historical `pricing_audit_log`.
 
-- [ ] Products: create/update/activate/deactivate (5 types)
-- [ ] Plans: wizard create (plan + coverage options + pricing rule), update,
-      activate/deactivate
-- [ ] Coverage options: per-plan CRUD, display order, regenerate ladder
-- [ ] Pricing rules: CRUD + activate + preview + audit log
-- [ ] Customer view limited to active products/plans/coverage
+## 4. Admin Features
+- [ ] **System Configuration:** Can create new `PolicyPlan`, `PricingRule`, and `CoverageOption`.
+- [ ] **Claim Approval (Checker):** Can review recommended claims and mark them as `APPROVED` or `REJECTED`.
+- [ ] **Optimistic Locking Test:** (Advanced) Two admins trying to approve the same claim simultaneously results in a version conflict.
+- [ ] **User Management:** Can deactivate user accounts (immediately invalidating their tokens).
+- [ ] **Override Restrictions:** Can manually cancel active policies.
 
-## Premium & Purchase
+---
 
-- [ ] Premium calculation (ANNUAL & ONE_TIME) with duration discounts
-- [ ] Quote creation with 30-min validity, used/expired tracking
-- [ ] Policy purchase from quote → PENDING_PAYMENT
-- [ ] Staff/admin policy issuance
-- [ ] Duplicate-policy guards (HEALTH vs non-HEALTH)
-
-## Payments
-
-- [ ] Record payment (UPI/CARD/NET_BANKING/CASH; PENDING/SUCCESS/FAILED)
-- [ ] Exact-amount validation; SUCCESS activates the policy
-- [ ] Payment history (my-payments, by-policy)
-- [ ] PDF payment receipt
-
-## Policies
-
-- [ ] My policies, policy details, per-policy claims
-- [ ] Policy lifecycle: PENDING_PAYMENT → ACTIVE → EXPIRED / CANCELLED
-- [ ] Cancellation rules (blocked with open claims)
-
-## Claims
-
-- [ ] Raise claim (multipart: JSON + multiple documents → Cloudinary)
-- [ ] Validation: ACTIVE policy, incident date in period, remaining cover
-- [ ] Staff chain: under-review → assign → review (recommend)
-- [ ] Admin final decision (APPROVED / REJECTED)
-- [ ] Claim status history / audit trail
-- [ ] Speciality-filtered staff queue
-- [ ] PDF claim summary
-
-## Platform
-
-- [ ] Public stats endpoint + landing page stats
-- [ ] Swagger UI
-- [ ] Role-based dashboards and navigation
-- [ ] Dark/light theme + role accents
-- [ ] Pagination, filtering, sorting on list pages
-- [ ] Transparent access-token refresh (single-flight, retry)
-- [ ] Rate limiting on auth endpoints (Bucket4j)
-
-## Related
-
-- `../00_Project_Overview/Features.md` — detailed catalogue
-- `API_Checklist.md` — endpoint-level verification
-- `../../screenshots/` — UI evidence
+## Demo Instructions
+1. Run backend, frontend, MySQL, and Redis.
+2. Login with `admin@insurance.com` / `Admin@123`.
+3. Create a Health Plan.
+4. Open an Incognito window, register a new Customer.
+5. Purchase the Health Plan as the Customer.
+6. Submit a Claim.
+7. Login as Staff (create one via Admin) and Recommend Approval.
+8. Login as Admin and Approve the claim.

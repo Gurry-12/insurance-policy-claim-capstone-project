@@ -1,69 +1,78 @@
-# Run
+# Run Guide
+> How to start up the InsuranceFlow local development environment.
 
-> Day-to-day commands to run the application locally.
+---
 
 ## Purpose
+Standard operating procedure for starting the application suite daily, ensuring services boot in the correct order to prevent connection refusals.
 
-Fast reference for starting/stopping both modules.
+---
 
-## Backend
+## Startup Order
 
-```bash
-cd insurance-policy-claim-management-system
-./mvnw spring-boot:run
+Services MUST be started in this exact order:
+
+```mermaid
+flowchart TD
+    A[(1. MySQL)] --> B[(2. Redis)]
+    B --> C[3. Spring Boot Backend]
+    C --> D[4. React Frontend]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#bbf,stroke:#333,stroke-width:2px
+    style D fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
-- API base: `http://localhost:8081/api`
-- Swagger UI: `http://localhost:8081/swagger-ui.html`
-- OpenAPI JSON: `http://localhost:8081/v3/api-docs`
-- `show-sql=true` is enabled — Hibernate SQL is printed to the console.
+---
 
-**Auto-seeded admin** on first boot (when `app.security.seed-admin.enabled=true`):
+## Quick Command Reference
 
-| Field | Value |
-|---|---|
-| email | `admin@insurance.com` |
-| password | `Admin@123` |
+| Component | Command / Action | Port |
+|-----------|------------------|------|
+| **MySQL** | Start via Services or Docker | 3306 |
+| **Redis** | `redis-server` (or Docker) | 6379 |
+| **Backend** | `mvn spring-boot:run` | 8081 |
+| **Frontend** | `npm run dev` | 5173 |
 
-> Change the default password immediately in a real environment.
+---
 
-## Frontend
+## Detailed Steps & Verification
 
+### 1. Data Layer
+Start MySQL and Redis.
+**Verify:**
+- Ping Redis: `redis-cli ping` (should output `PONG`).
+- MySQL: Ensure you can connect to `insurance_db`.
+
+### 2. Backend API
+Open terminal in the backend root directory.
 ```bash
-cd insurance-policy-claim-management-app-ui
+mvn spring-boot:run
+```
+**Verify:**
+- Terminal should display the Spring Boot banner.
+- Look for: `Tomcat started on port(s): 8081`.
+- Go to browser: `http://localhost:8081/api/system/health`. Should return `200 OK`.
+- **Note:** The `DataSeeder` runs automatically and inserts the Admin user if it doesn't exist.
+
+### 3. Frontend App
+Open terminal in the frontend root directory.
+```bash
 npm run dev
 ```
+**Verify:**
+- Terminal should display: `Vite ready in X ms`.
+- Look for: `Local: http://localhost:5173/`.
+- Open that URL in your browser. You should see the login screen.
 
-- Dev server: `http://localhost:5173`
-- `/api` requests are proxied to `http://localhost:8081` by `vite.config.js`.
+---
 
-## Notes on access tokens
+> [!TIP]
+> Always keep your backend terminal visible while using the frontend. Backend exception logs are the fastest way to debug 500 errors.
 
-The committed local `application.properties` sets
-`app.security.jwt.expiration-ms=60000` (60-second access tokens) for fast
-development. Expect frequent refreshes; the frontend handles them transparently.
-See `Environment.md` to change it.
+---
 
-## Offline OTP (no email/SMS keys)
-
-When Twilio/Gmail are not configured, OTPs are **logged to the backend console**
-and stored (plaintext) in the `otp_verifications` table:
-
-```sql
-SELECT email_otp, phone_otp FROM otp_verifications
-WHERE user_id = <id> ORDER BY id DESC LIMIT 1;
-```
-
-The seeded pending user `meena.iyer@example.com` uses OTP `555555` / `555555`
-(see `demo-data/04-evaluator-demo.md`).
-
-## Loading demo data
-
-Import `demo-data/sql/*.sql` after the first boot, then restart. See
-`Setup.md#6`.
-
-## Related
-
-- `Setup.md` — first-time setup
-- `Environment.md` — configuration
-- `Troubleshooting.md` — common issues
+## Related Documents
+- [Troubleshooting](./Troubleshooting.md)
+- [Build Guide](./Build.md)

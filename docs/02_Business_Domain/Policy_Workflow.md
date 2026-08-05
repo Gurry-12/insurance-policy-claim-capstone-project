@@ -1,109 +1,173 @@
 # Policy Workflow
+> The full lifecycle from temporary quote to an in-force policy, handling exact snapshotting and status transitions.
 
-> The full policy lifecycle from quote to purchase/issue, payment activation, and eventual expiry or cancellation, including the premium snapshot and a worked numeric example.
+---
 
 ## Purpose
+Explains how a customer moves from a quote to an in-force policy and how the policy is priced, stored, activated, and terminated.
 
-Explains how a customer moves from a quote to an in-force policy and how the policy is priced, stored, activated, and terminated. Endpoint payloads live in `../03_API/Policy_API.md`; the money math is owned by `Premium_Calculation.md`; payment mechanics by `Payment_Workflow.md`.
+---
 
 ## Overview
+A policy is a priced, dated contract for a specific customer. 
+- It starts as `PENDING_PAYMENT`.
+- Becomes `ACTIVE` upon successful payment.
+- Can be cancelled (if no claims exist) or expire.
 
-A policy is a priced, dated contract for a specific customer on a specific plan. It is born `PENDING_PAYMENT`, becomes `ACTIVE` on a successful premium payment, and can be cancelled (when no open claims exist) or expire at its `endDate`. Every pricing input used at creation is snapshotted on the policy so later catalogue changes never alter an in-force contract.
+---
 
 ## Business Context
+Policies are the revenue and liability core of the business. A policy must record EXACTLY what was sold at EXACTLY what price. This ensures claims and renewals are grounded in a frozen snapshot rather than live catalogue values.
 
-Policies are the revenue and liability core of an insurance business. A policy must record exactly what was sold (coverage, duration, premium type) at exactly what price (rates, fees, GST, premium), so that claims, renewals, audits, and regulatory reporting are all grounded in a frozen snapshot rather than live catalogue values.
+---
 
-## Technical Design
+## Feature Flow
+```mermaid
+flowchart TD
+    Quote[Generate Quote] --> Select[Purchase Policy using Quote]
+    Select --> Profile{Profile Complete?}
+    Profile -->|No| Err1[Reject 400]
+    Profile -->|Yes| Dup{Duplicate Policy?}
+    Dup -->|Yes| Err2[Reject 409]
+    Dup -->|No| Create[Create Policy PENDING_PAYMENT]
+    Create --> Snapshot[Copy Quote Details to Policy]
+    Snapshot --> Mark[Mark Quote as USED]
+    Mark --> Wait[Wait for Payment]
+    Wait --> Pay[Payment Success]
+    Pay --> Act[Update to ACTIVE]
+```
 
-### Policy status machine (`PolicyStatus`)
+---
 
-| From | To | Actor | Action |
-|---|---|---|---|
-| — | `PENDING_PAYMENT` | Customer (`POST /api/policies/purchase`) or Staff/Admin (`POST /api/policies/issue`) | Policy created from a valid quote |
-| `PENDING_PAYMENT` | `ACTIVE` | Payment success (`POST /api/payments`) | First (or next) `SUCCESS` payment |
-| `PENDING_PAYMENT` | `CANCELLED` | Admin/Staff (`PATCH /api/policies/{id}/cancel`) | Cancellation while unpaid, no open claims |
-| `ACTIVE` | `CANCELLED` | Admin/Staff | Cancellation, blocked while open claims exist |
-| `ACTIVE`/`PENDING_PAYMENT` | `EXPIRED` | Point-of-use enforcement | No background job currently flips status; `endDate` passage is enforced at claim and payment time |
+## System Flow
+```mermaid
+flowchart TD
+    UI[Frontend] --> Ctrl[PolicyController]
+    Ctrl --> Svc[PolicyServiceImpl]
+    Svc --> DB1[(Quotes Table)]
+    Svc --> DB2[(Policies Table)]
+```
 
-Notes:
+---
 
-- `EXPIRED` is a real status in the enum; enforcement happens at the point of use (claims require `ACTIVE`; payments are rejected for `EXPIRED`). Auto-transition at `endDate` is a future enhancement.
-- Cancellation rules: `Business_Rules.md` section 7.
-- Duplicate-policy rules (HEALTH vs non-HEALTH) are enforced at purchase/issue: `Business_Rules.md` section 2.
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Customer
+    participant API
+    participant DB
+    
+    Customer->>API: purchasePolicy(quoteId)
+    API->>DB: Check Quote validity & ownership
+    API->>DB: Check Customer Profile completion
+    API->>DB: Check Duplicate rules
+    API->>API: Snapshot pricing details
+    API->>DB: Save Policy (PENDING_PAYMENT)
+    API->>DB: Update Quote (USED)
+    API-->>Customer: Return Policy ID
+```
 
-### Premium snapshot fields on `Policy`
+---
 
-The following are copied from the quote at creation and never recomputed (`model/Policy.java`):
+## Architecture Diagram (if applicable)
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_PAYMENT : Purchase from Quote
+    PENDING_PAYMENT --> ACTIVE : Payment SUCCESS
+    PENDING_PAYMENT --> CANCELLED : Cancel (by Admin)
+    ACTIVE --> CANCELLED : Cancel (blocked if open claims)
+    ACTIVE --> EXPIRED : Policy endDate reached
+    PENDING_PAYMENT --> EXPIRED : Policy endDate reached
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+```
 
-| Field | Source on quote | Meaning |
+---
+
+## Database Design
+
+| Field | Source | Meaning |
 |---|---|---|
-| `selectedCoverage` | `quote.coverage` | Sum assured purchased (must be an active coverage tier) |
-| `premiumType` | `quote.premiumType` | `ONE_TIME` or `ANNUAL` |
-| `policyDuration` | `quote.duration` | Years |
-| `premiumRateUsed` | `quote.riskRate` | `baseRiskRate` in force at creation |
-| `processingFeeUsed` | `quote.processingFee` | Fee in force at creation |
-| `gstUsed` | `quote.gst` | GST in force at creation |
-| `calculatedPremium` | `quote.total` | Total payable per payment (ONE_TIME total, or annual premium for ANNUAL) |
-| `planVersion` / `pricingRuleId` / `quoteId` | quote | Lineage for audit |
+| `selectedCoverage` | Quote | Exact coverage purchased |
+| `policyDuration` | Quote | Number of years |
+| `calculatedPremium` | Quote | Total payable amount per transaction |
+| `premiumRateUsed` | PricingRule | Base risk rate frozen at purchase |
+| `processingFeeUsed` | PricingRule | Fee frozen at purchase |
 
-Derived fields: `policyNumber` (`POL-<8 hex>` from `util/PolicyNumberGenerator.java`), `startDate` (purchase day, or a staff-supplied `startDate` on issue), `endDate = startDate.plusYears(policyDuration)`, `totalPremiumPaid` (starts `0`), and an optimistic-lock `version` column.
+---
 
-### Remaining claim amount
+## API Documentation (if applicable)
+- `POST /api/policies/purchase`: Customer turns a quote into a policy.
+- `POST /api/policies/issue`: Staff issues a policy on behalf of a customer.
 
-`remainingClaimAmount` is computed, not stored: `selectedCoverage − Σ(claims with status != REJECTED)` via `sumActiveClaimsByPolicyId` (see `Business_Rules.md` 5.5).
+---
 
-### Renewal / expiry handling
+## Frontend Implementation (if applicable)
+Handled via `QuoteGenerator` and `PolicyDashboard`.
 
-- **ANNUAL** policies are paid year by year; each successful payment keeps the policy `ACTIVE` up to `policyDuration` payments, gated by the renewal window rule (`Business_Rules.md` 4.5/4.6).
-- **ONE_TIME** policies are fully paid once; a second successful payment is rejected (`Business_Rules.md` 4.4).
-- Expiry: the contract ends at `endDate`; claims must fall inside the period and the policy must still be `ACTIVE` at claim time.
+---
 
-## Workflow
+## Backend Implementation
+Implemented in `com.insurance.demo.serviceimpl.PolicyServiceImpl`.
 
-1. **Quote** — `POST /api/premium/calculate` (customer) or `POST /api/premium/admin/calculate` (admin/staff) produces a `PremiumQuote`, persists a `Quote` in `CREATED` status, valid 30 minutes.
-2. **Purchase** — `POST /api/policies/purchase` (customer, body `{ quoteId }`): profile-complete check, quote ownership/status/expiry/active-plan checks, duplicate-policy check, save policy `PENDING_PAYMENT`, mark quote `USED`.
-3. **Issue (staff/admin)** — `POST /api/policies/issue` (body `{ customerId, quoteId, startDate }`): same checks plus staff speciality match; start date is explicit.
-4. **Pay** — `POST /api/payments` with exact `calculatedPremium`; on `SUCCESS` the policy becomes `ACTIVE`.
-5. **In force** — claims can now be raised (`Claim_Workflow.md`); ANNUAL renewals re-pay within the 15-day window.
-6. **Cancel** — `PATCH /api/policies/{id}/cancel` by admin/staff, blocked while open claims exist.
-7. **Expire** — at `endDate` (enforced at point of use; auto-transition planned).
+---
 
-### Worked numeric example
+## Business Rules
 
-Assumptions — MOTOR product, plan "motor-safe", `supportedPremiumType = ONE_TIME`, `allowedDurations = {2,3,5}`; pricing rule `baseRiskRate = 0.030`, `processingFee = 150.00`, `gst = 18.00`; coverage option `₹10,00,000 Lakhs`.
+| From | To | Actor | Condition | Result |
+|---|---|---|---|---|
+| None | PENDING_PAYMENT | Customer | Valid CREATED quote | Policy created, Quote USED |
+| PENDING_PAYMENT | ACTIVE | System | Payment SUCCESS | Total premium updated, cover starts |
+| ACTIVE | CANCELLED | Admin | No open claims | Policy cancelled |
 
-1. Customer requests `coverage = 10,00,000`, `duration = 3`, `premiumType = ONE_TIME`.
-2. Calculation (`Premium_Calculation.md`): base = 10,00,000 × 0.030 = 30,000; taxable = 30,000 + 150 = 30,150; GST = 30,150 × 18 / 100 = 5,427; annual premium = 35,577; total commitment = 35,577 × 3 = 106,731; 3-year discount 5% = 5,337; **ONE_TIME total = 101,394**.
-3. Quote persisted with `total = 101,394`, `expiresAt = now + 30 min`.
-4. `POST /api/policies/purchase { quoteId }` → policy `POL-7E3F9A21`, `selectedCoverage = 10,00,000`, `calculatedPremium = 101,394`, `policyDuration = 3`, status `PENDING_PAYMENT`, `totalPremiumPaid = 0`, `startDate = today`, `endDate = today + 3 years`, quote marked `USED`.
-5. `POST /api/payments { policyId, amount = 101,394, paymentMode = UPI, paymentStatus = SUCCESS }` → policy `ACTIVE`, `totalPremiumPaid = 101,394`.
-6. Claim headroom for this policy = 10,00,000 − (open claims sum) until expiry.
+---
+
+## Validation Rules
+See Business Rules document.
+
+---
+
+## Error Handling
+Throws `DuplicateResourceException` (409) if the user already has a pending policy for that plan.
+
+---
+
+## Design Decisions
+
+- **Why PENDING_PAYMENT state?** 
+  Separating contract creation from money movement prevents distributed transaction failures. The policy exists as an intent to pay, giving us a target ID to record the payment against.
+- **Why snapshot pricing?** 
+  Insurance contracts are legally binding. If the company raises the GST or Base Risk Rate tomorrow, the existing customer's contract must mathematically remain identical to the day they bought it.
+
+---
+
+## Security (if applicable)
+Staff can only issue policies for plans that match their specific `productSpeciality`.
+
+---
 
 ## Code References
 
-- `serviceimpl/PolicyServiceImpl.java` — purchase, issue, cancel, list, snapshot build.
-- `serviceimpl/PremiumCalculationServiceImpl.java` — quote generation and expiry.
-- `serviceimpl/PremiumPaymentServiceImpl.java` — payment activation.
-- `model/Policy.java`, `model/Quote.java`, `enums/PolicyStatus.java`, `enums/QuoteStatus.java`.
-- `util/PolicyNumberGenerator.java` — `POL-<8 hex>`.
+| Concern | Path |
+|---|---|
+| Service | `src/main/java/com/insurance/demo/serviceimpl/PolicyServiceImpl.java` |
 
-All under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+---
 
-## Diagrams
+## Interview Notes
+1. **Explain Snapshotting.** Copying data (rates, fees) from a reference table into the transactional table (Policy) at creation time so it's immune to future catalogue updates.
+2. **Why separate quote and policy creation?** A Quote is a lightweight estimate. A Policy requires heavy validation (profile checks, duplicate checks).
+3. **How does payment activate the policy?** The Payment service fires a successful status update, and the Policy service transitions the state to `ACTIVE`.
+4. **What happens if a user tries to use a quote twice?** The quote status is checked; if it's `USED`, it throws an exception.
+5. **Can an active policy be cancelled anytime?** No. It is blocked if there are open or pending claims.
 
-- Policy lifecycle state machine: `../09_Diagrams/Activity_Diagrams/`.
-- Purchase/payment sequence: `../09_Diagrams/Sequence_Diagrams/`.
-- ER relationships: `../04_Database/ER_Diagram.md`.
+---
 
-## Best Practices
+## Related Documents
+- [Premium Calculation](../02_Business_Domain/Premium_Calculation.md)
+- [Business Rules](../02_Business_Domain/Business_Rules.md)
 
-- **Snapshot-on-create**: the policy carries every pricing input used, making it immune to later catalogue edits.
-- Optimistic locking (`@Version`) protects concurrent payment/update races.
-- Quote single-use (`USED`) prevents double-purchasing from one quote.
+---
 
-## Future Improvements
-
-- Scheduled `ACTIVE → EXPIRED` transition at `endDate`.
-- First-class renewal flow (currently a re-purchase).
-- See `../10_Evaluation/Future_Enhancements.md`.
+## Future Enhancements
+- Scheduled background job to automatically transition policies to `EXPIRED` at `endDate`.

@@ -1,160 +1,236 @@
 # Purchase Flow
+> The authoritative purchase narrative: generate a quote, purchase into pending payment, exact payment matching, and policy activation.
 
-> The authoritative purchase narrative: select plan + coverage + duration, generate a quote, purchase into `PENDING_PAYMENT`, record the exact payment, and activate the policy.
+---
 
 ## Purpose
+This document provides the single source of truth for how an insurance policy is bought end-to-end. It covers the 3-stage pipeline: Quote Generation, Purchase, and Payment & Activation.
 
-Single source of truth for how a policy is bought end to end: quote generation, purchase, payment, and the state transitions that occur. The premium mathematics are authoritative in `../02_Business_Domain/Premium_Calculation.md`; every enforced rule is catalogued in `../02_Business_Domain/Business_Rules.md`; endpoint payloads are in `../03_API/Policy_API.md`, `../03_API/Payment_API.md`, and `../03_API/Plan_API.md`.
+---
 
 ## Overview
+- **Stage 1: Quote Generation:** A customer selects a plan, coverage, duration, and premium type. A short-lived (30-minute) `Quote` is generated.
+- **Stage 2: Purchase:** The customer accepts the quote, creating a `Policy` in the `PENDING_PAYMENT` state.
+- **Stage 3: Payment:** An exact-amount payment is made. Upon success, the policy becomes `ACTIVE`.
 
-A customer with a complete profile selects a plan, an active coverage amount, a duration, and the plan's premium type, and requests a quote. `POST /api/premium/calculate` persists a `Quote` (`CREATED`, 30-minute expiry) and returns `quoteId`. `POST /api/policies/purchase` consumes the quote to create a policy in `PENDING_PAYMENT` and marks the quote `USED`. `POST /api/payments` with the exact `calculatedPremium` and `paymentStatus = SUCCESS` moves the policy to `ACTIVE`. Purchase is a multi-step transaction where each step is independently validated server-side.
+---
 
 ## Business Context
+An insurance purchase is a financial and legal commitment. The pipeline is strictly gated: quotes expire quickly to prevent stale pricing, payment amounts must match the calculated premium exactly (to the penny) to avoid accounting drift, and duplicate policies for identical coverages are blocked to prevent fraudulent over-insurance.
 
-An insurance purchase is a commitment with money attached, so the pipeline is gated: only complete profiles can buy; a quote is single-use and short-lived; a policy exists in limbo (`PENDING_PAYMENT`) until the exact premium is paid; and no customer can accidentally hold duplicate cover on the same plan. The numeric premium is fixed at quote time and must reconcile exactly at payment time.
+---
 
-## Technical Design
+## Feature Flow
 
-### State transitions
-
+```mermaid
+flowchart TD
+    Start([Select Plan & Coverage]) --> ValProfile{Profile Complete?}
+    ValProfile -- No --> FailProf[Error: COMPLETE_PROFILE_FIRST]
+    ValProfile -- Yes --> QuoteReq[Request Quote]
+    
+    QuoteReq --> BackendCalc[Calculate Premium (Strategy Pattern)]
+    BackendCalc --> QuoteGen[Return Quote (Valid 30 mins)]
+    
+    QuoteGen --> AcceptQuote([Accept & Purchase])
+    AcceptQuote --> ValQuote{Quote Valid?}
+    
+    ValQuote -- No --> FailQuote[Error: Expired/Used]
+    ValQuote -- Yes --> CheckDup{Duplicate Cover?}
+    
+    CheckDup -- Yes --> FailDup[Error: POLICY_EXISTS]
+    CheckDup -- No --> Pending[Create Policy PENDING_PAYMENT]
+    
+    Pending --> Pay([Submit Payment])
+    Pay --> ValAmt{Exact Amount?}
+    
+    ValAmt -- No --> FailAmt[Error: AMOUNT_MISMATCH]
+    ValAmt -- Yes --> Active[Policy ACTIVE]
+    Active --> End([Success])
 ```
-Quote :  CREATED ──purchase/issue──▶ USED
-         CREATED ──after 30 min────▶ EXPIRED
-         CREATED ──cancelled───────▶ CANCELLED
 
-Policy : PENDING_PAYMENT ──payment SUCCESS──▶ ACTIVE
-         PENDING_PAYMENT ──cancel───────────▶ CANCELLED
-         ACTIVE ──expiry────────────────────▶ EXPIRED
-         ACTIVE ──cancel (no open claims)───▶ CANCELLED
+---
+
+## System Flow
+
+```mermaid
+flowchart TD
+    UI[Frontend] -->|POST /api/premium/calculate| Pctrl[PremiumCalculationController]
+    Pctrl --> Psvc[PremiumCalculationServiceImpl]
+    Psvc --> Factory[PremiumCalculatorFactory]
+    Factory -->|Strategy| Calc[Annual or OneTime Calculator]
+    Calc --> DB[(Database)]
+    DB -->|Save CREATED Quote| Calc
+    Calc --> UI
+    
+    UI -->|POST /api/policies/purchase| POctrl[PolicyController]
+    POctrl --> POsvc[PolicyServiceImpl]
+    POsvc --> DB
+    DB -->|Quote to USED, Policy PENDING_PAYMENT| POsvc
+    POsvc --> UI
+    
+    UI -->|POST /api/payments| PYctrl[PaymentController]
+    PYctrl --> PYsvc[PaymentServiceImpl]
+    PYsvc --> DB
+    DB -->|Save Payment, Policy to ACTIVE| PYsvc
+    PYsvc --> UI
 ```
 
-### Stage 1 — Quote generation
+---
 
-`POST /api/premium/calculate` (`PremiumCalculationController`, role `ROLE_CUSTOMER`) → `PremiumCalculationServiceImpl.generateQuoteInternal`:
-
-1. Load the plan; require plan `isActive` and product `isActive`.
-2. Require `duration` in `plan.allowedDurations` and `premiumType == plan.supportedPremiumType`.
-3. Require the coverage amount to equal an **active** `CoverageOption` of the plan.
-4. Resolve the active pricing rule: `findByPolicyPlanIdAndStatusOrderByIdDesc(planId, ACTIVE)` → highest-id `ACTIVE` rule; none → 400 `No active pricing rule found`.
-5. `PremiumCalculatorFactory.getCalculator(premiumType)` selects `AnnualPremiumCalculator` (ANNUAL) or `OneTimePremiumCalculator` (ONE_TIME), which computes the `PremiumQuote` with `BigDecimal` HALF_UP rounding.
-6. A `Quote` row is persisted with the plan's snapshot (`planVersion`, `pricingRuleId`, risk rate, processing fee, GST, annual premium, total), `status = CREATED`, `expiresAt = now + 30 minutes`. The response carries `quoteId` and `expiresAt`.
-
-### Stage 2 — Purchase
-
-`POST /api/policies/purchase` (`PolicyController`, role `ROLE_CUSTOMER`) → `PolicyServiceImpl.purchasePolicy`:
-
-1. Load the customer by the authenticated email; require a **complete profile** (DOB, address, city, state, pin code, nominee) — 400 `COMPLETE_PROFILE_FIRST`.
-2. Load the quote and run `validateQuoteForPurchase`: quote owned by the customer; `status == CREATED`; not past `expiresAt` (else flipped to `EXPIRED` and rejected); plan active; product active.
-3. Duplicate check per product type:
-   - HEALTH: at most one policy in `[ACTIVE, PENDING_PAYMENT]` per customer+plan → 409 `HEALTH_POLICY_EXISTS`.
-   - Non-HEALTH: at most one `PENDING_PAYMENT` per customer+plan → 409 `POLICY_EXISTS`.
-4. Build the policy from quote snapshots (`selectedCoverage`, `premiumType`, `policyDuration`, `premiumRateUsed`, `processingFeeUsed`, `gstUsed`, `calculatedPremium = quote.total`, `planVersion`, `pricingRuleId`, `quoteId`, generated `policyNumber` `POL-xxxxxxxx`), `policyStatus = PENDING_PAYMENT`, `totalPremiumPaid = 0`, `startDate = today`, `endDate = startDate + duration years`.
-5. Save the policy, then flip the quote to `USED`. Return the policy detail with `remainingClaimAmount = selectedCoverage`.
-
-### Stage 3 — Payment and activation
-
-`POST /api/payments` (`PremiumPaymentController`, roles `ROLE_CUSTOMER` or `ROLE_INTERNAL_STAFF`) → `PremiumPaymentServiceImpl.recordPayment`:
-
-1. Load the policy; ownership check (customer pays own policy; staff pays matching speciality).
-2. `dto.amount` must **exactly equal** `policy.calculatedPremium` → 400 `AMOUNT_MISMATCH`.
-3. Reject `CANCELLED` and `EXPIRED` policies.
-4. ONE_TIME: no existing `SUCCESS` payment (400 `ONE_TIME_ALREADY_PAID`). ANNUAL: not before the 15-day early window of the next anniversary; successful payments must not already reach `policyDuration`.
-5. Generate `transactionReference = TRX-` + 12 uppercase hex chars (`TransactionReferenceGenerator`); reject duplicates.
-6. Cumulative `totalPremiumPaid + amount` must not exceed `calculatedPremium × policyDuration`.
-7. Persist `PremiumPayment` with the mode and status. If `SUCCESS`: add to `totalPremiumPaid` and set `policyStatus = ACTIVE`. `PENDING`/`FAILED` payments are recorded without activation.
-
-### Worked example (ONE_TIME, MOTOR)
-
-From `../02_Business_Domain/Premium_Calculation.md` Worked example 1: `coverage = 10,00,000`, `rate = 0.030`, `fee = 150`, `gst = 18%`, `duration = 3`:
-
-- base = 10,00,000 × 0.030 = **30,000**; processingFee = **150**; taxable = **30,150**
-- gst = 30,150 × 18 / 100 = **5,427**; annualPremium = **35,577**
-- totalCommitment = 35,577 × 3 = **106,731**; discount (3 yr, 5%) = **5,337**
-- **totalPremium = 106,731 − 5,337 = 101,394**
-
-The quote's `total` and the policy's `calculatedPremium` are **101,394**, and the payment amount must equal 101,394 exactly. (ANNUAL example: LIFE, coverage 50,00,000 → `calculatedPremium` = 40,200 per year, paid up to `duration` times.)
-
-### Failure cases (code-verified)
-
-| Case | Enforcement | Result |
-|---|---|---|
-| Incomplete customer profile | `isCustomerProfileComplete` | 400 `COMPLETE_PROFILE_FIRST` |
-| Quote belongs to another customer | `validateQuoteForPurchase` | 400 `Quote does not belong to the authenticated customer` |
-| Quote already `USED`/`EXPIRED`/`CANCELLED` | status check | 400 `Quote status is not CREATED…` |
-| Quote older than 30 minutes | `expiresAt` check (flips to `EXPIRED`) | 400 `Quote has expired` |
-| Plan or product deactivated after quoting | active checks | 400 `plan/product no longer active` |
-| Duplicate HEALTH cover (ACTIVE/PENDING) | `existsBy…` | 409 `HEALTH_POLICY_EXISTS` |
-| Duplicate non-HEALTH pending | `existsBy…` | 409 `POLICY_EXISTS` |
-| Payment amount mismatch | `compareTo != 0` | 400 `AMOUNT_MISMATCH` |
-| Paying a cancelled/expired policy | status check | 400 `CANCELLED_POLICY_RESTRICTED` / `EXPIRED_POLICY_RESTRICTED` |
-| Second ONE_TIME payment | `existsByPolicyIdAndPaymentStatus(SUCCESS)` | 400 `ONE_TIME_ALREADY_PAID` |
-| ANNUAL renewal too early | payment window check | 400 `EARLY_PAYMENT_RESTRICTION` |
-| All ANNUAL premiums already paid | count ≥ duration | 400 `ALL_PREMIUMS_PAID` |
-| Duplicate transaction reference | unique check | 409 `DUPLICATE_REFERENCE` |
-| Cumulative premium exceeds commitment | `totalPremiumPaid + amount` | 400 `PREMIUM_LIMIT_EXCEEDED` |
-
-## Workflow
-
-1. Customer completes profile (`/customer/profile` → `POST/GET /api/customers`, `PUT /api/customers/{id}`).
-2. Browse products (`GET /api/products/active`) → plans (`GET /api/plans/{productId}/active`) → open `/customer/purchase-policy/:planId`.
-3. Select coverage → duration → confirm premium type → "Generate Quote" → `POST /api/premium/calculate`; store the returned `quoteId`.
-4. Accept terms within the 30-minute window → "Confirm & Purchase" → `POST /api/policies/purchase` → policy `PENDING_PAYMENT`, quote `USED`.
-5. `POST /api/payments` with the exact `calculatedPremium`, mode, and `SUCCESS` → policy `ACTIVE`.
-6. Customer tracks the policy at `/customer/policies/:policyId`; admin/staff at `/admin/policies/:id` / `/staff/policies/:policyId`.
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
-    participant C as Customer (UI)
-    participant P as PremiumCalculationService
-    participant Q as Quote
-    participant PO as PolicyService
-    participant PY as PremiumPaymentService
+    participant C as Customer UI
+    participant Q as PremiumCalculationService
+    participant P as PolicyService
+    participant Y as PaymentService
+    participant DB as Database
 
-    C->>P: POST /api/premium/calculate (planId, coverageAmount, duration, premiumType)
-    P->>P: plan/product active, duration allowed, coverage matches active option, active rule exists
-    P->>P: strategy math (HALF_UP) -> PremiumQuote
-    P->>Q: save Quote {status: CREATED, expiresAt: now+30min}
-    P-->>C: quoteId + total (e.g. 101,394)
-    C->>PO: POST /api/policies/purchase (quoteId)
-    PO->>PO: complete profile, quote owned/CREATED/unexpired, plan+product active, duplicate check
-    PO->>PO: save Policy {PENDING_PAYMENT, calculatedPremium=total}
-    PO->>Q: Quote {CREATED -> USED}
-    PO-->>C: policyId, policyNumber, PENDING_PAYMENT
-    C->>PY: POST /api/payments (policyId, amount=calculatedPremium, mode, SUCCESS)
-    PY->>PY: exact amount match, not cancelled/expired, one-time/annual gates, unique TRX
-    PY->>PY: save payment, totalPremiumPaid += amount
-    PY->>PY: Policy {PENDING_PAYMENT -> ACTIVE}
-    PY-->>C: payment reference + ACTIVE policy
+    %% Stage 1: Quote
+    C->>Q: POST /api/premium/calculate
+    Q->>Q: Validate active plan/product/rules
+    Q->>Q: Calculate premium via Strategy
+    Q->>DB: Insert Quote (CREATED, expires in 30m)
+    Q-->>C: quoteId, totalPremium
+
+    %% Stage 2: Purchase
+    C->>P: POST /api/policies/purchase (quoteId)
+    P->>DB: Check profile & duplicate policies
+    P->>DB: Update Quote (USED)
+    P->>DB: Insert Policy (PENDING_PAYMENT)
+    P-->>C: policyId, policyNumber
+
+    %% Stage 3: Payment
+    C->>Y: POST /api/payments (amount, mode)
+    Y->>DB: Fetch Policy
+    Y->>Y: Validate exact amount match
+    Y->>DB: Insert Payment (SUCCESS)
+    Y->>DB: Update Policy (ACTIVE)
+    Y-->>C: transactionReference, Policy ACTIVE
 ```
 
-## Code References
+---
 
-- `controller/{PremiumCalculationController,PolicyController,PremiumPaymentController}.java`.
-- `serviceimpl/PremiumCalculationServiceImpl.java` (quote), `serviceimpl/PolicyServiceImpl.java` (purchase/validate/duplicates), `serviceimpl/PremiumPaymentServiceImpl.java` (payment/activation).
-- `service/strategy/{AnnualPremiumCalculator,OneTimePremiumCalculator,PremiumCalculatorFactory}.java` — math.
-- `model/{Quote,Policy,PremiumPayment,PolicyPlan,CoverageOption,PricingRule}.java`, `enums/{QuoteStatus,PolicyStatus,PremiumType,PaymentStatus}.java`.
-- `util/{PolicyNumberGenerator,TransactionReferenceGenerator}.java`.
-- Frontend: `src/pages/customer/policies/PurchasePolicyPage.jsx`, `src/pages/customer/payments/RecordPaymentPage.jsx`, `src/pages/staff/policies/StaffIssuePolicyPage.jsx`, `src/pages/staff/payments/StaffRecordPaymentPage.jsx`.
+## Database Design
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+| Entity | Purpose | Relationships |
+|---|---|---|
+| `Quote` | Temporary snapshot of pricing intent. | Tied to `Customer` and `PolicyPlan`. |
+| `Policy` | The core contract. | Many-to-One to `Customer`, `Quote`, `PolicyPlan`. |
+| `PremiumPayment` | Financial ledger entry. | Many-to-One to `Policy`. |
 
-## Diagrams
+**Why this design?**
+Separating `Quote` from `Policy` ensures stale data doesn't pollute the contract table. Copying `calculatedPremium` and snapshot fields (like `pricingRuleId`) directly onto the `Policy` ensures the contract remains immutable even if catalogue prices change in the future.
 
-- Payment detail and modes: `../08_Workflows/Payment_Flow.md`.
-- Premium math and strategy classes: `../02_Business_Domain/Premium_Calculation.md`.
-- Sequence/activity diagrams: `../09_Diagrams/Sequence_Diagrams/`, `../09_Diagrams/Activity_Diagrams/`.
+---
 
-## Best Practices
+## Business Rules
 
-- Single-use, time-boxed quotes (`CREATED → USED/EXPIRED`) prevent replay and stale pricing.
-- The exact-equality payment rule makes the quote amount the contract: no rounding drift.
-- Pricing snapshots on the policy mean catalogue changes never alter in-force contracts.
-- Duplicate checks are status-aware (HEALTH vs non-HEALTH), so expired/cancelled policies can be repurchased.
+| Rule | Description | Why it exists |
+|---|---|---|
+| **Complete Profile Gate** | Only profiles with full KYC (Address, Nominee) can purchase. | Legal requirement for binding contracts. |
+| **Quote Expiry** | Quotes expire in exactly 30 minutes. | Prevents holding on to old prices during catalogue updates. |
+| **Exact Amount Match** | Payment MUST equal `calculatedPremium`. No partial payments. | Prevents accounting reconciliation nightmares. |
+| **Duplicate Checking** | Cannot buy overlapping Health policies. | Prevents double-claiming fraud (indemnity principle). |
+| **Pricing Snapshot** | Policy copies pricing logic at purchase time. | Insulates existing customers from future admin pricing changes. |
 
-## Future Improvements
+---
 
-- Payment gateway integration with webhooks for asynchronous `PENDING → SUCCESS/FAILED` settlement.
-- Auto-expiry sweeper for `PENDING_PAYMENT` policies.
-- Multi-currency and instalment plans.
-- See `../10_Evaluation/Future_Enhancements.md`.
+## Validation Rules
+
+### Stage 1 (Quote)
+- Plan and Product must be `isActive=true`.
+- Duration must exist in `plan.allowedDurations`.
+- Coverage must exist in the plan's `CoverageOptions`.
+- An `ACTIVE` pricing rule must exist for the plan.
+
+### Stage 2 (Purchase)
+- Profile must have DOB, address, city, state, pin code, nominee.
+- Quote must be `CREATED` and `expiresAt` > Now.
+- Product-specific duplication check passes.
+
+### Stage 3 (Payment)
+- Request amount == `policy.calculatedPremium` exactly.
+- If ONE_TIME, verify no existing SUCCESS payment.
+- Unique Transaction Reference (`TRX-` + 12 hex).
+
+---
+
+## Worked Example
+
+**MOTOR, ONE_TIME Premium, 3 Year Duration**
+- Base Coverage = ₹10,00,000
+- Risk Rate = 0.030
+- Processing Fee = ₹150
+- GST = 18%
+
+**Calculation (`OneTimePremiumCalculator`):**
+1. Base Premium = 10,00,000 * 0.030 = ₹30,000
+2. Taxable Amount = 30,000 + 150 = ₹30,150
+3. GST = 30,150 * 0.18 = ₹5,427
+4. Annualized Premium = 30,150 + 5,427 = ₹35,577
+5. Total Committment = 35,577 * 3 = ₹106,731
+6. Discount (3 yr, 5%) = ₹5,337
+7. **Final Premium to Pay = 106,731 - 5,337 = ₹101,394**
+
+Payment endpoint strictly expects exactly `101394`.
+
+---
+
+## Error Handling
+
+| Case | Enforcement | Result HTTP | Result Message |
+|---|---|---|---|
+| Incomplete customer profile | `isCustomerProfileComplete` | 400 | `COMPLETE_PROFILE_FIRST` |
+| Quote older than 30 minutes | `expiresAt` check | 400 | `Quote has expired` |
+| Quote belongs to another | Identity check | 400 | `Quote does not belong to the authenticated customer` |
+| Duplicate HEALTH cover | `existsBy...` query | 409 | `HEALTH_POLICY_EXISTS` |
+| Payment amount mismatch | `compareTo != 0` | 400 | `AMOUNT_MISMATCH` |
+| Second ONE_TIME payment | Count check | 400 | `ONE_TIME_ALREADY_PAID` |
+| All ANNUAL premiums paid | Count >= duration | 400 | `ALL_PREMIUMS_PAID` |
+| Duplicate transaction ref | Unique Constraint | 409 | `DUPLICATE_REFERENCE` |
+
+---
+
+## Design Decisions
+
+- **Why use the Strategy Pattern for premium calculations?**
+  `PremiumCalculatorFactory` dispatches to `AnnualPremiumCalculator` or `OneTimePremiumCalculator`. This prevents massive `if-else` blocks and allows us to easily add a `MonthlyPremiumCalculator` in the future without modifying existing code.
+- **Why are quotes tracked in the database rather than just returned as a JWT/Token?**
+  A DB entity allows us to track conversion metrics, audit abandoned quotes, and easily transition the quote to `USED` ensuring it can strictly only be consumed once.
+- **Why is there a `PENDING_PAYMENT` state instead of creating the policy only upon payment?**
+  It holds the lock for duplicate checking, reserves the policy number, and handles scenarios where a payment gateway drops the connection. The customer can just retry the payment on the existing policy.
+
+---
+
+## Interview Notes
+
+1. **How do you handle different types of premium calculations?**
+   > I implemented the Strategy Design Pattern. A Factory returns either the Annual or One-Time calculator based on the plan's configuration, keeping the code Open-Closed to new payment frequencies.
+2. **How do you ensure a user cannot reuse an old quote with cheaper prices?**
+   > Quotes have a strict 30-minute expiry timestamp in the database and transition to a `USED` state upon policy purchase.
+3. **What happens if a pricing rule is changed by an admin while a user is on the payment screen?**
+   > Nothing breaks. The purchase relies on the snapshot data cloned into the `Quote` and subsequently the `Policy`. The contract honors the price at the time the quote was generated.
+4. **Why enforce exact amount matching on the backend?**
+   > To prevent clients from modifying the payload (e.g. paying $1 for a $1000 policy). The backend is the single source of truth for financial transactions.
+5. **How do you prevent duplicate policy purchases?**
+   > During purchase, the service checks the database for existing policies for that customer and plan in `ACTIVE` or `PENDING_PAYMENT` states.
+6. **Why do we need a COMPLETE_PROFILE check before purchase?**
+   > An insurance contract is legally binding and requires full KYC (Know Your Customer) details like address and nominee before issuance.
+7. **What is the `HALF_UP` rounding rule?**
+   > `BigDecimal` calculations use `RoundingMode.HALF_UP` to resolve fractional pennies fairly and consistently in financial math.
+8. **How does the system ensure transaction references are unique?**
+   > They are generated using a cryptographically secure random generator, prefixed with `TRX-`, and backed by a database unique constraint.
+
+---
+
+## Related Documents
+- [Premium Calculation Domain](../02_Business_Domain/Premium_Calculation.md)
+- [Policy API Specs](../03_API/Policy_API.md)
+
+---
+
+## Future Enhancements
+- Integration with an actual Payment Gateway (Stripe/Razorpay) via Webhooks.
+- Automated cleanup job (cron) to delete `EXPIRED` quotes.

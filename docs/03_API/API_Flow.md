@@ -1,173 +1,238 @@
-# API Flow — End-to-End Call Sequences
+</Agent System Instructions>
+<API Flow>
+> The central nervous system of InsuranceFlow, defining the standardized request, response, and error handling patterns across the entire API suite.
 
-> End-to-end API call sequences for onboarding, quote-to-active-policy, claim handling, and admin configuration, followed by a reference section on response wrappers, pagination, and common error codes.
+---
 
 ## Purpose
+This document explains the overarching API architecture for InsuranceFlow. It defines how the frontend communicates with the backend, the uniform structure of API responses, and how errors are handled globally. It is essential reading for any developer working on either the React frontend or the Spring Boot backend to ensure consistent data exchange.
 
-A guide that strings individual endpoints into complete, runnable journeys. Each step names the HTTP method and path and who performs it, and links to the detailed API document that describes the payload. Also serves as the canonical reference for response-wrapper field names, pagination query parameters, and error codes.
+---
 
 ## Overview
+- **RESTful Design**: Standard HTTP methods and resource-oriented URLs.
+- **Uniform Responses**: Every API returns a consistent `ApiResponseDTO` envelope.
+- **Global Error Handling**: Centralized `@RestControllerAdvice` translates exceptions into `ErrorResponseDTO`.
+- **JWT Authentication**: Secured endpoints expect a `Bearer` token in the `Authorization` header.
+- **Cross-Origin Resource Sharing (CORS)**: Configured globally to allow frontend dev server (port 5173) and production domains.
 
-Base URL for every step is `http://localhost:8081/api`. Authenticated steps require `Authorization: Bearer <access-token>`. Login also sets the `refresh_token` HttpOnly cookie used by `/api/auth/refresh` and `/api/auth/logout` (see `Authentication_API.md`).
+---
 
 ## Business Context
+For a complex system like insurance management, standardizing API communication prevents integration bugs and reduces frontend boilerplate. Having a uniform response wrapper means the frontend always knows where to look for data (`data` field) or error details (`message`, `errors` fields). It also ensures a consistent user experience during failures.
 
-These flows map to the domain workflows in `../02_Business_Domain/Business_Rules.md` and `../08_Workflows/`. Data layout for every step is described in `../04_Database/Table_Descriptions.md`.
+---
 
-## Workflow
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Client Action] --> B{Valid Request?}
+    B -- No --> C[Frontend Validation Error]
+    B -- Yes --> D[Axios Request with Bearer Token]
+    D --> E[Spring Security Filter Chain]
+    E -- Auth Failed --> F[401/403 ErrorResponseDTO]
+    E -- Success --> G[Controller]
+    G --> H[Service Layer]
+    H --> I[Repository]
+    I --> J[Database]
+    J --> K[Return Entity/DTO]
+    K --> L[Wrap in ApiResponseDTO]
+    L --> M[Frontend Receives Response]
+    
+    H -. Exception .-> N[@RestControllerAdvice]
+    N --> O[ErrorResponseDTO]
+    O --> M
+```
 
-### (a) Customer onboarding
+---
 
-1. `POST /api/auth/register` — PUBLIC — create the account; dual OTPs are sent. → [Authentication_API.md](Authentication_API.md)
-2. `POST /api/auth/verify-otp` — PUBLIC — submit `emailOtp` + `phoneOtp` to activate the account. → [Authentication_API.md](Authentication_API.md)
-3. `POST /api/auth/login` — PUBLIC — obtain the access token and refresh cookie. → [Authentication_API.md](Authentication_API.md)
-4. `POST /api/customers` — CUSTOMER — complete the customer profile (nominee, address, city, state). A complete profile is required before policy purchase.
+## System Flow
+```mermaid
+flowchart TD
+    A[Frontend React Axios] -->|HTTP Request| B[JwtAuthenticationFilter]
+    B -->|Validated Context| C[DispatcherServlet]
+    C -->|Routes| D[Specific Controller]
+    D -->|Calls| E[Specific Service]
+    E -->|Database Action| F[Spring Data JPA Repository]
+    F -->|SQL Queries| G[(MySQL 8)]
+    G -->|Result| F
+    F -->|Entity| E
+    E -->|DTO| D
+    D -->|ApiResponseDTO| C
+    C -->|HTTP Response| A
+```
 
-### (b) Quote → purchase → pay → policy ACTIVE
+---
 
-1. `POST /api/auth/login` — CUSTOMER — obtain the access token. → [Authentication_API.md](Authentication_API.md)
-2. `GET /api/products/active` — CUSTOMER — browse the active catalog. → [Product_API.md](Product_API.md)
-3. `GET /api/plans/{productId}/active` — CUSTOMER — see active plans for a product. → [Plan_API.md](Plan_API.md)
-4. `GET /api/plans/{planId}` — CUSTOMER — view plan details (durations, premium type, coverage options). → [Plan_API.md](Plan_API.md)
-5. `POST /api/premium/calculate` — CUSTOMER — `{planId, coverageAmount, duration, premiumType}`; returns `quoteId` with a 30-minute `expiresAt`. → [Pricing_API.md](Pricing_API.md)
-6. `POST /api/policies/purchase` — CUSTOMER — `{quoteId, paymentReferenceId}`; creates the policy as `PENDING_PAYMENT`. → [Policy_API.md](Policy_API.md)
-7. `POST /api/payments` — CUSTOMER — `{policyId, amount, paymentMode, paymentStatus: "SUCCESS"}` with the amount exactly equal to `calculatedPremium`; policy becomes `ACTIVE`. → [Payment_API.md](Payment_API.md)
-8. `GET /api/policies/my-policies` — CUSTOMER — confirm `policyStatus: "ACTIVE"`. → [Policy_API.md](Policy_API.md)
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Client as React App (Axios)
+    participant Filter as SecurityFilterChain
+    participant Controller as @RestController
+    participant Service as @Service
+    participant ExceptionHandler as @RestControllerAdvice
 
-### (c) Claim raise → staff review → admin decision
+    Client->>Filter: HTTP Request (Headers, Body)
+    Filter->>Filter: Validate JWT Token
+    alt Invalid Token
+        Filter-->>Client: 401 Unauthorized
+    else Valid Token
+        Filter->>Controller: Forward Request
+        Controller->>Service: Execute Business Logic
+        alt Success
+            Service-->>Controller: Return Result DTO
+            Controller-->>Client: 200 OK (ApiResponseDTO)
+        else Business Exception
+            Service-->>ExceptionHandler: Throw Exception (e.g. ResourceNotFound)
+            ExceptionHandler-->>Client: 4xx/5xx (ErrorResponseDTO)
+        end
+    end
+```
 
-1. `POST /api/auth/login` — CUSTOMER — obtain the access token. → [Authentication_API.md](Authentication_API.md)
-2. `POST /api/claims/raise` — CUSTOMER — multipart request with the `claim` JSON part and at least one `files` part; claim is created as `SUBMITTED`. → [Claim_API.md](Claim_API.md)
-3. `GET /api/claims/my-claims` — CUSTOMER — track the claim. → [Claim_API.md](Claim_API.md)
-4. `GET /api/claims` — INTERNAL_STAFF — list claims (optionally filter `status=SUBMITTED`); staff only see claims matching their `productSpeciality`. → [Claim_API.md](Claim_API.md)
-5. `PATCH /api/claims/{claimId}/under-review` — INTERNAL_STAFF — move the claim to `UNDER_REVIEW`. → [Claim_API.md](Claim_API.md)
-6. `PATCH /api/claims/{claimId}/assign` — INTERNAL_STAFF — assign the claim to self. → [Claim_API.md](Claim_API.md)
-7. `PATCH /api/claims/{claimId}/review` — INTERNAL_STAFF — `{recommendedStatus, remarks}` with `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`. → [Claim_API.md](Claim_API.md)
-8. `PATCH /api/claims/{claimId}/final-decision` — ADMIN — `{recommendedStatus: "APPROVED"|"REJECTED", remarks}` to finalize. → [Claim_API.md](Claim_API.md)
-9. `GET /api/claims/{claimId}/history` — ADMIN / CUSTOMER — read the audit trail of transitions. → [Claim_API.md](Claim_API.md)
+---
 
-### (d) Admin: product, plan, and staff creation
+## Database Design
+N/A - This document focuses on the API transport layer, not database schemas.
 
-1. `POST /api/auth/login` — ADMIN — obtain the admin access token (seeded admin `admin@insurance.com` / `Admin@123`). → [Authentication_API.md](Authentication_API.md)
-2. `POST /api/products` — ADMIN — create a product (`activeStatus: true`). → [Product_API.md](Product_API.md)
-3. `POST /api/plans/wizard` — ADMIN — create plan + coverage options + pricing rule in one call. → [Plan_API.md](Plan_API.md)
-4. `POST /api/admin/pricing-rules` — ADMIN — optionally add further pricing rules; activate the active rule with `PATCH /api/admin/pricing-rules/{ruleId}/activate`. → [Pricing_API.md](Pricing_API.md)
-5. `POST /api/admin/pricing-rules/preview` — ADMIN — sanity-check a premium without persisting a quote. → [Pricing_API.md](Pricing_API.md)
-6. `POST /api/users/staff` — ADMIN — create an internal-staff account with a `productSpeciality` (e.g. `MOTOR`); OTPs are sent. → Authentication / User Management (admin `UserController`)
-7. `PATCH /api/users/{id}/activate` — ADMIN — activate the staff account once verified.
+---
 
-## Reference: response wrappers (code-verified field names)
+## API Documentation (if applicable)
 
-Every endpoint returns one of these envelopes. Field names are taken from the DTO source.
+### Global Request/Response Format
+All successful responses are wrapped in `ApiResponseDTO`.
 
-### ApiResponseDTO<T> — single-item response
-
-Fields: `message` (String), `success` (boolean), `data` (T), `timeStamp` (LocalDateTime).
-
+**Example:**
 ```json
 {
-  "message": "User logged in successfully.",
   "success": true,
-  "data": {},
-  "timeStamp": "2026-08-03T10:00:00"
+  "message": "Operation completed successfully",
+  "data": {
+    "id": 1,
+    "status": "ACTIVE"
+  },
+  "timestamp": "2026-08-05T20:08:57+05:30"
 }
 ```
 
-### PageResponseDTO<T> — paginated response
+### Global Error Format
+All errors are handled and return `ErrorResponseDTO`.
 
-Fields: `content` (List\<T\>), `pageNumber` (int), `pageSize` (int), `totalRecords` (long), `totalPages` (int), `lastPage` (boolean), `sortingType` (String).
-
+**Example:**
 ```json
 {
-  "content": [],
-  "pageNumber": 0,
-  "pageSize": 10,
-  "totalRecords": 100,
-  "totalPages": 10,
-  "lastPage": false,
-  "sortingType": "desc"
+  "success": false,
+  "message": "Validation Failed",
+  "errors": {
+    "email": "Must be a valid email address",
+    "password": "Password is required"
+  },
+  "errorCode": "VALIDATION_ERROR",
+  "timestamp": "2026-08-05T20:08:57+05:30"
 }
 ```
 
-### ErrorResponseDTO — error response
+### API Endpoint Groups
 
-Fields: `timestamp` (LocalDateTime), `statusCode` (int), `errorType` (String), `message` (String), `requestPath` (String).
+| Group | Prefix | Purpose | Security Level |
+|---|---|---|---|
+| Auth | `/api/auth` | Login, Registration, OTP, Tokens | Public |
+| Users | `/api/users` | Profile management | Authenticated |
+| Products | `/api/products` | View available insurance types | Public/Authenticated |
+| Admin Products | `/api/admin/products` | Manage products | Admin |
+| Plans | `/api/plans` | View specific plans | Public/Authenticated |
+| Admin Plans | `/api/admin/plans` | Manage plans | Admin |
+| Policies | `/api/policies` | Customer policy operations | Customer |
+| Premium | `/api/premium` | Quote calculation | Authenticated |
+| Admin/Staff Policies| `/api/admin/policies`, `/api/staff/policies` | Management | Admin, Staff |
+| Claims | `/api/claims` | Claims processing | Customer, Staff, Admin |
+| Documents | `/api/document` | File uploads to Cloudinary | Authenticated |
+| Payments | `/api/payments` | Payment processing | Customer |
+| Pricing Rules | `/api/admin/pricing-rules` | Dynamic pricing configuration | Admin |
 
-```json
-{
-  "timestamp": "2026-08-03T10:05:00",
-  "statusCode": 400,
-  "errorType": "BAD_REQUEST",
-  "message": "Amount does not match the expected premium.",
-  "requestPath": "/api/payments"
-}
-```
+---
 
-### ValidationErrorResponseDTO — bean-validation error
+## Frontend Implementation
+- **Location**: `src/api/axios.js`
+- **Details**: Axios interceptors are used to inject the `Authorization: Bearer <token>` header automatically. A response interceptor is used to globally handle 401s and trigger token refresh or logout.
 
-All `ErrorResponseDTO` fields plus `fieldErrors` (Map\<String,String\>).
+---
 
-```json
-{
-  "timestamp": "2026-08-03T10:05:00",
-  "statusCode": 400,
-  "errorType": "VALIDATION_ERROR",
-  "message": "Validation failed",
-  "requestPath": "/api/auth/register",
-  "fieldErrors": {
-    "password": "must match \"^(?=.*[A-Za-z])(?=.*\\d).{8,64}$\"",
-    "mobileNumber": "must match \"^\\+[1-9]\\d{7,14}$\""
-  }
-}
-```
+## Backend Implementation
+- **Location**: `com.insurance.demo.dto.ApiResponseDTO`, `com.insurance.demo.dto.ErrorResponseDTO`, `com.insurance.demo.exception.GlobalExceptionHandler`
+- **Details**: `@RestControllerAdvice` catches all custom exceptions (e.g., `ResourceNotFoundException`, `UnauthorizedException`) and formats them uniformly.
 
-## Reference: pagination query parameters
+---
 
-Paginated endpoints (`/page`, `/my-policies`, history, etc.) use these query parameters as implemented in the controllers:
+## Business Rules
+| Rule | Reason |
+|---|---|
+| Consistent envelope | Allows frontend to parse responses blindly without per-endpoint logic. |
+| Meaningful HTTP Status | 2xx for success, 4xx for client error, 5xx for server error. Respects standard semantics. |
+| Secure by default | CORS restricted, JWT validated early in the filter chain to prevent unauthenticated access. |
 
-| Param | Default | Description |
-|---|---|---|
-| `pageNumber` | `0` | 0-based page index |
-| `pageSize` | `10` | items per page |
-| `sortBy` | varies per endpoint (e.g. `id`, `createdDate`) | sort field |
-| `sortDirection` | varies (`asc` or `desc`) | sort direction |
+---
 
-Per-endpoint filters (e.g. `status`, `productType`, `isActive`, `policyId`, `customerId`, `minAmount`, `maxAmount`) are documented on each detail page.
+## Validation Rules
+- **Input**: Hibernate Validator (`@Valid`, `@NotBlank`, etc.) triggers `MethodArgumentNotValidException`.
+- **Handling**: `GlobalExceptionHandler` extracts field errors into the `errors` map of `ErrorResponseDTO`.
 
-## Reference: common error codes
+---
 
-| HTTP | `errorType` | When |
-|---|---|---|
-| `400` | `BAD_REQUEST` / `VALIDATION_ERROR` / `INVALID_INPUT` / `INVALID_JSON_BODY` | bean validation failures, business-rule violations (e.g. amount mismatch, expired quote, duplicate policy), malformed input |
-| `401` | `UNAUTHORIZED` / `SESSION_EXPIRED` | missing/invalid/expired access token, bad credentials, missing or rejected refresh token |
-| `403` | `ACCESS_DENIED` / `FORBIDDEN` | role not permitted, staff speciality mismatch, CSRF origin mismatch |
-| `404` | `NOT_FOUND` | resource does not exist (product, plan, policy, claim, user, customer) |
-| `409` | `CONFLICT` | duplicate resource (email/mobile/name), optimistic-lock conflict, DB constraint violation, pricing rule in use |
-| `429` | `RATE_LIMITED` | Bucket4j rate limit exceeded on auth endpoints |
-| `500` | `INTERNAL_SERVER_ERROR` | unexpected server error |
+## Error Handling
+- **400 Bad Request**: Validation errors or malformed requests.
+- **401 Unauthorized**: Missing or invalid JWT.
+- **403 Forbidden**: Valid JWT but insufficient role permissions.
+- **404 Not Found**: Resource ID doesn't exist in the database.
+- **500 Internal Server Error**: Unexpected backend failures.
+
+---
+
+## Design Decisions
+1. **Why ApiResponseDTO wrapper?**
+   It provides a predictable schema for the frontend, making error handling and data extraction uniform across all features.
+2. **Why GlobalExceptionHandler?**
+   Centralizes error logic, avoiding `try-catch` blocks in every controller method.
+3. **Why Swagger / OpenAPI?**
+   Provides interactive documentation and a reliable contract between frontend and backend teams during development.
+
+---
+
+## Security
+- **Authentication**: Bearer token in the `Authorization` header.
+- **CORS**: Configured globally to allow specific origins (e.g., `http://localhost:5173`), preventing cross-origin attacks from malicious domains.
+
+---
 
 ## Code References
-
-| Concern | Path |
+| Component | Path |
 |---|---|
-| Controllers | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/*.java` |
-| Response wrappers | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/{ApiResponseDTO,PageResponseDTO,ErrorResponseDTO,ValidationErrorResponseDTO}.java` |
-| Exception mapping | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/exception/GlobalExceptionHandler.java` |
-| Sample payloads | `demo-data/api-test-payloads/*.md` |
-| Demo/evaluator flows | `demo-data/` (repo root) |
+| API Wrapper | `src/main/java/com/insurance/demo/dto/ApiResponseDTO.java` |
+| Error Wrapper | `src/main/java/com/insurance/demo/dto/ErrorResponseDTO.java` |
+| Exception Handler | `src/main/java/com/insurance/demo/exception/GlobalExceptionHandler.java` |
+| CORS Config | `src/main/java/com/insurance/demo/config/WebConfig.java` |
+| Frontend Axios | `src/services/api.js` |
 
-## Diagrams
+---
 
-Cross-cutting sequence diagrams for these flows are in [`../09_Diagrams/Sequence_Diagrams/`](../09_Diagrams/Sequence_Diagrams/README.md).
+## Interview Notes
+1. **Q: Why use a global response wrapper instead of raw JSON?**
+   **A:** It ensures consistency. The frontend always checks `success` and pulls data from `data` or errors from `message/errors`, standardizing API integration.
+2. **Q: How does Spring handle validation errors globally?**
+   **A:** By using `@RestControllerAdvice` and catching `MethodArgumentNotValidException`, we extract field-level errors and map them to our `ErrorResponseDTO`.
+3. **Q: How is CORS handled in this application?**
+   **A:** Through global configuration (`WebMvcConfigurer`) allowing specific origins like the React dev server port, necessary headers, and HTTP methods.
+4. **Q: What is the purpose of the Axios interceptor on the frontend?**
+   **A:** It automatically injects the JWT into headers and intercepts 401 responses to seamlessly attempt a token refresh before forcing a logout.
 
-## Best Practices
+---
 
-- Each journey starts with login and proceeds through the same service paths the UI uses.
-- Quotes must be consumed before their 30-minute expiry; regenerate if expired.
-- Payments require an exact amount match; compute from the policy's `calculatedPremium`, not a client-cached value.
-- Claims need at least one document at raise time; attach more via `/api/document/upload/{claimId}` if needed.
+## Related Documents
+- `../03_API/Authentication_API.md`
+- `../03_API/Policy_API.md`
 
-## Future Improvements
+---
 
-- Provide ready-to-run Postman collections mirroring these flows.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+## Future Enhancements
+- Implement API versioning (e.g., `/api/v1/`) to support future breaking changes safely.
+</API Flow>

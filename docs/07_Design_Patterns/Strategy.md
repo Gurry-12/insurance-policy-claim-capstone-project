@@ -1,133 +1,108 @@
-# Strategy Pattern
+</Agent System Instructions>
+<Strategy Pattern>
+> Dynamic premium calculation algorithms.
 
-> The general strategy pattern, demonstrated by the premium-calculation engine: interchangeable algorithms behind one interface, selected at runtime by a factory.
+---
 
 ## Purpose
+Explains how the Strategy Pattern is used to calculate insurance premiums differently based on the product type (Annual vs. One-Time) without polluting the codebase with massive `if/else` blocks.
 
-This document is the single source of truth for the *concept* of the Strategy pattern as applied in this codebase. It explains what the pattern is, why it was chosen for premium calculation, the participants involved, and where else the same shape could be reused. The exact actuarial formulas and quote orchestration are already documented in the premium calculation deep-dive and are referenced rather than duplicated here.
+---
 
 ## Overview
+- Defines a common `PremiumCalculator` interface.
+- Implements specific strategies: `AnnualPremiumCalculator` and `OneTimePremiumCalculator`.
+- Enables Open/Closed principle: new pricing models can be added without changing existing code.
 
-The Strategy pattern defines a family of algorithms, encapsulates each one behind a common interface, and lets the caller swap them at runtime without changing the calling code. In this project the varying behaviour is *premium type*: a one-time premium and an annual premium are computed by different algorithms even though they share the same inputs (coverage, pricing rule, duration). The algorithms are isolated in `com.insurance.demo.service.strategy` behind the `PremiumCalculator` interface, and the `PremiumCalculatorFactory` selects the right implementation based on the `PremiumType` enum.
-
-The implementation details, formulas, rounding rules, and quote persistence are authoritative in [Premium Calculation Service](../06_Backend/Premium_Calculation_Service.md); this document treats the pattern, not the math.
+---
 
 ## Business Context
+Different insurance products are billed differently. Travel insurance is typically a one-time calculation based on trip duration. Health insurance is an annual calculation based on age and coverage. Trying to fit both into one method creates rigid, fragile code.
 
-Insurance products are priced per `PremiumType`, which the domain defines as either `ONE_TIME` or `ANNUAL` (see [Fact Sheet](../CONTRIBUTING.md)). These are materially different pricing models:
+> **Analogy**: Like choosing between an annual gym membership vs a day pass. Both get you into the gym (the goal), but the way the cost is calculated is entirely different.
 
-- An **annual** premium is the per-year cost; the customer pays it each year and receives no lump-sum discount.
-- A **one-time** premium pays the full commitment up front and earns a duration-based discount.
+---
 
-Because the business may introduce further premium shapes later, and because both formulas share a common core (base premium, processing fee, GST), the pricing engine is a natural fit for the Strategy pattern: the differences are contained in replaceable strategy classes, while validation and quote persistence stay in one orchestration class.
+## System Flow
 
-## Technical Design
-
-### Participants
-
-| Participant | Role | Class |
-| --- | --- | --- |
-| Context | Orchestrates validation, rule lookup, and quote persistence; delegates the formula to a strategy | `PremiumCalculationServiceImpl` |
-| Strategy | Defines the common algorithm contract | `PremiumCalculator` (interface) |
-| Concrete strategy A | Implements the one-time (lump-sum with duration discount) formula | `OneTimePremiumCalculator` |
-| Concrete strategy B | Implements the annual (per-year, no discount) formula | `AnnualPremiumCalculator` |
-| Selector | Returns the correct strategy for a `PremiumType` | `PremiumCalculatorFactory` |
-| Result object | The value object produced by any strategy | `PremiumQuote` (Lombok `@Builder` DTO) |
-
-The strategy interface is intentionally narrow:
-
-```java
-public interface PremiumCalculator {
-    PremiumQuote calculatePremium(PremiumCalculationRequest request, PricingRule rule, BigDecimal coverageAmount);
-}
+```mermaid
+sequenceDiagram
+    participant S as PremiumCalculationServiceImpl
+    participant F as PremiumCalculatorFactory
+    participant I as PremiumCalculator (Interface)
+    
+    S->>F: getCalculator(PremiumType)
+    F-->>S: returns specific Strategy instance
+    S->>I: calculate(BasePrice, Options)
+    I-->>S: returns calculated BigDecimal
 ```
 
-Both concrete strategies are Spring `@Component` beans with explicit names (`ONE_TIME_CALCULATOR`, `ANNUAL_CALCULATOR`). The context never instantiates a strategy; it asks the factory:
+---
 
-```java
-PremiumCalculator calculator = calculatorFactory.getCalculator(premiumType);
-PremiumQuote quoteDto = calculator.calculatePremium(...);
-```
+## Backend Implementation
 
-This is the core property of the pattern: the context knows the *contract*, not the *algorithm*.
+### With vs Without Strategy Pattern
 
-### Selection mechanism
+| Without Strategy Pattern | With Strategy Pattern |
+|--------------------------|-----------------------|
+| Massive `switch` or `if/else` statement in Service. | Service delegates to the Interface. |
+| Hard to test (requires setting up all scenarios). | Easy to test each calculator in isolation. |
+| Adding a new product requires modifying core service. | Adding a new product means creating a new class. |
 
-Selection is delegated to `PremiumCalculatorFactory`, which exploits the Spring container's ability to inject a `Map<String, PremiumCalculator>` of all beans of that type keyed by bean name. See [Factory](Factory.md) for the full analysis of this mechanism.
-
-### Open for extension
-
-Adding a new premium type requires exactly three things: a new enum value (domain change), a new strategy class implementing `PremiumCalculator`, and the business rules for it. No existing calculator and no orchestration code changes — the factory resolves the new bean by naming convention.
-
-## Workflow
-
-1. The controller validates the request DTO and calls the premium calculation service.
-2. `PremiumCalculationServiceImpl` loads the customer and plan, validates duration, premium type, coverage, and plan/product activity, and resolves the latest active `PricingRule`.
-3. The factory resolves the strategy for the requested `PremiumType`.
-4. The strategy computes the `PremiumQuote` breakdown (base premium, fee, GST, commitment, discount, total).
-5. The context persists a `Quote` snapshot (status `CREATED`, 30-minute expiry) and returns the populated `PremiumQuote`.
-6. Purchase consumes the quote (transition to `USED`), handled by the policy flow.
-
-Step-by-step details, endpoint references, and formula specifics: [Premium Calculation Service](../06_Backend/Premium_Calculation_Service.md).
-
-## Code References
-
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/PremiumCalculator.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/OneTimePremiumCalculator.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/AnnualPremiumCalculator.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/service/strategy/PremiumCalculatorFactory.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/serviceimpl/PremiumCalculationServiceImpl.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/PremiumCalculationRequest.java`
-- `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/PremiumQuote.java`
-
-## Diagrams
+### Class Diagram
 
 ```mermaid
 classDiagram
-    direction TB
     class PremiumCalculator {
         <<interface>>
-        +calculatePremium(request, rule, coverageAmount) PremiumQuote
-    }
-    class OneTimePremiumCalculator {
-        +calculatePremium(...) PremiumQuote
-        -getDurationDiscountRate(duration) BigDecimal
+        +calculate(basePrice, options) BigDecimal
     }
     class AnnualPremiumCalculator {
-        +calculatePremium(...) PremiumQuote
+        +calculate(basePrice, options) BigDecimal
     }
-    class PremiumCalculatorFactory {
-        +getCalculator(PremiumType) PremiumCalculator
+    class OneTimePremiumCalculator {
+        +calculate(basePrice, options) BigDecimal
     }
-    class PremiumCalculationServiceImpl {
-        -calculatorFactory PremiumCalculatorFactory
-    }
-    class PremiumQuote {
-        +totalPremium BigDecimal
-        +annualPremium BigDecimal
-        +discountAmount BigDecimal
-    }
-    PremiumCalculator <|.. OneTimePremiumCalculator
+    
     PremiumCalculator <|.. AnnualPremiumCalculator
-    PremiumCalculationServiceImpl ..> PremiumCalculatorFactory : resolves
-    PremiumCalculationServiceImpl ..> PremiumQuote : produces
+    PremiumCalculator <|.. OneTimePremiumCalculator
 ```
 
-A full class diagram of the service layer, including this strategy cluster, is in [`../09_Diagrams/Class_Diagrams/`](../09_Diagrams/Class_Diagrams/README.md).
+---
 
-## Best Practices
+## Design Decisions
+- **Why Strategy here specifically?**  
+  Insurance pricing algorithms change frequently due to regulations or business needs. Encapsulating these algorithms into strategies isolates changes.
+- **What would the code look like without it?**  
+  `PremiumCalculationServiceImpl` would have a 500-line method checking `if (type == ANNUAL) { ... } else if (type == ONETIME) { ... }`, violating the Single Responsibility and Open/Closed principles.
 
-- **Algorithms vary by business rule; isolate the variation.** The formula differences between premium types are the exact seam that should be behind an interface.
-- **The context never branches on the enum.** `PremiumCalculationServiceImpl` does not contain `if (premiumType == ...)`. All selection goes through the factory, keeping the orchestrator simple and open for extension.
-- **Strategies are stateless beans.** The calculators hold no mutable state, so they can be singletons shared by the container, and they are trivially unit-testable in isolation.
-- **Keep the contract narrow.** `PremiumCalculator` exposes one method; both implementations fit it without casts or `instanceof`.
-- **Separate "the pattern" from "the math".** The pattern lives in this document; the formula, rounding, and discount table live in the domain and service deep-dive docs, so there is one source of truth for each.
+---
 
-## Future Improvements
+## Interview Notes
+1. **What is the Strategy Pattern?**  
+   It defines a family of algorithms, encapsulates each one, and makes them interchangeable at runtime based on context.
+2. **How did you implement it in Spring?**  
+   I created an interface, implemented it in multiple `@Component` classes, and used a Factory to inject the correct one based on an Enum/String.
+3. **What SOLID principle does this satisfy?**  
+   Open/Closed Principle (OCP). We can add a `MonthlyPremiumCalculator` by adding a new class without modifying the existing service.
+4. **How do you test this?**  
+   Unit test each strategy class individually with boundary values, then mock the factory in the service test.
+5. **Can strategies share code?**  
+   Yes, by using an abstract base class that implements the interface and holds shared logic (Template Method pattern).
+6. **How does the client know which strategy to use?**  
+   The client (Service) asks a Factory, passing the `ProductType` as the key.
 
-- Add more concrete strategies as the business expands premium models (for example fixed-flat products, or combined two-premium modes).
-- Consider `@RequiredArgsConstructor`-style constructor injection in `PremiumCalculationServiceImpl` (currently `@Autowired` field injection) to align it with the rest of the service layer; see [Dependency Injection](Dependency_Injection.md).
-- Evaluate a strategy-based abstraction for other varying behaviours, such as payment-mode processing (`UPI`/`CARD`/`NET_BANKING`/`CASH`) or claim-status routing, where the same "varying algorithm behind an interface" shape applies.
-- Track against future enhancements: `../10_Evaluation/Future_Enhancements.md`.
+---
 
-Related: [Factory](Factory.md), [SOLID](SOLID.md), [Premium Calculation Service](../06_Backend/Premium_Calculation_Service.md), [Premium Calculation](../02_Business_Domain/Premium_Calculation.md)
+## Code References
+| Component | Path |
+|-----------|------|
+| Interface | `com.insurance.demo.strategy.PremiumCalculator` |
+| Concrete A| `com.insurance.demo.strategy.AnnualPremiumCalculator` |
+| Concrete B| `com.insurance.demo.strategy.OneTimePremiumCalculator` |
+
+---
+
+## Related Documents
+- `../07_Design_Patterns/Factory.md`
+- `../07_Design_Patterns/SOLID.md`

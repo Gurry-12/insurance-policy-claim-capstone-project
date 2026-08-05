@@ -1,106 +1,192 @@
 # Customer Flow
+> The customer's complete journey: from onboarding and KYC completion, to quoting, purchasing, paying, and finally claiming against a policy.
 
-> The end-to-end customer journey in the Insurance Policy & Claim Management System: onboarding, profile creation, product/plan browsing, quoting, purchasing, paying, claiming, and tracking history.
+---
 
 ## Purpose
+This document maps out the end-to-end journey of a `ROLE_CUSTOMER` user within the system. It covers onboarding, browsing products, completing a purchase pipeline, and managing post-purchase activities like document generation and claims.
 
-Narrates the complete customer experience across the React frontend (`insurance-policy-claim-management-app-ui/src/pages`) and the Spring Boot backend (port **8081**, `/api` prefix), mapping each UI step to the endpoints that serve it. Endpoint payloads are authoritative in `../03_API/*`; business rules in `../02_Business_Domain/Business_Rules.md`.
+---
 
 ## Overview
+- **Onboarding:** Register via dual-OTP, login, and complete the mandatory profile (KYC).
+- **Purchasing:** Browse active products/plans, configure coverage, request a quote, and purchase.
+- **Payment & Documents:** Complete exactly matched payments to activate policies, then download PDF receipts.
+- **Servicing:** Raise claims with Cloudinary evidence tracking, or cancel eligible policies.
 
-A customer registers and verifies their identity via dual OTP, logs in, completes their profile, browses active products and plans, obtains a quote, purchases a policy (which starts `PENDING_PAYMENT`), pays to activate it, and — when an incident occurs — raises and tracks a claim against the active policy. Throughout, the customer can view their policies, payments, claims, and profile. The role namespace is `/customer/*`, guarded by `RoleProtectedRoute`; the customer dashboard is `/customer/dashboard`.
+---
 
 ## Business Context
+The customer portal is the revenue engine. It must balance frictionless user experience with strict legal compliance (KYC profiles) and financial accuracy. The entire flow is designed to be self-serve, empowering customers to handle quotes, payments, and claims digitally without requiring staff intervention.
 
-The customer is the buyer and the claimant. Their journey must be frictionless but safe: purchases are blocked until the profile is complete, a quote can only be purchased while unexpired, a policy only becomes `ACTIVE` after payment, and claims are only accepted on `ACTIVE` policies within the remaining cover. Each invariant is enforced server-side, so the UI guidance below is a convenience, not a guarantee.
+---
 
-## Technical Design
+## Feature Flow
 
-### Stage-by-stage map
+```mermaid
+flowchart TD
+    Start([Anonymous User]) --> Reg[Register & Dual OTP]
+    Reg --> Login[Login (JWT)]
+    
+    Login --> Profile[Complete Profile KYC]
+    Profile --> Browse[Browse Products & Plans]
+    
+    Browse --> Config[Configure Coverage & Duration]
+    Config --> Quote[Generate Quote]
+    
+    Quote --> Purchase[Accept Quote -> PENDING_PAYMENT]
+    Purchase --> Pay[Exact Match Payment]
+    Pay --> Active[Policy ACTIVE]
+    
+    Active --> Claim[Raise Claim]
+    Claim --> Track[Track Claim Status]
+    
+    Active --> Doc[Download PDF Receipts]
+    Active --> Cancel[Cancel Policy]
+```
 
-| Stage | UI route | Endpoint(s) |
-|---|---|---|
-| 1. Register | `/register` | `POST /api/auth/register` |
-| 2. Verify | `/verify-otp` | `POST /api/auth/verify-otp`, `POST /api/auth/resend-otp` |
-| 3. Login | `/login` | `POST /api/auth/login` |
-| 4. Create / edit profile | `/customer/profile`, `/customer/profile/edit` | `POST /api/customers`, `GET /api/customers/profile`, `PUT /api/customers/{customerId}` |
-| 5. Browse products | `/customer/products` | `GET /api/products/active`, `GET /api/products/{id}` |
-| 6. Browse plans | `/customer/plans`, `/customer/products/:productId/plans` | `GET /api/plans/active`, `GET /api/plans/{productId}/active`, `GET /api/plans/{planId}` |
-| 7. Quote | `/customer/purchase-policy/:planId` (steps Coverage → Duration → Quote) | `POST /api/premium/calculate` |
-| 8. Purchase | same page (Confirm & Purchase) | `POST /api/policies/purchase` |
-| 9. Pay | `/customer/payments/pay/:policyId` | `POST /api/payments` |
-| 10. My policies | `/customer/policies`, `/customer/policies/:policyId` | `GET /api/policies/my-policies`, `GET /api/policies/{policyId}`, `GET /api/policies/{policyId}/claims` |
-| 11. Raise claim | `/customer/claims/raise` | `POST /api/claims/raise` (multipart) |
-| 12. Upload docs | `/customer/claims/upload/:claimId` | `POST /api/document/upload/{claimId}` (multipart) |
-| 13. Track claim | `/customer/claims`, `/customer/claims/:claimId` | `GET /api/claims/my-claims`, `GET /api/claims/{claimId}`, `GET /api/claims/{claimId}/history` |
-| 14. Payments history | `/customer/payments` | `GET /api/payments/my-payments`, `GET /api/payments/my-policies/{policyId}`, `GET /api/payments/{id}` |
+---
 
-### Route details
-
-- Dashboard `/customer/dashboard` — summary cards (policies, active policies, claims, payments) via the service calls behind the pages above.
-- Purchase wizard `PurchasePolicyPage` uses a 5-step `Stepper`: Coverage → Duration → Quote → Payment → Policy. Changing any selection invalidates the in-memory quote. The quote page shows a `QuoteCountdownTimer` tied to the 30-minute quote expiry.
-- Claim screens: `RaiseClaimPage` submits the claim JSON plus document files as `multipart/form-data` (`@RequestPart("claim")` + `@RequestPart("files")`); `ClaimDetailsPage` shows status, remarks, documents, and the `ClaimStatusHistory` audit trail; `UploadDocumentsPage` appends more files.
-- Payments: `RecordPaymentPage` pre-fills the amount from `calculatedPremium` and offers modes `UPI`, `CARD`, `NET_BANKING`, `CASH` and status `SUCCESS`/`FAILED`; `CustomerPaymentHistoryPage` lists payments with a PDF receipt download (`usePaymentPdf`, jsPDF).
-
-### Key business gates encountered
-
-- Purchase requires a **complete profile** (`isCustomerProfileComplete`: DOB, address, city, state, pin code, nominee) — `PolicyServiceImpl.purchasePolicy`.
-- Quote must be `CREATED`, owned by the customer, unexpired (30 min), and its plan + product still active.
-- HEALTH plans: one `ACTIVE`/`PENDING_PAYMENT` policy per customer+plan; non-HEALTH: one `PENDING_PAYMENT` per customer+plan.
-- Payment must equal `calculatedPremium` exactly; `SUCCESS` flips the policy to `ACTIVE` (`PremiumPaymentServiceImpl.recordPayment`).
-- Claims only on `ACTIVE` policies; incident date inside the policy window; amount within remaining cover; at least one document required.
-- ANNUAL renewals are blocked until the 15-day early window before the next anniversary; ONE_TIME accepts exactly one `SUCCESS` payment.
-
-## Workflow
-
-1. **Onboard** — register on `/register`, verify both OTPs on `/verify-otp` (account becomes `ACTIVE`), sign in on `/login`.
-2. **Complete profile** — the dashboard routes to profile creation; `POST /api/customers` persists DOB/address/nominee. Profile completion is a hard prerequisite for purchasing and for being issued a policy.
-3. **Browse** — `/customer/products` lists active products by `ProductType` (HEALTH, MOTOR, LIFE, TRAVEL, INSURANCE). Selecting a product leads to `/customer/products/:productId/plans`; `/customer/plans` shows all active plans. `GET /api/plans/{planId}` supplies allowed durations, supported premium type, and coverage options.
-4. **Quote** — `/customer/purchase-policy/:planId`: pick an active coverage amount, a duration from `allowedDurations`, confirm the plan's single premium type, then "Generate Quote" → `POST /api/premium/calculate` returns a `PremiumQuote` with `quoteId` (a `Quote` row, `CREATED`, 30-minute expiry).
-5. **Purchase** — accept terms and "Confirm & Purchase" → `POST /api/policies/purchase` creates the policy `PENDING_PAYMENT` with pricing snapshots from the quote and marks the quote `USED`.
-6. **Pay** — `/customer/payments/pay/:policyId` → `POST /api/payments` with the exact `calculatedPremium` amount and a payment mode; `SUCCESS` sets the policy `ACTIVE`.
-7. **Claim** — on an incident, `/customer/claims/raise` submits the claim with documents; the claim is created `SUBMITTED`. Track on `/customer/claims/:claimId` as staff move it to `UNDER_REVIEW`, staff recommend, and admin decides (`APPROVED`/`REJECTED`). More documents can be appended on `/customer/claims/upload/:claimId`.
-8. **Review history** — `/customer/policies` for policies, `/customer/payments` for receipts (PDF export), `/customer/claims` for claims and their audit trail.
+## Profile Completion Requirement Diagram
 
 ```mermaid
 flowchart LR
-    A([Register /register]) --> B([Verify /verify-otp]) --> C([Login /login])
-    C --> D([Profile /customer/profile])
-    D --> E([Products /customer/products]) --> F([Plans /customer/plans])
-    F --> G([Quote /customer/purchase-policy/:planId])
-    G --> H([Purchase -> PENDING_PAYMENT])
-    H --> I([Pay -> ACTIVE /customer/payments/pay/:policyId])
-    I --> J([Raise claim /customer/claims/raise])
-    J --> K([Track claim /customer/claims/:claimId])
-    K --> L([History /customer/payments . /customer/policies . /customer/claims])
+    subgraph Incomplete Profile
+        Reg[Registered]
+        NoDOB[Missing DOB]
+        NoAddr[Missing Address]
+    end
+    
+    subgraph Complete Profile
+        Full[KYC Complete]
+        Quote[Can Generate Quote]
+        Buy[Can Buy Policy]
+    end
+    
+    Incomplete Profile -- POST /api/customers --> Complete Profile
+    
+    Incomplete Profile -.->|Blocked: 400 COMPLETE_PROFILE_FIRST| Buy
 ```
 
-## Code References
+---
 
-- Pages: `src/pages/customer/**` (`CustomerDashboard`, `ProfilePage`, `EditProfilePage`, `CustomerProductListPage`, `CustomerPlanListPage`, `PurchasePolicyPage`, `CustomerPolicyListPage`, `CustomerPolicyDetailPage`, `RecordPaymentPage`, `CustomerPaymentHistoryPage`, `RaiseClaimPage`, `UploadDocumentsPage`, `ClaimDetailsPage`, `CustomerClaimListPage`).
-- Services: `src/services/{authService,quoteService,policyService,paymentService,claimService,productService,planService,customerService}.js`; hooks `src/hooks/useApiTable`, `src/hooks/PdfDownload/usePaymentPdf`.
-- Backend: `serviceimpl/{AuthServiceImpl,CustomerServiceImpl,PremiumCalculationServiceImpl,PolicyServiceImpl,PremiumPaymentServiceImpl,ClaimServiceImpl,ClaimDocumentServiceImpl}.java`.
-- Routes/guards: `src/App.jsx` (`GuestRoute`, `ProtectedRoute`, `RoleProtectedRoute`, `DashboardRedirect`).
+## System Flow
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+```mermaid
+flowchart TD
+    UI[Frontend] -->|GET /api/products/active| ProdCtrl[ProductController]
+    UI -->|POST /api/premium/calculate| QuoteCtrl[PremiumController]
+    UI -->|POST /api/policies/purchase| BuyCtrl[PolicyController]
+    UI -->|POST /api/payments| PayCtrl[PaymentController]
+    
+    BuyCtrl --> ValProf{Is Profile Complete?}
+    ValProf -- No --> Block[400 Bad Request]
+    ValProf -- Yes --> Success[Save Policy]
+```
 
-## Diagrams
+---
 
-- Purchase and payment sequence: `../08_Workflows/Purchase_Flow.md`, `../08_Workflows/Payment_Flow.md`.
-- Claim lifecycle: `../08_Workflows/Claim_Flow.md`.
-- Authentication sequence: `../08_Workflows/Authentication_Flow.md`.
-- Supporting activity/sequence diagrams: `../09_Diagrams/Activity_Diagrams/`, `../09_Diagrams/Sequence_Diagrams/`.
+## Sequence Diagram (Purchase & Claim)
 
-## Best Practices
+```mermaid
+sequenceDiagram
+    participant C as Customer
+    participant API as Backend Service
+    participant PDF as PDF Generator
+    participant DB as Database
+    
+    C->>API: Complete Profile (PUT /api/customers)
+    API->>DB: Save KYC Data
+    
+    C->>API: POST /premium/calculate
+    API-->>C: Quote ID
+    
+    C->>API: POST /policies/purchase
+    API->>DB: Policy (PENDING_PAYMENT)
+    
+    C->>API: POST /payments (Exact Amount)
+    API->>DB: Policy (ACTIVE)
+    
+    C->>API: GET /policies/{id}/pdf
+    API->>PDF: Generate jsPDF / iText
+    API-->>C: Download Document
+    
+    C->>API: POST /claims/raise (with Docs)
+    API->>DB: Save Claim (SUBMITTED)
+```
 
-- The wizard invalidates quotes on any selection change and counts down the 30-minute expiry, so a stale quote is never submitted.
-- The UI pre-fills payment amounts from `calculatedPremium`, matching the server's exact-equality rule.
-- Every customer-facing list is paginated and sorted server-side; ownership checks are enforced in services, never only in the UI.
-- Claim documents are validated (type/size) on both raise and append paths before reaching Cloudinary.
+---
 
-## Future Improvements
+## Database Design
 
-- Inline profile-completion prompts with a guided wizard on first login.
-- Email/SMS status notifications pushed to customers on policy and claim status changes.
-- Recurring ANNUAL payment reminders when the renewal window opens.
-- See `../10_Evaluation/Future_Enhancements.md`.
+| Entity | Purpose | Relationships |
+|---|---|---|
+| `AppUser` | Auth credentials. | One-to-One to `Customer`. |
+| `Customer` | Profile/KYC data (DOB, Address). | One-to-Many to `Policy`. |
+
+**Why this design?**
+By separating `AppUser` from `Customer`, we keep authentication logic isolated from business domain logic. A customer might not complete their profile immediately, so the `Customer` table acts as a progressive enhancement to their basic identity.
+
+---
+
+## Business Rules
+
+| Rule | Description | Why it exists |
+|---|---|---|
+| **KYC Enforcement** | Profile must contain Address, DOB, and Nominee before purchase. | Legally required to bind an insurance contract. |
+| **PDF Generation** | Receipts and policy documents are dynamically generated. | Prevents storing millions of static files. |
+| **Cancellation Lock** | Policies cannot be cancelled if they have open claims. | Prevents fraud/abuse of the refund system. |
+
+---
+
+## Validation Rules
+
+- **Profile:** DOB must be in the past. Address, city, state, pincode, and nominee cannot be empty.
+- **Quote / Purchase / Claim:** See respective flow documents for deep validation rules.
+- **PDF Download:** User must own the requested policy or payment record.
+
+---
+
+## Error Handling
+
+| Scenario | HTTP Status | Behavior |
+|---|---|---|
+| Buying with incomplete profile | 400 Bad Request | Front-end intercepts and redirects to Profile page. |
+| Accessing another user's policy | 403 Forbidden | Blocked by ownership checks in the service layer. |
+| Canceling policy with open claim | 400 Bad Request | Blocked by state validation. |
+
+---
+
+## Design Decisions
+
+- **Why is PDF generation done on the fly?**
+  Policy documents contain dynamic data that rarely changes, but storing millions of PDFs wastes storage. Generating them dynamically using `jsPDF` (frontend) or `iText` (backend) is compute-cheap and storage-free.
+- **Why is the Customer journey self-serve?**
+  Reduces overhead. The system uses strict validations (e.g., exact payment matching, remaining cover calculation) to ensure customers cannot accidentally break the system state while navigating it alone.
+
+---
+
+## Interview Notes
+
+1. **How do you ensure a user completes their profile before buying?**
+   > The backend `PolicyServiceImpl` executes `isCustomerProfileComplete()` which checks for nulls on mandatory KYC fields. If it fails, it throws a 400 error which the frontend catches to redirect the user to the profile setup page.
+2. **How is PDF generation handled?**
+   > For simple receipts, it can be handled via frontend libraries like `jsPDF` capturing the DOM. For legally binding policy documents, it's generated backend-side using libraries like iText or PDFBox to ensure structural integrity and prevent tampering.
+3. **How does the system prevent a customer from viewing someone else's policy?**
+   > Every service method fetching a resource first retrieves the authenticated user's email from the `SecurityContext` and validates that it matches the owner of the requested entity.
+4. **Why is the Quote separated from the Policy?**
+   > A Quote is a temporary price snapshot. If a user abandons the cart, we don't want empty/unpaid policies cluttering the system. It transitions into a Policy only upon explicit purchase intent.
+5. **How is policy cancellation handled?**
+   > The system checks if there are any active claims. If not, the status is set to `CANCELLED`. In a real-world scenario, this would trigger a prorated refund workflow.
+
+---
+
+## Related Documents
+- [Purchase Flow](Purchase_Flow.md)
+- [Payment Flow](Payment_Flow.md)
+
+---
+
+## Future Enhancements
+- Introduce prorated refund calculations on cancellation.
+- Add digital wallet integration for storing policy PDFs.

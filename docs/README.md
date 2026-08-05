@@ -1,76 +1,109 @@
 # InsuranceFlow — Documentation Hub
+> The master entry point for understanding the architecture, domain, and implementation of InsuranceFlow.
 
-Full documentation for the **InsuranceFlow** capstone project — a full-stack
-insurance policy & claim management system.
+---
 
-| Module | Repo folder |
-|---|---|
-| Backend (Spring Boot) | `insurance-policy-claim-management-system/` |
-| Frontend (React + Vite) | `insurance-policy-claim-management-app-ui/` |
-| Docs | this `docs/` tree |
-| Demo data | `demo-data/` |
+## Purpose
+This hub provides a structured path into the InsuranceFlow system. Whether you are an evaluator looking for technical depth, an interviewer preparing questions, or a developer extending the codebase, this is your starting point.
 
-## How to read this documentation
+---
 
-Pick your audience:
+## Overview
+InsuranceFlow is a full-stack web application for an insurance company that lets customers browse insurance products, get instant premium quotes, purchase policies, pay premiums, and raise claims — while giving internal staff a queued claim-review workflow and admins full control over the catalog, pricing, users, and final claim decisions.
 
-**1. Evaluator / reviewer — quick, high-signal**
-- `10_Evaluation/Project_Summary.md` — one-page summary
-- `10_Evaluation/Features_Checklist.md` + `Business_Rules_Checklist.md` +
-  `API_Checklist.md` — verify everything, fast
-- `00_Project_Overview/` — vision, features, tech stack, architecture overview
-- `09_Diagrams/` — Mermaid sequence / class / ER / activity / flowcharts
-- `demo-data/04-evaluator-demo.md` — exact credentials + screens to show
+---
 
-**2. Interviewer / panel — deep-dive questions**
-- `10_Evaluation/Interview_Questions.md` — Q&A across architecture, security,
-  DB, frontend, business logic, ops, behavioral
-- Follow links into `02_Business_Domain/`, `03_API/`, `04_Database/`,
-  `05_Frontend/`, `07_Design_Patterns/` for supporting depth
+## System Architecture
 
-**3. Developer — run, understand, extend**
-- `11_Developer_Guide/Setup.md` → `Run.md` → `Build.md` → `Environment.md`
-- `01_System_Architecture/` — system, backend, frontend, security, high-level
-- `03_API/`, `04_Database/`, `06_Backend/`, `08_Workflows/`
-- `12_Knowledge_Base/` — 34 concept cards (per-topic detail)
-- `11_Developer_Guide/Troubleshooting.md` — when things break
+```mermaid
+flowchart LR
+    Client[React SPA] -->|HTTPS /api| Gateway[Spring Boot 4 API]
+    Gateway -->|JPA| DB[(MySQL 8)]
+    Gateway -->|Token Cache| Redis[(Redis)]
+    Gateway -->|Docs| Cloudinary[Cloudinary API]
+    Gateway -->|SMS| Twilio[Twilio API]
+```
 
-## Folder index
+---
+
+## Audience Reading Paths
+
+### 1. Recruiter
+_Fast, high-signal reading to understand project scope and completeness._
+- `10_Evaluation/Project_Summary.md` — One-page executive summary.
+- `00_Project_Overview/Features.md` — What the application can do, by role.
+
+### 2. Interviewer
+_Deep-dive context to ask smart questions about architecture and design decisions._
+- `01_System_Architecture/High_Level_Architecture.md` — How the pieces fit together.
+- `07_Design_Patterns/README.md` — Why certain patterns (Strategy, Factory) were chosen.
+- `10_Evaluation/Interview_Questions.md` — Pre-written Q&A across architecture, security, and DB.
+
+### 3. Developer
+_Actionable guides to run, understand, and extend the system._
+- `11_Developer_Guide/Setup.md` — How to get it running locally.
+- `03_API/README.md` — API payload and endpoint structures.
+- `04_Database/README.md` — Schema and entity relationships.
+- `08_Workflows/README.md` — End-to-end flows for key operations.
+
+### 4. Contributor
+_Guidelines for adding new features and documentation._
+- `CONTRIBUTING.md` — Documentation standards, templates, and the absolute Fact Sheet.
+- `06_Backend/README.md` — Controller, Service, and Repository layers.
+- `05_Frontend/README.md` — React components, hooks, and routing.
+
+---
+
+## Folder Index
 
 | Folder | Contents |
 |---|---|
-| `00_Project_Overview/` | README, Vision, Features, Tech_Stack, Architecture_Overview |
-| `01_System_Architecture/` | High-level, backend, frontend, security, data, folder structure |
-| `02_Business_Domain/` | Insurance domain, rules, product/policy/claim workflows, premium, pricing, coverage, duration, payment |
-| `03_API/` | Auth/Product/Plan/Pricing/Policy/Claim/Payment APIs + API flow |
-| `04_Database/` | ER summary, schema, entities, data flow, seed data |
-| `05_Frontend/` | Routing, layout, state, hooks, components, guards, API integration, UI workflows |
-| `06_Backend/` | Controllers, services, DTOs, JWT, security, validation, exceptions, repositories, package structure, premium service, performance, caching, logging |
-| `07_Design_Patterns/` | Strategy, Factory, Adapter, Builder, Dependency Injection, SOLID, Decision Records |
-| `08_Workflows/` | End-to-end flows (register, quote, purchase, pay, claim, admin) |
-| `09_Diagrams/` | Mermaid sequence/class/ER/activity/flowcharts |
-| `10_Evaluation/` | Summary, checklists, interview Q&A, roadmap |
-| `11_Developer_Guide/` | Setup, Run, Build, Environment, Deployment, Troubleshooting |
-| `12_Knowledge_Base/` | 34 concept cards (backend/domain + frontend/patterns) |
+| `00_Project_Overview/` | Vision, features, tech stack, and 5-minute architecture summary. |
+| `01_System_Architecture/` | High-level system, backend, frontend, security, and folder structure. |
+| `02_Business_Domain/` | Insurance domain rules, premium math, and pricing/coverage logic. |
+| `03_API/` | Auth, Product, Plan, Policy, Claim, and Payment API endpoints. |
+| `04_Database/` | ER summaries, schema definitions, entities, and seed data info. |
+| `05_Frontend/` | React routing, layout, state, hooks, components, and UI workflows. |
+| `06_Backend/` | Spring Boot controllers, services, DTOs, security, and exceptions. |
+| `07_Design_Patterns/` | Strategy, Factory, Adapter, SOLID principles, and Decision Records. |
+| `08_Workflows/` | End-to-end flows (register, quote, purchase, pay, claim, admin). |
+| `09_Diagrams/` | Mermaid sequence, class, ER, activity, and flowcharts. |
+| `10_Evaluation/` | Summaries, checklists, interview Q&A, and project roadmap. |
+| `11_Developer_Guide/` | Setup, Run, Build, Environment, and Troubleshooting. |
+| `12_Knowledge_Base/` | 34 concept reference cards explaining specific project implementations. |
 
-## Standards
+---
 
-- `CONTRIBUTING.md` defines the mandatory doc template, the knowledge-card
-  template, the single-source-of-truth map, and the **code-verified Fact Sheet**
-  every doc must agree with.
-- Prefer linking across this tree over duplicating content; each topic has one
-  authoritative file.
+## Key Facts at a Glance
 
-## Quick facts (verify against code before trusting stale sources)
+> [!IMPORTANT]
+> - **Backend**: Spring Boot 4.0.6 (Java 17) on port `8081`
+> - **Frontend**: React 19 / Vite 8 on port `5173`
+> - **Database**: MySQL 8 `insurance_db` (16 entities / 17 tables)
+> - **Access Token**: 15 min JWT (60s in dev), in-memory on UI
+> - **Refresh Token**: 7-day TTL, HttpOnly cookie, rotating
+> - **Seed Admin**: `admin@insurance.com` / `Admin@123`
 
-- Backend: Spring Boot 4.0.6 / Java 17 on port **8081**
-- Frontend: React 19.2.6 / Vite on port **5173**
-- DB: MySQL `insurance_db`, `ddl-auto=update`, 16 entities / 17 tables
-- Seed admin: `admin@insurance.com` / `Admin@123`
-- Access token default 15 min (60 s in the committed local override)
+---
 
-## Related
+## Start Here
+- 🚀 **Want to run it?** [Developer Guide](../11_Developer_Guide/Setup.md)
+- 🧠 **Want to understand the code?** [Backend Architecture](01_System_Architecture/Backend_Architecture.md)
+- 📊 **Want to test it?** [Evaluator Demo](../demo-data/04-evaluator-demo.md)
 
-- Root `../README.md` — repository overview
-- `../demo-data/` — SQL, testing flows, evaluator demo
-- `../CHANGELOG.md` — history
+---
+
+## Domain Glossary
+
+| Term | Definition |
+|---|---|
+| **Product** | High-level category (e.g., HEALTH, MOTOR, LIFE, TRAVEL, INSURANCE). |
+| **Plan** | Specific offering under a Product (e.g., "Gold Health Plan"). |
+| **CoverageOption** | Selectable coverage amount (e.g., ₹5,00,000) mapped to a Plan. |
+| **PricingRule** | Rules defining base risk rate, processing fee, and duration discounts. |
+| **Quote** | 30-minute valid pricing preview before policy purchase (CREATED, USED, EXPIRED, CANCELLED). |
+| **Policy** | An instantiated insurance contract (PENDING_PAYMENT, ACTIVE, EXPIRED, CANCELLED). |
+| **PremiumPayment** | Record of money paid exactly matching the premium to activate a Policy. |
+| **Claim** | Request for payout by Customer against an ACTIVE Policy (SUBMITTED, UNDER_REVIEW, RECOMMENDED, APPROVED, REJECTED). |
+| **ClaimStatusHistory** | Audit trail of claim status changes (SUBMITTED → REVIEW → DECISION). |
+| **PremiumType** | Payment frequency (ONE_TIME vs. ANNUAL). |

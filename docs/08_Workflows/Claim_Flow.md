@@ -1,135 +1,199 @@
 # Claim Flow
+> The authoritative claim narrative: tracking the claim lifecycle from customer submission with Cloudinary evidence, through staff review, to the admin's final adjudication.
 
-> The authoritative claim narrative: raising a claim with documents, validation, the `SUBMITTED → UNDER_REVIEW → RECOMMENDED_* → APPROVED/REJECTED` state machine, Cloudinary document storage, and the audit trail.
+---
 
 ## Purpose
+This document provides the single source of truth for the complete claim lifecycle. It covers how a claim transitions through its state machine, how evidence is stored, and how roles (Customer, Staff, Admin) interact with the workflow.
 
-Single source of truth for how a claim moves from customer submission to final admin decision. The claim state machine and its transition rules are authoritative in `../02_Business_Domain/Claim_Workflow.md` and `../02_Business_Domain/Business_Rules.md` (section 5–6); endpoint contracts are in `../03_API/Claim_API.md`; the customer/staff/admin UI journey is covered here.
+---
 
 ## Overview
+- **Submission:** Customers raise claims against active policies, uploading mandatory evidence (PDF/Images) to Cloudinary.
+- **Review:** Internal Staff (matching the product speciality) assign the claim to themselves, review evidence, and recommend approval or rejection.
+- **Decision:** Admins make the final, immutable decision to approve or reject based on the staff recommendation.
+- **Audit Trail:** Every status change is logged with actor details, remarks, and timestamps in `ClaimStatusHistory`.
 
-A customer with an `ACTIVE` policy raises a claim via multipart upload (`ClaimRequestDTO` + document files). The service validates ownership, policy status, amount within remaining cover, incident date, and documents, then persists the claim as `SUBMITTED`, uploads the documents to Cloudinary, and writes the first `ClaimStatusHistory` row. Staff with a matching `productSpeciality` move it to `UNDER_REVIEW`, assign it, and review it to either `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`. The admin then issues the final `APPROVED` or `REJECTED` decision. Every transition is recorded with actor, remarks, and timestamp.
+---
 
 ## Business Context
+Claims represent financial outflow. Strict governance is essential. Customers can only claim up to their remaining coverage amount. Staff act as investigators—they can recommend but cannot approve their own cases (separation of duties). Admins act as final arbiters. Full audit trails ensure regulatory compliance.
 
-Claims move money, so every gate exists to protect both the customer and the insurer: only active policies are claimable, the amount must fit the remaining cover of the policy, the incident must fall inside the policy window, and evidence (documents) is mandatory. Separation of duties means investigators recommend but never approve their own case — the admin signs off. The full history trail gives regulators and customers a complete, attributable record.
+---
 
-## Technical Design
+## Feature Flow
 
-### ClaimStatus state machine
-
+```mermaid
+flowchart TD
+    Start([Customer Raises Claim]) --> ValPolicy{Active Policy?}
+    ValPolicy -- No --> ErrNotActive[Fail: POLICY_NOT_ACTIVE]
+    ValPolicy -- Yes --> ValLimit{Amount <= Remaining?}
+    
+    ValLimit -- No --> ErrLimit[Fail: EXCEEDS_LIMIT]
+    ValLimit -- Yes --> Upload[Upload Docs to Cloudinary]
+    
+    Upload --> StateSub[Claim SUBMITTED]
+    StateSub --> StaffQueue[Staff View (Filtered by Speciality)]
+    
+    StaffQueue --> Assign[Staff Assigns to Self]
+    Assign --> StateRev[UNDER_REVIEW]
+    
+    StateRev --> Rec{Staff Recommendation}
+    Rec -- Approve --> RecApp[RECOMMENDED_FOR_APPROVAL]
+    Rec -- Reject --> RecRej[RECOMMENDED_FOR_REJECTION]
+    
+    RecApp --> AdminDec[Admin Final Decision]
+    RecRej --> AdminDec
+    
+    AdminDec -- Admin Approves --> FinalApp[APPROVED]
+    AdminDec -- Admin Rejects --> FinalRej[REJECTED]
+    
+    FinalApp --> End([Terminal State])
+    FinalRej --> End
 ```
-SUBMITTED ──under-review (staff)────────▶ UNDER_REVIEW
-UNDER_REVIEW ──assign (staff)──────────▶ UNDER_REVIEW (assignedStaff set)
-UNDER_REVIEW ──review (assigned staff)─▶ RECOMMENDED_FOR_APPROVAL
-UNDER_REVIEW ──review (assigned staff)─▶ RECOMMENDED_FOR_REJECTION
-RECOMMENDED_FOR_APPROVAL ──final-decision (admin)──▶ APPROVED  (terminal)
-RECOMMENDED_FOR_REJECTION ──final-decision (admin)──▶ REJECTED  (terminal)
+
+---
+
+## System Flow
+
+```mermaid
+flowchart TD
+    Front[React Frontend] -->|POST multipart| Ctrl[ClaimController]
+    Ctrl --> Svc[ClaimServiceImpl]
+    Svc --> Val[Validate Coverage & Dates]
+    Svc --> Cloud[CloudinaryService]
+    Cloud -->|Upload| Remote[Cloudinary CDN]
+    Remote -->|Secure URL| Cloud
+    Cloud --> Svc
+    Svc --> DB[(Database)]
+    DB -->|Save Claim & Status History| Svc
+    Svc --> Front
 ```
 
-Only these transitions exist. Staff can never set `APPROVED`/`REJECTED`; admin can only set `APPROVED`/`REJECTED` from a `RECOMMENDED_*` state; terminal states are immutable.
+---
 
-### Raise-claim validation (in order, `ClaimServiceImpl.raiseClaim`)
+## Sequence Diagram
 
-1. **Documents** — at least one file; files non-empty, valid names, content type `application/pdf` or `image/*`, each ≤ 5 MB on the raise path.
-2. **Amount** — `claimAmount` positive.
-3. **Ownership** — the policy belongs to the authenticated customer (400 `POLICY_NOT_OWNED`).
-4. **Policy status** — must be `ACTIVE` (400 `POLICY_NOT_ACTIVE`).
-5. **Remaining cover** — `remainingCoverage = selectedCoverage − Σ(claims with status != REJECTED)`; `claimAmount ≤ remainingCoverage` (400 `EXCEEDS_LIMIT` + the remaining amount).
-6. **Incident date** — not in the future; within `[startDate, endDate]` inclusive (400 `FUTURE_INCIDENT_DATE` / `INCIDENT_DATE_OUT_OF_BOUNDS`).
+```mermaid
+sequenceDiagram
+    participant C as Customer
+    participant S as Staff (Speciality Match)
+    participant A as Admin
+    participant API as Backend Service
+    participant DB as Database
+    
+    C->>API: Raise Claim (Amount, Docs)
+    API->>API: Validate Limits & Dates
+    API->>DB: Save SUBMITTED & Cloudinary URLs
+    API-->>C: Claim Created
+    
+    S->>API: Fetch Claims
+    API->>API: Filter by Staff Speciality
+    API-->>S: List SUBMITTED claims
+    
+    S->>API: Move to UNDER_REVIEW & Assign
+    API->>DB: Log History
+    
+    S->>API: Review Claim (Recommend Approval)
+    API->>DB: State = RECOMMENDED_FOR_APPROVAL
+    
+    A->>API: Fetch RECOMMENDED claims
+    API-->>A: List of pending decisions
+    A->>API: Final Decision (APPROVE)
+    API->>DB: State = APPROVED, Log History
+    API-->>A: Success
+```
 
-On success: claim saved as `SUBMITTED` with generated `claimNumber = CLM-xxxxxxxx`; documents uploaded to Cloudinary (`ClaimDocumentServiceImpl.addDocumentsToClaim`, secure URLs stored on `ClaimDocument`); a `ClaimStatusHistory` row `SUBMITTED` is recorded with the customer's email.
+---
 
-### Document storage
+## Database Design
 
-`CloudinaryServiceImpl.uploadFile` returns metadata whose `secure_url` is stored as `ClaimDocument.documentReference` along with original file name, content type, and upload time. Appending more documents is allowed only by the policy owner (`POST /api/document/upload/{claimId}`) and enforces JPEG/PNG/PDF with a 10 MB per-file limit.
+| Entity | Purpose | Relationships |
+|---|---|---|
+| `Claim` | Core claim record (amount, incident date). | Many-to-One to `Policy`. |
+| `ClaimDocument` | Stores Cloudinary URLs and metadata. | Many-to-One to `Claim`. |
+| `ClaimStatusHistory` | Immutable audit trail of every change. | Many-to-One to `Claim`. |
 
-### Staff review gates
+**Why this design?**
+Separating `ClaimStatusHistory` provides a built-in event log that easily powers the frontend "History Tracking" tab without requiring complex JSON auditing or external tools. 
 
-- `under-review` (`PATCH .../{claimId}/under-review`): speciality must match the claim's product type; only from `SUBMITTED`; not already finalised.
-- `assign` (`PATCH .../{claimId}/assign`): only while `SUBMITTED`; only a matching speciality; cannot reassign a claim already assigned to another officer.
-- `review` (`PATCH .../{claimId}/review`): the caller must be the assigned staff; the claim must be `UNDER_REVIEW`; `recommendedStatus` must be `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`; `remarks` recorded.
+---
 
-### Admin final decision
-
-`PATCH .../{claimId}/final-decision` (role `ROLE_ADMIN`): `recommendedStatus` must be `APPROVED` or `REJECTED`; the claim must currently be in `RECOMMENDED_FOR_APPROVAL`/`RECOMMENDED_FOR_REJECTION`; `adminRemarks` recorded. Terminal states cannot be changed.
-
-### Audit trail
-
-`ClaimStatusHistory` rows (`GET /api/claims/{claimId}/history`, paginated/filterable by `updatedBy` and `status`) capture `previousStatus`, `newStatus`, `remarks`, `updatedBy` (email), `updatedDate`. One row is written at submission and on every staff/admin transition, including the assignment event ("Staff member assigned").
-
-### Reading permissions
-
-- Customer: own claims, own claim history, and claims by policy — everything else 403.
-- Staff: claims/history matching their speciality (no speciality → empty list / 403 on detail).
-- Admin: all claims.
-
-## Workflow
-
-### Customer UI
-
-1. `/customer/claims/raise` → select an `ACTIVE` policy, enter claim amount, reason, incident date, attach ≥1 file → `POST /api/claims/raise` (multipart). Backend validation as above. Claim appears `SUBMITTED` in `/customer/claims`.
-2. Add more evidence later via `/customer/claims/upload/:claimId` → `POST /api/document/upload/{claimId}`.
-3. Track at `/customer/claims/:claimId` (status, staff remarks, admin remarks, documents) and `/customer/claims/:claimId` history tab (audit trail).
-
-### Staff UI
-
-4. `/staff/claims` shows only claims of the officer's `productSpeciality`. On a claim: "Move to under review" → "Assign to self" → "Review" with `RECOMMENDED_FOR_APPROVAL` / `RECOMMENDED_FOR_REJECTION` and remarks.
-
-### Admin UI
-
-5. `/admin/claims` lists everything. On a `RECOMMENDED_*` claim, `/admin/claims/:id` shows the staff recommendation, then "Approve"/"Reject" issues `PATCH .../final-decision`. Both customer and staff see the final status through their own lists.
+## Claim State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> SUBMITTED : customer raises claim + documents (Cloudinary)
-    SUBMITTED --> UNDER_REVIEW : staff under-review (speciality match)
-    UNDER_REVIEW --> UNDER_REVIEW : assign to self (staff)
-    UNDER_REVIEW --> RECOMMENDED_FOR_APPROVAL : review (assigned staff)
-    UNDER_REVIEW --> RECOMMENDED_FOR_REJECTION : review (assigned staff)
-    RECOMMENDED_FOR_APPROVAL --> APPROVED : admin final decision
-    RECOMMENDED_FOR_REJECTION --> REJECTED : admin final decision
+    [*] --> SUBMITTED : Customer raises claim
+    SUBMITTED --> UNDER_REVIEW : Staff assigns self
+    UNDER_REVIEW --> RECOMMENDED_FOR_APPROVAL : Staff reviews
+    UNDER_REVIEW --> RECOMMENDED_FOR_REJECTION : Staff reviews
+    RECOMMENDED_FOR_APPROVAL --> APPROVED : Admin finalizes
+    RECOMMENDED_FOR_REJECTION --> REJECTED : Admin finalizes
     APPROVED --> [*]
     REJECTED --> [*]
-
-    note right of SUBMITTED
-      gates: ACTIVE policy, amount <= remaining cover,
-      incident date in policy window, >=1 valid document
-    end note
-    note right of UNDER_REVIEW
-      only staff with matching productSpeciality;
-      only the assigned officer can review
-    end note
-    note right of APPROVED
-      every transition writes a ClaimStatusHistory row
-    end note
 ```
 
-## Code References
+---
 
-- `controller/ClaimController.java` (raise, my-claims, paginated list, detail, history, under-review, assign, review, final-decision), `controller/ClaimDocumentController.java` (upload), `controller/PolicyController.java` (`GET /api/policies/{policyId}/claims`).
-- `serviceimpl/ClaimServiceImpl.java` (validation, transitions, history), `serviceimpl/ClaimDocumentServiceImpl.java` (Cloudinary), `serviceimpl/CloudinaryServiceImpl.java`.
-- `model/{Claim,ClaimDocument,ClaimStatusHistory,Policy}.java`, `enums/ClaimStatus.java`, `enums/PolicyStatus.java`.
-- `util/ClaimNumberGenerator.java`.
-- Frontend: `src/pages/customer/claims/{RaiseClaimPage,UploadDocumentsPage,ClaimDetailsPage,CustomerClaimListPage}.jsx`, `src/pages/staff/claims/{StaffClaimListPage,StaffClaimDetailPage}.jsx`, `src/pages/admin/claims/{ClaimListPage,ClaimDetailPage}.jsx`.
+## Eligibility Check Rules
 
-All backend paths under `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/`.
+| Check | Condition | Failure Action |
+|---|---|---|
+| **Policy Status** | Must be exactly `ACTIVE`. | 400 `POLICY_NOT_ACTIVE` |
+| **Ownership** | Requesting user must own the policy. | 400 `POLICY_NOT_OWNED` |
+| **Remaining Cover** | `claimAmount <= (totalCover - sum(non_rejected_claims))` | 400 `EXCEEDS_LIMIT` |
+| **Incident Date** | Must be within `[policyStartDate, policyEndDate]`. | 400 `INCIDENT_DATE_OUT_OF_BOUNDS` |
+| **Evidence** | Must contain at least 1 valid PDF or Image (<5MB). | 400 Bad Request |
 
-## Diagrams
+---
 
-- Transition rules and role matrix: `../02_Business_Domain/Claim_Workflow.md`.
-- Sequence diagrams: `../09_Diagrams/Sequence_Diagrams/`; activity diagrams: `../09_Diagrams/Activity_Diagrams/`.
+## Error Handling
 
-## Best Practices
+| Scenario | HTTP Code | Resolution |
+|---|---|---|
+| Invalid File Type | 400 | Reject with allowed types (PDF, JPG, PNG). |
+| Cloudinary Upload Failure | 500 | Transaction rolls back, prompt user to retry. |
+| Staff processing wrong speciality | 403 | Forbidden, blocked at controller layer. |
+| Admin deciding early | 400 | Ensure claim is in a `RECOMMENDED_*` state. |
 
-- Validation order is deterministic and message-specific, so customers are told exactly why a claim was rejected.
-- Remaining-cover is computed from `selectedCoverage` minus non-rejected claims, preventing over-commitment of a single policy.
-- Mandatory documents with type/size limits and secure Cloudinary URLs keep evidence auditable.
-- Every transition is history-logged with actor and remarks — the claim is fully reconstructable.
+---
 
-## Future Improvements
+## Design Decisions
 
-- Scheduled follow-ups for claims idle in `UNDER_REVIEW`/`RECOMMENDED_*`.
-- Document preview/OCR and fraud-scoring integration.
-- Claim payout workflow (disbursement tracking) after `APPROVED`.
-- See `../10_Evaluation/Future_Enhancements.md`.
+- **Why use Cloudinary?**
+  Storing files locally on a Spring Boot server doesn't scale horizontally and risks disk exhaustion. Cloudinary handles CDN delivery, format optimization, and secure URL generation seamlessly.
+- **Why is there a dual-step approval (Staff -> Admin)?**
+  To enforce separation of duties. Staff members do the ground work and investigation but cannot unilaterally authorize payouts, preventing internal fraud.
+- **Why filter claims by `productSpeciality` for staff?**
+  A Health Insurance investigator isn't trained to adjudicate Motor Insurance claims. The backend strictly enforces that staff only see and interact with their assigned domains.
+- **Why is Remaining Cover calculated dynamically?**
+  Instead of keeping a `remainingBalance` field on the policy (which risks race conditions), we compute it on the fly: `Coverage - SUM(approved + pending claims)`. This is safer for concurrency.
+
+---
+
+## Interview Notes
+
+1. **How do you handle file uploads in Spring Boot?**
+   > We use `MultipartFile` in the controller, validate MIME types and sizes, and delegate the stream to the Cloudinary API for cloud storage.
+2. **How does the system ensure an employee doesn't approve a fraudulent claim?**
+   > Through Separation of Duties. The Staff role can only transition a claim to `RECOMMENDED_FOR_APPROVAL`. Only an Admin can transition it to `APPROVED`.
+3. **How do you calculate remaining policy coverage safely?**
+   > We dynamically sum all non-rejected claims associated with the policy and subtract it from the total selected coverage at the time of the request to prevent race conditions.
+4. **How do you maintain a claim audit trail?**
+   > Every state transition triggers a write to the `ClaimStatusHistory` table, recording the old state, new state, actor email, timestamp, and remarks.
+5. **Can an Admin skip the staff review process?**
+   > No, the state machine strictly enforces that the final decision endpoint only accepts claims that are in `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`.
+6. **How is data privacy handled for claims?**
+   > Role-Based Access Control (RBAC). Customers only see their own claims. Staff only see claims matching their `productSpeciality`. Admins see all.
+
+---
+
+## Related Documents
+- [Claim API](../03_API/Claim_API.md)
+- [Business Rules](../02_Business_Domain/Business_Rules.md)
+
+---
+
+## Future Enhancements
+- Implement OCR (Optical Character Recognition) on uploaded invoices for automated data entry.
+- Integrate an actual payout/disbursement API webhook once a claim is APPROVED.

@@ -1,111 +1,192 @@
 # Interview Questions
+> Comprehensive technical interview Q&A guide for the InsuranceFlow system.
 
-> Questions and answers for interviewers / evaluation panels, grouped by area.
-> Answers link to the authoritative deep-dive docs.
+---
 
-## Architecture
+## Purpose
+To prepare developers, architects, and candidates for technical interviews regarding the InsuranceFlow system's design, architecture, and implementation details.
 
-**Q1. How is the backend layered, and why?**
-Controller → Service (interface) → ServiceImpl → Repository. The interface
-layer keeps contracts stable and enables strategy injection; each layer is
-independently testable. See `../01_System_Architecture/Backend_Architecture.md`.
+---
 
-**Q2. What design patterns did you use? Give a concrete example.**
-Strategy — premium calculation switches between `PremiumCalculationStrategy`
-implementations for ANNUAL and ONE_TIME based on the plan's premium type,
-selected at runtime via the strategy factory. See `../07_Design_Patterns/`.
+## Overview
+- Organized by technical domain (Architecture, Security, Business Logic, Database, Frontend, Operations).
+- Contains concise, interview-ready answers.
+- Includes references to specific system components.
 
-**Q3. How does the premium stay deterministic across requests?**
-Same inputs → same quote: BigDecimal throughout, HALF_UP rounding to whole
-rupees, duration discounts applied in a fixed order, and the pricing rule is
-fixed at quote time. See `../02_Business_Domain/Premium_Calculation.md`.
+---
 
-## Security
+## Architecture (8 questions)
 
-**Q4. How do access and refresh tokens work here?**
-Access JWT (HS256, claims: roles/fullName/productSpeciality/tokenVersion) for
-API authorization; refresh token stored SHA-256-hashed in DB, delivered as an
-HttpOnly cookie, rotated on every use, reuse detection revokes the whole family,
-7-day TTL. See `../01_System_Architecture/Security_Architecture.md` and
-`../03_API/Authentication_API.md`.
+**1. How is the backend layered?**
+The backend follows a standard N-tier architecture using Spring Boot. It includes Controllers for HTTP routing, Services for business logic, Repositories for database access via Spring Data JPA, and Entities for ORM mapping. DTOs and Mappers are used to ensure separation of concerns between layers.
+*Reference: `Backend Implementation` section in architecture docs.*
 
-**Q5. How do you revoke a logged-in user / block old tokens?**
-`tokenVersion` claim. Bumping `user.tokenVersion` (deactivate, password change)
-invalidates every outstanding access JWT immediately. Also rate limiting and
-OTP attempt caps.
+**2. What design patterns did you use?**
+We extensively used the Strategy Pattern for premium calculations (`PremiumCalculator`), Factory Pattern for instantiating the right calculator, and Data Transfer Object (DTO) pattern to encapsulate data. We also used the Builder pattern for entity creation and Singleton for Spring managed beans.
+*Reference: `../02_Business_Domain/Premium_Calculation.md`*
 
-**Q6. Why is the refresh token hashed in the database?**
-A leaked DB shouldn't leak usable tokens; only the SHA-256 digest is stored, so
-a stolen row can't be replayed.
+**3. Why did you separate the service interface from its implementation?**
+Separating the interface (e.g., `PolicyService`) from its implementation (`PolicyServiceImpl`) promotes loose coupling and adheres to the Dependency Inversion Principle. It makes mocking easier during unit testing and allows for multiple implementations if the business logic diverges in the future.
+*Reference: Backend Architecture*
 
-## Database
+**4. How does the request lifecycle work?**
+A request hits the Spring Security filter chain where JWT authentication and rate-limiting occur. It then reaches the Controller, which validates DTOs and delegates to the Service layer. The Service executes business rules, coordinates with the Repository for DB transactions, and returns a mapped response via `ApiResponseDTO`.
+*Reference: `System Flow` diagrams*
 
-**Q7. Walk me through the data model.**
-16 entities / 17 tables across users, profiles, products/plans/coverage,
-pricing rules + audit, quotes, policies, payments, claims + status history,
-refresh tokens, OTP. See `../04_Database/` and `../09_Diagrams/ER_Diagrams/`.
+**5. How does the frontend and backend communicate?**
+Communication is strictly over REST HTTP via the Vite frontend proxy in dev (or Nginx in production). The frontend uses Axios with interceptors to automatically attach JWT access tokens to the `Authorization` header and seamlessly handle 401 token refreshes.
+*Reference: `../06_Frontend/API_Integration.md`*
 
-**Q8. How do you handle pricing audit history?**
-`pricing_audit_logs` records every create/update with before/after, actor and
-timestamp; enforcement in the pricing service. See
-`../02_Business_Domain/Pricing_Rules.md`.
+**6. Why did you choose a SPA + REST API architecture?**
+A Single Page Application (React) combined with a stateless REST API (Spring Boot) allows for independent scaling, distinct deployment lifecycles, and a more responsive user experience. It also enables future integrations, like mobile apps, consuming the same API layer.
+*Reference: Project Summary*
 
-## Frontend
+**7. What is the ApiResponseDTO and why does it exist?**
+`ApiResponseDTO` is a generic wrapper for all API responses, containing fields like `status`, `message`, `data`, and `timestamp`. It ensures a consistent contract with the frontend, making error handling and generic response parsing completely predictable across the entire application.
+*Reference: Error Handling guidelines*
 
-**Q9. How are protected routes enforced?**
-`App.jsx` routes are wrapped by route guards keyed on `userContext.role`;
-unauthorised roles are redirected. Axios interceptors attach the access token,
-and a single-flight refresher retries 401s without user involvement. See
-`../05_Frontend/Protected_Routes.md` and `State_Management.md`.
+**8. How do you handle cross-cutting concerns?**
+Cross-cutting concerns are handled using Aspect-Oriented Programming (AOP) and Servlet Filters. Spring Security handles auth, `@ControllerAdvice` handles global exception mapping, and Bucket4j handles rate-limiting at the filter level before hitting business logic.
+*Reference: Security and Error Handling docs*
 
-**Q10. How is state managed without a heavy state library?**
-`AuthContext` + `ThemeContext` + token storage (`tokenStore`) plus focused
-service hooks; each module owns its fetch logic. See
-`../05_Frontend/State_Management.md`.
+---
 
-**Q11. How do role themes work?**
-Design tokens in CSS with role-specific accent variables (admin blue, staff
-violet, customer teal) selected from the auth context; a ThemeContext toggles
-light/dark. See `../05_Frontend/Custom_Hooks.md`.
+## Security (10 questions)
 
-## Business logic
+**1. How does JWT authentication work in this project?**
+Upon login, the server issues a short-lived HS256 JWT access token (15 min) and a long-lived refresh token (7 days). The frontend includes the access token in the `Authorization: Bearer` header. Spring Security filters validate the signature and extract the user's roles for RBAC.
 
-**Q12. How do you prevent a customer buying the same health plan twice?**
-A policy service guard: HEALTH plans reject duplicates that are ACTIVE or
-PENDING_PAYMENT for the same customer+plan. See
-`../02_Business_Domain/Business_Rules.md`.
+**2. How do access tokens and refresh tokens work together?**
+Access tokens are kept in memory and authorize immediate requests. When they expire, the frontend Axios interceptor automatically hits the `/refresh` endpoint using the HttpOnly refresh token cookie to get a new access token without requiring user interaction.
 
-**Q13. What happens to a claim amount vs remaining cover?**
-Remaining cover accounts for open claims; raising a claim beyond it is
-rejected. See `../02_Business_Domain/Claim_Workflow.md`.
+**3. Why store refresh tokens in an HttpOnly cookie?**
+HttpOnly cookies are inaccessible to JavaScript, completely mitigating Cross-Site Scripting (XSS) attacks from stealing the long-lived refresh token. This provides a much stronger security posture than local storage.
 
-**Q14. Why can't staff see all claims?**
-Claims are scoped to the staff member's `productSpeciality`; the admin makes
-final decisions. This mirrors real underwriting segregation of duties.
+**4. Why hash refresh tokens in the database?**
+We hash refresh tokens (SHA-256) in the DB so that if the database is compromised, the attacker cannot use the stolen tokens to hijack sessions. We compare the provided plain-text token against the stored hash, similar to passwords.
 
-## Operations
+**5. How does tokenVersion enable stateless revocation?**
+The `tokenVersion` integer is stored in both the `User` DB record and the JWT payload. If a user's access is revoked (e.g., password change), the DB `tokenVersion` increments. Even if the JWT is mathematically valid, the filter checks against a Redis cache (or DB) and rejects it if the version mismatches.
 
-**Q15. How is this deployed and secured in production?**
-Single fat jar + static `dist/` behind a TLS reverse proxy; Swagger off,
-admin auto-seed off, secure refresh cookie, strict CSP, env-based secrets.
-See `../11_Developer_Guide/Deployment.md`.
+**6. How does refresh token rotation with family revocation work?**
+A new refresh token is issued upon every use, and the old one is invalidated. If a malicious actor uses a stolen (and thus invalidated) old refresh token, the system detects this anomaly and revokes the entire "family" of tokens for that user, requiring re-authentication.
 
-**Q16. What's your biggest design trade-off?**
-`ddl-auto=update` for a capstone is fast but loses strict migration control —
-the honest fix is Flyway/Liquibase in production (see
-`Production_Improvements.md`).
+**7. What is dual OTP and why is it required?**
+Dual OTP requires a 6-digit code sent via both Email (SMTP) and SMS (Twilio) for sensitive operations. It adds a strong layer of Multi-Factor Authentication (MFA), expiring in 5 minutes with a maximum of 5 attempts to prevent brute force.
 
-## Behavioral
+**8. How does rate limiting work?**
+We use Bucket4j integrated into the Spring filter chain. Rate limits are applied per IP address and email combination to prevent brute force logins and API abuse, returning a 429 Too Many Requests status when the bucket is exhausted.
 
-**Q17. What was the hardest bug you fixed?**
-Plausible answers from this project: refresh-token family revocation on reuse,
-exact-premium drift from floating-point arithmetic, CORS + cookie SameSite in
-dev/prod, and the wizard ordering (plan → coverage → pricing) consistency.
+**9. How does CORS work in this project?**
+Cross-Origin Resource Sharing is configured globally in Spring Boot to allow requests only from the frontend origin (e.g., `http://localhost:5173`). It exposes necessary headers, allows specific HTTP methods, and importantly, sets `allowCredentials=true` to permit HttpOnly cookies.
 
-**Q18. What would you add with more time?**
-See `Future_Enhancements.md` (messaging, renewals, document viewer, etc.).
+**10. What happens when a user gets deactivated?**
+Their `isActive` flag is set to false, their `tokenVersion` is incremented, and their tokens are blacklisted in Redis. Any active sessions are immediately rejected on the next API call with a 401/403.
 
-## Related
+---
 
-- All answers expand into `../02_…`, `../03_API/`, `../04_Database/`,
-  `../05_Frontend/`, `../07_Design_Patterns/`, `../08_Workflows/`.
+## Business Logic (8 questions)
+
+**1. How does premium calculation work?**
+Premium calculation uses the Strategy Pattern based on `PremiumType`. The base premium is fetched from the DB, multiplied by risk factors, age modifiers, and duration. Payment is strictly validated against this exactly calculated amount.
+
+**2. Why are PricingRules separate from PolicyPlans?**
+This decouples the core product definition from variable market conditions. Pricing rules change frequently; storing them separately allows administrators to update modifiers without altering historical policies or the core plan structure.
+
+**3. Why are CoverageOptions separate entities?**
+Coverage options (e.g., "Add-on Dental") can apply across multiple plans and have independent limits and costs. Separating them normalizes the database and allows for a dynamic selection model during quote generation.
+
+**4. How does quote generation work?**
+A user inputs their parameters, the system dynamically calculates the exact premium using the Strategy pattern, and saves a `Quote` entity. The quote is valid for 30 minutes, ensuring the user is locked into that price temporarily.
+
+**5. Why must payment exactly equal calculatedPremium?**
+To prevent fraud or partial payments. The system performs a strict `BigDecimal.compareTo` check between the incoming payment intent and the DB-stored calculated premium. No float rounding approximations are permitted.
+
+**6. How does the claim approval workflow work?**
+Claims start as `SUBMITTED`, move to `UNDER_REVIEW`, then require internal staff to mark `RECOMMENDED_FOR_APPROVAL` or `RECOMMENDED_FOR_REJECTION`. Finally, an Admin reviews and sets it to `APPROVED` or `REJECTED`.
+
+**7. Why does the system use maker-checker for claims?**
+The maker-checker principle (Staff recommends, Admin approves) prevents single-user fraud or accidental payouts. It ensures a secondary review process for all financial disbursements.
+
+**8. How do you prevent a customer from buying the same health plan twice?**
+Before saving a new policy, the Service layer queries the repository for active policies with the same `ProductType` and `UserId`. If one exists in an `ACTIVE` state, a `BusinessValidationException` is thrown.
+
+---
+
+## Database (6 questions)
+
+**1. Walk me through the data model.**
+We have `User` and `Role` for auth. `PolicyPlan`, `PricingRule`, and `CoverageOption` for product config. `Quote` for temporary pricing. `Policy` for active contracts, and `Claim` (with `ClaimDocument`) for payouts. Everything links back to `User`.
+
+**2. Why does the Policy store pricing snapshots?**
+Insurance is a legal contract. If the base price of a plan changes next year, the current active policy must reflect the exact price the user agreed to. Storing a snapshot in the `Policy` prevents historical mutation.
+
+**3. What is @Version and why is it on Policy and Claim?**
+`@Version` enables Optimistic Locking in Hibernate. If two staff members try to approve the same claim simultaneously, the DB version increments. The second transaction fails with an `OptimisticLockException`, preventing race conditions.
+
+**4. Why use BigDecimal for money?**
+`Double` and `Float` suffer from precision loss during arithmetic due to binary floating-point representation. `BigDecimal` guarantees exact precision, which is legally and functionally required for all financial calculations.
+
+**5. Why soft delete instead of hard delete?**
+Insurance systems are highly audited. We use `isActive = false` or `deletedAt = timestamp` instead of SQL `DELETE` to retain historical records for compliance, troubleshooting, and analytics.
+
+**6. Why is the pricing_audit_log not a foreign key relationship?**
+Audit logs often outlive the entities they track. If a plan is eventually hard-deleted, we still need the audit log. Making it loosely coupled prevents constraint violations during massive data archival.
+
+---
+
+## Frontend (5 questions)
+
+**1. How are protected routes implemented?**
+React Router 7 is used alongside a custom `<ProtectedRoute>` wrapper. It checks the `AuthContext` for a valid token and user role. Unauthenticated users are redirected to `/login`, and unauthorized users to `/unauthorized`.
+
+**2. How does the Axios interceptor handle token refresh?**
+The interceptor catches `401 Unauthorized` responses. If caught, it pauses incoming requests, calls `/api/auth/refresh`, updates the in-memory access token, and retries the paused requests seamlessly.
+
+**3. Why did you choose React Context over Redux?**
+For this scale, Redux introduces unnecessary boilerplate. React Context provides sufficient global state management for authentication, user profiles, and theme preferences without heavy overhead.
+
+**4. How does the role-based theming work?**
+The `AuthContext` parses the JWT to extract `roles`. Based on the role (`ROLE_ADMIN` vs `ROLE_CUSTOMER`), conditional rendering swaps out navigation bars, dashboard layouts, and Bootstrap color schemas.
+
+**5. How does the application restore session after page refresh?**
+On mount, the `AuthContext` makes a silent call to `/api/auth/me` (or relies on the interceptor to trigger a refresh). Since the refresh token is in an HttpOnly cookie, the backend issues a new access token, restoring state.
+
+---
+
+## Operations (4 questions)
+
+**1. How would you deploy this in production?**
+I would containerize the frontend (Nginx) and backend (Spring Boot) using Docker. Deploy to AWS/GCP using Kubernetes or ECS. Use an RDS instance for MySQL and ElastiCache for Redis. Secrets managed via AWS Secrets Manager.
+
+**2. What are the known performance bottlenecks?**
+The PDF generation for quotes (`jsPDF`) blocks the main thread on the client. On the backend, heavy claim history queries lack covering indexes, which could slow down the Admin dashboard at scale.
+
+**3. What would you improve with more time?**
+Migrate from `ddl-auto=update` to Flyway for database versioning. Implement a real payment gateway (Stripe) instead of mock logic. Add Kafka for asynchronous email/SMS notifications.
+
+**4. What is your biggest design trade-off?**
+Storing the JWT in-memory on the client instead of local storage prevents XSS but means the user loses immediate state on hard refresh, requiring a brief round-trip to the `/refresh` endpoint to restore session.
+
+---
+
+## Quick Cheat Sheet
+
+| Question | One-Line Answer |
+|----------|-----------------|
+| Architecture | N-Tier Spring Boot REST API + React SPA. |
+| Premium Pattern | Strategy Pattern (`PremiumCalculator`). |
+| JWT Storage | Access token in memory, Refresh token in HttpOnly DB-hashed cookie. |
+| Money Type | `BigDecimal` to prevent floating-point precision loss. |
+| Concurrency | JPA `@Version` for Optimistic Locking on Claims/Policies. |
+| DB Migrations | Currently `ddl-auto=update` (future: Flyway). |
+| Token Refresh | Handled silently by Axios Interceptors on 401s. |
+| Auth Framework | Spring Security with stateless custom JWT filters. |
+| Rate Limiting | Bucket4j filtering per IP + email. |
+| Frontend routing | React Router 7 with `<ProtectedRoute>` wrappers. |
+
+---
+
+## Related Documents
+- [Features Checklist](./Features_Checklist.md)
+- [API Checklist](./API_Checklist.md)

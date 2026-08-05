@@ -1,64 +1,58 @@
-# Caching Strategy
+<Caching>
+> Redis caching implementation for performance and stateful token management.
 
-> **Status: analysis and design only — no caching is implemented in the current codebase.** This document describes the opportunity and the recommended design. Relocated from the legacy flat `docs/` tree; the canonical home is now `06_Backend/`.
+---
 
-## Current state
+## Purpose
+Redis is used as an in-memory data store to manage temporary, high-speed data that shouldn't burden the primary MySQL database, specifically focusing on authentication state.
 
-- No `@Cacheable`, no `CacheManager`, no Redis, no in-memory cache anywhere in the backend (`pom.xml` has no cache starter).
-- Several read paths hit the database on **every** request:
+---
 
-| Hot path | Cost today | Consumers |
-|----------|-----------|-----------|
-| `GET /api/public/stats` | 4 COUNT queries per call | landing page (`/public/stats`) |
-| `GET /api/products/active` | 1 query + per-plan coverage/pricing when expanded | product browsing |
-| `GET /api/plans/active` / `GET /api/plans/{productId}/active` | plan + coverage options + pricing rules | plan browsing |
-| `GET /api/admin/pricing-rules/plan/{planId}/active` | query + history | pricing panels |
-| `GET /api/plans/{planId}` (detail) | plan + coverage + durations | plan detail, quote page |
+## Overview
+- **Token Blacklisting**: Storing invalidated JWTs.
+- **Refresh Tokens**: Managing refresh token rotation and grace periods.
+- **Speed**: In-memory access is exponentially faster than disk-based DB queries.
 
-## Design principles
+---
 
-1. **Never cache transactional, identity-scoped data** (policies, claims, payments, quotes). These are read infrequently and must always be fresh.
-2. **Cache catalog + aggregate read-only data** with short, bounded TTLs.
-3. **Evict on write** — when an admin deactivates a product/plan/pricing rule or edits pricing, the affected cache entries are invalidated so the next read is fresh.
-4. Use **cache-aside** (`@Cacheable` / `@CacheEvict`).
+## Business Context
+If a user logs out, their JWT is technically still valid until it expires. Redis stores the "logout" state efficiently so the system can block that token without hitting the MySQL database on every API request.
 
-## Recommended cache catalog
+---
 
-| Cache name | Contents | TTL | Evicted on |
-|------------|----------|-----|------------|
-| `stats` | `PublicStatsResponseDTO` (4 COUNTs collapsed to 1) | 60 s | — (time-based only) |
-| `activeProducts` | active product list | 5 min | product create/update/activate/deactivate |
-| `activePlans` | active plan catalog (per product) | 5 min | plan wizard/update/activate/deactivate, coverage change |
-| `planCatalog` | plan detail bundle (plan + coverage + durations) | 5 min | plan/coverage/pricing writes |
-| `pricingRules` | active pricing rule + audit metadata | 10 min | pricing rule create/activate/deactivate |
+## Redis Key Patterns
+| Pattern | Data Stored | TTL | Purpose |
+|---|---|---|---|
+| `auth:jwt:blacklist:{jti}` | The token's unique ID | Until token expiry | Blocks logged-out or compromised access tokens |
+| `auth:refresh:{userId}` | Set of hashed refresh tokens | 7 days | Tracks valid refresh sessions for a user |
+| `auth:refresh:grace:{hash}` | Old token hash | 10 seconds | Grace window for concurrent refresh requests (e.g., multiple tabs) |
 
-## Target shape (implementation sketch, not yet applied)
+---
 
-```yaml
-spring.cache.type=caffeine
-spring.cache.cache-names=stats,activeProducts,activePlans,planCatalog,pricingRules
-spring.cache.caffeine.spec=maximumSize=500,expireAfterWrite=5m
+## System Flow
+```mermaid
+flowchart TD
+    A[API Request with JWT] --> B[JwtAuthenticationFilter]
+    B --> C{Is JWT in Redis Blacklist?}
+    C -- Yes --> D[Deny Request 401]
+    C -- No --> E[Process Request]
 ```
 
-Spring Boot `spring-boot-starter-cache` + `com.github.ben-manes.caffeine:caffeine`; `@EnableCaching` in a config class; `@Cacheable("stats")` on `PublicServiceImpl.getStats()`, `@CacheEvict(cacheNames="activeProducts", allEntries=true)` on product writes, and so on.
+---
 
-## Redis vs Caffeine
+## Backend Implementation
+- **Spring Data Redis**: Used with `RedisTemplate` to interact with the Redis server.
+- **TTL (Time to Live)**: Every key inserted into Redis has a TTL matching the token's expiration, meaning Redis automatically cleans itself up.
 
-| Aspect | Caffeine (in-process) | Redis (external) |
-|--------|----------------------|------------------|
-| Complexity | Zero infra, in-process | Requires a Redis server |
-| Consistency | Per-node (fine for 1 instance) | Shared across instances |
-| Right for | Single-instance capstone deployment | Multi-instance production |
-| Recommendation | **Adopt first** | Document as the scale-out path |
+---
 
-At capstone scale (single backend instance, MySQL localhost) Caffeine is the right call. Redis is recorded in [`../11_Developer_Guide/Deployment.md`](../11_Developer_Guide/Deployment.md) and [`../07_Design_Patterns/Decision_Records.md`](../07_Design_Patterns/Decision_Records.md) (ADR-007) as the future multi-instance step.
+## Design Decisions
+- **Why Redis for tokens?** The `JwtAuthenticationFilter` runs on *every single request*. If it queried MySQL to check if a token was blacklisted, it would cause a massive DB bottleneck. Redis handles this in microseconds.
+- **Why a grace window?** If a frontend has 3 tabs open and they all attempt to refresh the token simultaneously, the first request invalidates the token. The other two would fail immediately. A 10-second grace window in Redis allows simultaneous requests to succeed with the new token.
+- **What happens without Redis?** If Redis goes down, the system could either fail open (security risk: logged out tokens work) or fail closed (availability risk: no one can access APIs). Usually configured to fail closed or fallback to DB.
 
-## Why this matters
+---
 
-`/api/public/stats` is on the public landing page — every visitor triggers 4 DB COUNTs. At low volume this is negligible; it becomes the first thing to cache because it is trivially cacheable (aggregate, non-transactional, 60s freshness is fine). The catalog endpoints are the second target because they are read by every browse/quote session but only change when an admin edits the catalog.
-
-## See also
-
-- [`Performance.md`](Performance.md) — related query/N+1 analysis
-- [`Logging.md`](Logging.md) — how cache hits/misses would be observable
-- [`../07_Design_Patterns/Decision_Records.md`](../07_Design_Patterns/Decision_Records.md) — ADR-007 ("No Redis at capstone scale")
+## Related Documents
+- [../06_Backend/JWT.md](JWT.md)
+- [../06_Backend/Performance.md](Performance.md)

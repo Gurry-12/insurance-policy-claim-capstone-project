@@ -1,149 +1,216 @@
 # High-Level Architecture
+> The authoritative system overview of the Insurance Policy & Claim Management System, covering system context, containers, deployment topology, and the end-to-end request lifecycle.
 
-> Authoritative system overview of the Insurance Policy & Claim Management System: C4 context, containers, deployment topology, and the end-to-end request flow.
+---
 
 ## Purpose
+This document provides a bird's-eye view of the entire system architecture. It is designed to help new engineers, technical reviewers, and evaluators understand how the system is put together, how data flows, and why certain architectural choices were made.
 
-This document is the single authoritative source for the system-level architecture of the Insurance Policy & Claim Management System. It is written for new engineers, evaluators, and technical stakeholders who need to understand the whole system before diving into any layer. Every deeper topic is owned by another document in this tree; this page summarizes and links, it does not duplicate.
+---
 
 ## Overview
+- **Separation of Concerns**: A React single-page application (SPA) on the frontend communicating with a Spring Boot REST API on the backend.
+- **Robust Persistence**: Relational data is stored in MySQL 8, while token caching and blacklisting are managed by Redis.
+- **Secure by Design**: Utilizes stateless JWTs, HTTP-only refresh tokens, and dual OTP validation for high security.
+- **Third-Party Integrations**: Cloudinary for document storage, Twilio for SMS, and Gmail SMTP for email notifications.
 
-The system is a two-module full-stack application:
-
-- **Backend** — a Spring Boot REST API (`insurance-policy-claim-management-system`) exposing a JSON API under `/api`, listening on port **8081**.
-- **Frontend** — a React single-page application (`insurance-policy-claim-management-app-ui`) built with Vite, running on port **5173** during development and served as a static build in production.
-- **Database** — MySQL 8 with schema `insurance_db` on port **3306**.
-- **External services** — Cloudinary (claim document storage), Twilio (SMS OTP), and Gmail SMTP (email OTP and password-reset links).
-
-Three actor types interact with the system: **customers** (buy policies, raise claims, pay premiums), **internal staff** (issue policies, review claims in their product specialty, record payments), and **administrators** (manage products, plans, pricing rules, coverage options, users, and make final claim decisions).
+---
 
 ## Business Context
+The InsuranceFlow system digitizes the core lifecycle of an insurance business. From the business perspective, this feature allows customers to browse plans, get quotes, buy policies, and submit claims. Internal staff can review claims, while administrators manage pricing and approve final claims. Strong identity verification and role-based access are critical because the system handles financial transactions and sensitive personal data.
 
-The application digitizes the core lifecycle of an insurance business: product and plan definition, premium calculation and quoting, policy purchase and activation, premium payments, claim submission and review, and document management. Strong identity verification (dual email + SMS OTP), role-based separation of duties, and a complete audit trail are business-critical requirements because money movement and claim decisions depend on them.
+---
 
-## Technical Design
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Start: User Action] --> B{Is Authenticated?}
+    B -- No --> C[Login / Register]
+    B -- Yes --> D[Access Role Workspace]
+    D --> E[Perform Action e.g., Buy Policy / Submit Claim]
+    E --> F{Input Valid?}
+    F -- No --> G[Show Validation Error]
+    F -- Yes --> H[Backend Processing]
+    H --> I[Update MySQL / Redis]
+    I --> J[Return Response]
+    J --> K[End: UI Updated]
+```
 
-### C4 Level 1 — System context
+---
 
+## System Flow
+```mermaid
+flowchart TD
+    UI[React SPA Browser] -->|Axios HTTP Request| F[Security Filters]
+    F --> C[REST Controller]
+    C --> S[Service Layer]
+    S --> R[JPA Repository]
+    R --> DB[(MySQL / Redis)]
+    DB --> R
+    R --> S
+    S --> C
+    C --> F
+    F --> UI
+```
+
+---
+
+## Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant UI as React SPA
+    participant Axios as Axios Interceptor
+    participant Filter as Security Filters
+    participant API as REST Controller
+    participant Service as Business Service
+    participant DB as MySQL/Redis
+
+    UI->>Axios: Initiate Request
+    Axios->>Filter: Add JWT Bearer (HTTP)
+    Filter->>API: Validate JWT & Route
+    API->>Service: Map DTO & Call Business Logic
+    Service->>DB: Execute Transaction
+    DB-->>Service: Return Entity
+    Service-->>API: Return Response DTO
+    API-->>Axios: HTTP 200 OK
+    Axios-->>UI: Return Data
+```
+
+---
+
+## Architecture Diagram
+
+### C4 Level 1 — System Context
 ```mermaid
 flowchart LR
-    CU["Customer<br/>(browser user)"] --> UI["Insurance Portal<br/>React SPA :5173"]
-    ST["Internal Staff<br/>(claims reviewer)"] --> UI
-    AD["Administrator<br/>(product / pricing owner)"] --> UI
+    CU["Customer<br/>(Browser)"] --> UI["Insurance Portal<br/>React SPA"]
+    ST["Internal Staff<br/>(Claims Reviewer)"] --> UI
+    AD["Administrator<br/>(Product Owner)"] --> UI
 
-    UI -->|"HTTPS JSON over /api<br/>JWT Bearer"| API["Spring Boot REST API<br/>:8081 /api"]
+    UI -->|"HTTPS JSON API"| API["Spring Boot REST API<br/>:8081 /api"]
 
     API --> DB[("MySQL 8<br/>insurance_db :3306")]
-    API --> CL["Cloudinary<br/>claim documents"]
-    API --> SM["Gmail SMTP<br/>email OTP, reset links"]
+    API --> REDIS[("Redis<br/>Token Cache")]
+    API --> CL["Cloudinary<br/>Documents"]
+    API --> SM["Gmail SMTP<br/>Emails"]
     API --> TW["Twilio<br/>SMS OTP"]
 ```
 
 ### C4 Level 2 — Containers
-
 ```mermaid
 flowchart TB
     subgraph BROWSER["Web Browser"]
-        SPA["React SPA<br/>Vite build (dist/)<br/>dev server :5173"]
+        SPA["React SPA<br/>Vite dev :5173"]
     end
 
     subgraph APP["Application Server"]
-        FILTER["Security filter chain<br/>RateLimitFilter → CookieCsrfOriginFilter → JwtAuthenticationFilter"]
-        CTRL["REST controllers<br/>/api/**"]
-        SVC["Service layer<br/>+ premium calculators (strategy)"]
-        REPO["Spring Data JPA repositories"]
+        FILTER["Security Filters"]
+        CTRL["REST Controllers"]
+        SVC["Service Layer"]
+        REPO["Repositories"]
     end
 
-    subgraph DATA["Data & external systems"]
-        MYSQL[("MySQL 8<br/>insurance_db")]
-        CLOUD["Cloudinary<br/>secure upload / delivery"]
-        TWILIO["Twilio<br/>SMS"]
+    subgraph DATA["Data & External Systems"]
+        MYSQL[("MySQL 8")]
+        REDIS[("Redis")]
+        CLOUD["Cloudinary"]
+        TWILIO["Twilio"]
         SMTP["Gmail SMTP"]
     end
 
-    SPA -->|"/api (proxied in dev)"| FILTER
+    SPA -->|"/api HTTP"| FILTER
     FILTER --> CTRL
     CTRL --> SVC
     SVC --> REPO
     REPO --> MYSQL
+    SVC --> REDIS
     SVC --> CLOUD
     SVC --> TWILIO
     SVC --> SMTP
 ```
 
-### Deployment topology
-
-The frontend is a **static build** (output of `npm run build`) and the backend is a **Spring Boot executable jar**. They are independently deployable artifacts.
-
+### C4 Level 3 — Components (Backend Layers)
 ```mermaid
-flowchart LR
-    subgraph PROD["Deployed environment"]
-        STATIC["Frontend: static build<br/>served by a web server / CDN"]
-        API2["Backend: Spring Boot fat jar<br/>:8081 /api"]
-        DB2[("MySQL 8<br/>insurance_db")]
+flowchart TB
+    subgraph SpringBootApp["Spring Boot Application"]
+        Controllers["Controllers<br/>(Request Routing & Validation)"]
+        Services["Service Interfaces & Impls<br/>(Business Logic & Transactions)"]
+        Strategies["Premium Calculators<br/>(Strategy Pattern)"]
+        Repositories["Spring Data JPA Repositories<br/>(Data Access)"]
+        Security["Security Config & Filters<br/>(AuthN & AuthZ)"]
     end
-
-    STATIC -->|"CORS allowlisted origin"| API2
-    API2 --> DB2
+    
+    Controllers --> Services
+    Services --> Strategies
+    Services --> Repositories
+    Security -.-> Controllers
 ```
 
-During development the two are run separately (`npm run dev` on 5173 and `mvnw spring-boot:run` on 8081) with the Vite dev server proxying `/api` to the backend; in production the static build and the jar can be served from entirely separate hosts, connected only by the allowlisted CORS origin and the API base URL. See [`../11_Developer_Guide/Deployment.md`](../11_Developer_Guide/Deployment.md) for the build/run/deploy steps.
+### Deployment Topology
+```mermaid
+flowchart LR
+    subgraph PROD["Production Environment"]
+        STATIC["Frontend<br/>(CDN / Nginx)"]
+        API2["Backend<br/>Spring Boot Fat JAR :8081"]
+        DB2[("MySQL 8")]
+        R2[("Redis")]
+    end
 
-### Request flow narrative
+    STATIC -->|"CORS Allowlisted"| API2
+    API2 --> DB2
+    API2 --> R2
+```
 
-A single authenticated request travels through a fixed chain:
+---
 
-1. The React SPA dispatches an HTTP call through the shared Axios instance, which attaches `Authorization: Bearer <JWT>` and drives the top progress bar.
-2. The request reaches the backend, where the Spring Security filter chain runs in order: the Bucket4j rate limiter (auth endpoints), the CSRF/origin filter (cookie-authenticated auth endpoints), then the JWT authentication filter, which validates the token and loads the user into the `SecurityContext`.
-3. `SecurityConfig` authorization rules gate the route by HTTP method and role (`ROLE_ADMIN`, `ROLE_INTERNAL_STAFF`, `ROLE_CUSTOMER`).
-4. A `@RestController` binds and validates the request DTO, then delegates to the service layer.
-5. Service implementations enforce business rules inside `@Transactional` boundaries, read the authenticated user from the security context, and call Spring Data JPA repositories.
-6. Repositories run against MySQL; side effects (document upload, email, SMS) go to Cloudinary, Gmail SMTP, and Twilio.
-7. Results are mapped to response DTOs, wrapped in the `ApiResponseDTO<T>` envelope, and returned; any thrown exception is normalized by `GlobalExceptionHandler` into a consistent `ErrorResponseDTO`.
+## Request Lifecycle
+1. **Initiation**: The user triggers an action in the React SPA.
+2. **Interception**: The Axios interceptor attaches the JWT token from memory to the `Authorization: Bearer` header.
+3. **Filtering**: The request hits the backend Spring Security filter chain (RateLimitFilter → CookieCsrfOriginFilter → JwtAuthenticationFilter).
+4. **Validation**: The REST controller binds and validates the request body against the DTO.
+5. **Business Logic**: The controller delegates to a `@Transactional` service where business rules are applied.
+6. **Data Access**: The service interacts with MySQL via JPA repositories (and Redis for token checks).
+7. **Response**: The entity is mapped to a Response DTO, wrapped in `ApiResponseDTO`, and returned to the client.
 
-## Workflow
+---
 
-1. A customer registers (`POST /api/auth/register`), verifies identity via the dual email + SMS OTP (`POST /api/auth/verify-otp`), and can then log in.
-2. Login (`POST /api/auth/login`) returns a short-lived JWT in the body and sets an HttpOnly refresh-token cookie; every subsequent protected call carries the JWT as a Bearer token.
-3. A customer browses products/plans, obtains a quote with a computed premium, purchases a policy, and pays to activate it.
-4. On an incident, the customer raises a claim, uploads supporting documents to Cloudinary, and tracks status.
-5. Staff review claims within their product specialty; the administrator renders the final decision. Every status change is recorded in `claim_status_histories`.
-6. The access token expires and is silently renewed through `POST /api/auth/refresh` (single-flight on the frontend); logout revokes the refresh token and clears the cookie.
+## Design Decisions
+| Decision | Rationale | Trade-offs |
+|---|---|---|
+| **SPA + API Separation** | Decouples frontend and backend, allowing independent scaling, testing, and deployment. | Requires CORS configuration and careful token management. |
+| **Stateless JWT** | Highly scalable, no need to query the database for every request's session state. | Harder to revoke instantly (mitigated by tokenVersion and Redis blacklisting). |
+| **Spring Boot** | Enterprise-grade, mature ecosystem, excellent dependency injection, and JPA support. | Higher memory footprint compared to Go or Node.js. |
+| **MySQL 8** | ACID compliance, strong relational integrity suitable for financial and policy data. | Schema rigidity compared to NoSQL databases. |
+| **Redis** | In-memory key-value store provides sub-millisecond lookups for token blacklists and refresh tokens. | Adds infrastructure complexity. |
 
-## Code References
+---
 
-| Concern | File (repo-root-relative path) |
-|---|---|
-| Backend entry point | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/DemoApplication.java` |
-| Security filter chain & RBAC rules | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/config/SecurityConfig.java` |
-| Backend configuration (port 8081, env import) | `insurance-policy-claim-management-system/src/main/resources/application.properties` |
-| Real secrets (gitignored) | `insurance-policy-claim-management-system/env.properties` |
-| Frontend route table & guards | `insurance-policy-claim-management-app-ui/src/App.jsx` |
-| Frontend HTTP layer | `insurance-policy-claim-management-app-ui/src/api/axiosInstance.js` |
+## Interview Notes
+**Q1: Why did you separate the frontend and backend instead of using Thymeleaf/JSP?**
+A: Separation allows independent scaling, parallel development, and modern UI capabilities with React. It also provides a clean REST API that can be consumed by mobile apps in the future.
 
-## Diagrams
+**Q2: How does the system handle security without server-side sessions?**
+A: We use stateless JWTs for access tokens (kept in memory) and DB/Redis-backed HTTP-only refresh tokens. We handle revocation by bumping a `tokenVersion` in the user's record and using Redis for blacklisting.
 
-- Inline Mermaid diagrams above (C4 context, containers, deployment topology).
-- ER / schema diagrams live in [`../04_Database/ER_Diagram.md`](../04_Database/ER_Diagram.md).
+**Q3: What role does Redis play in your architecture?**
+A: Redis is used for caching tokens—specifically storing refresh tokens and blacklisting JWTs for fast, scalable authentication checks without hitting MySQL on every request.
 
-## Best Practices
+**Q4: How do you handle database transactions?**
+A: We use Spring's `@Transactional` at the service layer. Write operations are in read-write transactions, while read operations use `@Transactional(readOnly = true)` to optimize performance.
 
-- The single-source-of-truth map keeps one authoritative document per topic; every deeper layer links here and here links back to it.
-- Ports, roles, and endpoint prefixes are the facts used everywhere else — they are code-verified against `application.properties` and `SecurityConfig`.
-- Static frontend / fat-jar backend separation means each artifact can be built, tested, and deployed independently.
+**Q5: Describe the flow of a single HTTP request through your backend.**
+A: The request passes through security filters (rate limiting, CSRF, JWT validation), hits a REST controller where DTOs are validated, delegates to a transactional service for business logic, uses a repository to query MySQL/Redis, and returns an `ApiResponseDTO`.
 
-## Future Improvements
+---
 
-- Horizontally scalable backend (multiple jar instances) behind a load balancer, with Redis-backed distributed rate limiting.
-- Managed MySQL with read replicas for reporting.
-- Structured logging with correlation IDs feeding a log aggregator.
-- See [`../10_Evaluation/Future_Enhancements.md`](../10_Evaluation/Future_Enhancements.md).
+## Related Documents
+- [Backend Architecture](Backend_Architecture.md)
+- [Frontend Architecture](Frontend_Architecture.md)
+- [Database Architecture](Database_Architecture.md)
+- [Security Architecture](Security_Architecture.md)
 
-## See Also
+---
 
-- [`../00_Project_Overview/Architecture_Overview.md`](../00_Project_Overview/Architecture_Overview.md) — project vision and feature set.
-- [`Backend_Architecture.md`](Backend_Architecture.md) — backend layers, filter chain, request lifecycle.
-- [`Frontend_Architecture.md`](Frontend_Architecture.md) — SPA structure, routing, state, API integration.
-- [`Database_Architecture.md`](Database_Architecture.md) — schema, entities, naming strategy, transactions.
-- [`Security_Architecture.md`](Security_Architecture.md) — threat model and defense-in-depth controls.
-- [`../11_Developer_Guide/Deployment.md`](../11_Developer_Guide/Deployment.md) — build, run, and deploy.
+## Future Enhancements
+- Deploying the frontend via AWS CloudFront/S3 and the backend on AWS ECS.
+- Introducing a distributed trace ID for cross-service logging.

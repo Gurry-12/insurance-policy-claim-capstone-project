@@ -1,113 +1,113 @@
-# Product API
+</Agent System Instructions>
+<Product API>
+> The top-level categories defining the insurance business lines.
 
-> Endpoints under `/api/products` for admin CRUD and activation of insurance product categories, plus the customer-facing list of active products.
+---
 
 ## Purpose
+This document covers the Product API, which manages the broad categories of insurance offered by the company (e.g., Health, Motor, Life).
 
-Reference for creating, updating, activating, deactivating, and querying insurance products. Describes the `ProductRequestDTO` field names and validation rules, the `ProductResponseDTO` shape, role restrictions, and pagination.
+---
 
 ## Overview
+- **Category Management**: Admins create top-level product lines.
+- **Status Toggling**: Hiding entire business lines from the public.
+- **Public Directory**: Fetching available products for the homepage.
 
-Products are the top-level insurance categories (e.g. HEALTH, MOTOR, LIFE). Plans attach to products, and premium rules attach to plans. The customer-facing catalog (`GET /api/products/active`) returns only active products. Base URL: `http://localhost:8081/api`.
+---
 
 ## Business Context
+Products sit at the top of the hierarchy. If the company decides to enter a new market (e.g., "Travel Insurance"), the admin creates a Product. Inside that Product, they create Plans.
 
-Products model the insurer's lines of business. A deactivated product cannot be used in new quotes, purchases, or claims, and its plans cannot be purchased. Domain rules for products live in `../02_Business_Domain/Product.md` and `../02_Business_Domain/Business_Rules.md`.
+---
 
-## Technical Design
-
-### Endpoint matrix
-
-| Method | Path | Role | Response envelope | Notes |
-|---|---|---|---|---|
-| POST | `/api/products` | ADMIN | `ApiResponseDTO<ProductResponseDTO>` | `201 Created` |
-| PUT | `/api/products/{id}` | ADMIN | `ApiResponseDTO<ProductResponseDTO>` | Full update |
-| PATCH | `/api/products/{id}/activate` | ADMIN | `ApiResponseDTO<ProductResponseDTO>` | No body |
-| PATCH | `/api/products/{id}/deactivate` | ADMIN | `ApiResponseDTO<ProductResponseDTO>` | No body |
-| GET | `/api/products/active` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<List<ProductResponseDTO>>` | Customer catalog |
-| GET | `/api/products/{id}` | ADMIN, INTERNAL_STAFF, CUSTOMER | `ApiResponseDTO<ProductResponseDTO>` | — |
-| GET | `/api/products/page` | ADMIN, INTERNAL_STAFF | `ApiResponseDTO<PageResponseDTO<ProductResponseDTO>>` | Paginated + filters |
-
-### Create / update request — `ProductRequestDTO`
-
-```json
-{
-  "productName": "Home Insurance",
-  "productType": "INSURANCE",
-  "description": "Home insurance covering structure, contents and third-party liability.",
-  "activeStatus": true
-}
+## Feature Flow
+```mermaid
+flowchart TD
+    A[Admin Creates Product] --> B[Product Active]
+    B --> C[Homepage Displays Product Icon]
+    C --> D[Customer Clicks Product]
+    D --> E[Fetch Plans for Product]
 ```
 
-Validation (from `ProductRequestDTO.java`):
+---
 
-| Field | Rule |
+## API Documentation
+
+### 1. Create Product (Admin)
+| Field | Value |
 |---|---|
-| `productName` | required, letters/spaces only |
-| `productType` | required, `ProductType` enum: `HEALTH`, `MOTOR`, `LIFE`, `TRAVEL`, `INSURANCE` |
-| `description` | required, free text |
-| `activeStatus` | required boolean — note the field name is `activeStatus`, not `isActive` |
+| Purpose | Creates a new broad insurance category. |
+| Method | POST |
+| URL | `/api/admin/products` |
+| Auth Required | Yes (Admin) |
+| Request Body | `{ "name": "HEALTH", "description": "Medical coverage", "iconUrl": "health.png" }` |
+| Response | `ApiResponseDTO` with Product ID |
+| Validation | Name must be unique and match `ProductType` enum. |
+| Possible Errors | `400 Validation`, `409 Duplicate Name` |
+| Business Logic | Saves to `products` table. |
+| Frontend Screen | Admin Categories |
 
-`productName` is unique case-insensitively.
-
-### Response — `ProductResponseDTO`
-
-```json
-{
-  "productId": 6,
-  "productName": "Home Insurance",
-  "productType": "INSURANCE",
-  "description": "Home insurance covering structure, contents and third-party liability.",
-  "isActive": true,
-  "createdDate": "2026-08-03T10:00:00"
-}
-```
-
-Note the response field is `isActive` (boolean) while the request field is `activeStatus`.
-
-### Paginated list
-
-`GET /api/products/page`:
-
-| Query param | Default | Notes |
-|---|---|---|
-| `pageNumber` | `0` | 0-based |
-| `pageSize` | `10` | |
-| `sortBy` | `id` | e.g. `id`, `productName`, `productType` |
-| `sortDirection` | `asc` | `asc` or `desc` |
-| `productType` | — | optional filter |
-| `isActive` | — | optional boolean filter |
-| `productName` | — | optional partial match |
-
-## Workflow
-
-1. Admin creates a product: `POST /api/products`.
-2. Admin updates it: `PUT /api/products/{id}`.
-3. Admin toggles availability: `PATCH /api/products/{id}/activate` / `.../deactivate`.
-4. All roles read the catalog: `GET /api/products/active`.
-5. Staff/admin administer the full list: `GET /api/products/page`.
-
-## Code References
-
-| Concern | Path |
+### 2. Get Active Products
+| Field | Value |
 |---|---|
-| Controller | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/controller/InsuranceProductController.java` |
-| Request DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/request/ProductRequestDTO.java` |
-| Response DTO | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/dto/response/ProductResponseDTO.java` |
-| Product type enum | `insurance-policy-claim-management-system/src/main/java/com/insurance/demo/enums/ProductType.java` |
-| Sample payloads | `demo-data/api-test-payloads/03-products.md` |
+| Purpose | Fetch all active categories for the customer homepage. |
+| Method | GET |
+| URL | `/api/products/active` |
+| Auth Required | No (Public) |
+| Request Body | None |
+| Response | List of Products |
+| Validation | None |
+| Possible Errors | None |
+| Business Logic | Queries `findByStatus(ACTIVE)`. |
+| Frontend Screen | Public Homepage / Services Page |
 
-## Diagrams
+### 3. Get Product by ID
+| Field | Value |
+|---|---|
+| Purpose | Fetch specific category details. |
+| Method | GET |
+| URL | `/api/products/{id}` |
+| Auth Required | No (Public) |
+| Request Body | None |
+| Response | Product details |
+| Validation | Valid ID |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Standard fetch by ID. |
+| Frontend Screen | Product Landing Page |
 
-Product → plan → coverage option → pricing rule relationships are documented in `../04_Database/Table_Descriptions.md` and `../01_System_Architecture/Database_Architecture.md`.
+### 4. Toggle Product Status (Admin)
+| Field | Value |
+|---|---|
+| Purpose | Turns a whole business line on or off. |
+| Method | PATCH |
+| URL | `/api/admin/products/{id}/toggle-status` |
+| Auth Required | Yes (Admin) |
+| Request Body | None |
+| Response | Updated status |
+| Validation | Admin role check |
+| Possible Errors | `404 Not Found` |
+| Business Logic | Updates status. *Note: Does not automatically deactivate underlying plans, handled via business logic layer.* |
+| Frontend Screen | Admin Categories |
 
-## Best Practices
+---
 
-- Using an enum for `productType` prevents invalid categories at the API boundary.
-- Distinct request field (`activeStatus`) vs response field (`isActive`) keeps the write model honest about the intent flag.
-- Catalog endpoints reuse the same read path as staff, reducing drift.
+## Design Decisions
+1. **Enum Alignment:**
+   The Product names strictly map to the `ProductType` enum (`HEALTH`, `MOTOR`, etc.) in the backend to ensure consistency and prevent typos in business logic routing.
+2. **Separation from Plans:**
+   Decoupling the broad category (Product) from the specific offering (Plan) allows the UI to render clean navigation menus and landing pages without loading hundreds of pricing configurations.
 
-## Future Improvements
+---
 
-- Consider soft-delete auditability and a product change history.
-- Link to `../10_Evaluation/Future_Enhancements.md`.
+## Interview Notes
+1. **Q: What is the relationship between Products, Plans, and Pricing?**
+   **A:** One Product (Health) has Many Plans (Gold, Silver). One Plan has Many PricingRules, but only ONE active PricingRule at any given time.
+2. **Q: If a Product is set to INACTIVE, can users still buy its plans?**
+   **A:** No. The frontend hides the Product, and backend validation during the Quote generation phase checks if the parent Product of a Plan is ACTIVE.
+
+---
+
+## Related Documents
+- `Plan_API.md`
+</Product API>
