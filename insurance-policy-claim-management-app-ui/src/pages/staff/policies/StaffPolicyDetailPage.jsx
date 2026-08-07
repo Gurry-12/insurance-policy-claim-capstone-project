@@ -9,6 +9,7 @@ import { getAllPaymentsPaginated } from '../../../services/paymentService';
 import usePolicyPdf from '../../../hooks/PdfDownload/usePolicyPdf';
 import { CreditCard } from "lucide-react";
 import { formatINR } from '../../../utils/formatters';
+import EmptyState from "../../../components/ui/EmptyState";
 
 const StaffPolicyDetailPage = () => {
   const { policyId } = useParams();
@@ -162,11 +163,11 @@ const StaffPolicyDetailPage = () => {
               {claims && claims.length > 0 ? (
                 <div style={{ maxHeight: '300px', overflowY: 'auto', overflowX: 'auto' }}>
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                    <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--ip-surface)', zIndex: 1 }}>
                       <tr style={{ color: 'var(--ip-text-muted)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                        <th className="border-0 bg-white">Claim Number</th>
-                        <th className="border-0 bg-white">Amount</th>
-                        <th className="border-0 bg-white">Status</th>
+                        <th className="border-0 bg-surface">Claim Number</th>
+                        <th className="border-0 bg-surface">Amount</th>
+                        <th className="border-0 bg-surface">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -181,10 +182,7 @@ const StaffPolicyDetailPage = () => {
                   </table>
                 </div>
               ) : (
-                <div className="text-center p-3 text-muted">
-                  <i className="bi bi-inbox fs-4 d-block mb-2"></i>
-                  No claims found.
-                </div>
+                <EmptyState icon="bi-inbox" title="No Claims" message="No claims have been filed for this policy." />
               )}
             </div>
           </div>
@@ -245,13 +243,13 @@ const StaffPolicyDetailPage = () => {
               {payments && payments.length > 0 ? (
                 <div style={{ maxHeight: '300px', overflowY: 'auto', overflowX: 'auto' }}>
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                    <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--ip-surface)', zIndex: 1 }}>
                       <tr style={{ color: 'var(--ip-text-muted)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                        <th className="border-0 bg-white">Transaction Ref</th>
-                        <th className="border-0 bg-white">Date</th>
-                        <th className="border-0 bg-white">Amount</th>
-                        <th className="border-0 bg-white">Method</th>
-                        <th className="border-0 bg-white">Status</th>
+                        <th className="border-0 bg-surface">Transaction Ref</th>
+                        <th className="border-0 bg-surface">Date</th>
+                        <th className="border-0 bg-surface">Amount</th>
+                        <th className="border-0 bg-surface">Method</th>
+                        <th className="border-0 bg-surface">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -268,10 +266,7 @@ const StaffPolicyDetailPage = () => {
                   </table>
                 </div>
               ) : (
-                <div className="text-center p-3 text-muted">
-                  <i className="bi bi-inbox fs-4 d-block mb-2"></i>
-                  No payments found for this policy.
-                </div>
+                <EmptyState icon="bi-receipt" title="No Payments" message="No payments found for this policy." />
               )}
             </div>
           </div>

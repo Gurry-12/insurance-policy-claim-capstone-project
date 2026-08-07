@@ -16,8 +16,8 @@ Before running, ensure you have completed the [Setup Guide](docs/11_Developer_Gu
 
 | Component | Command / Action | Port | Status URL / Check |
 |-----------|------------------|------|--------------------|
-| **MySQL** | Start via Services/Docker | 3306 | Connect via Workbench |
-| **Redis** | `redis-server` | 6379 | `redis-cli ping` -> PONG |
+| **MySQL** | Local Installation | 3306 | Connect via Workbench |
+| **Redis & ELK** | `docker-compose up -d` | 6379, 5601 | `http://localhost:5601` (Kibana) |
 | **Backend** | `mvn spring-boot:run` | 8081 | `http://localhost:8081/api/system/health` |
 | **Frontend** | `npm run dev` | 5173 | `http://localhost:5173` |
 
@@ -26,9 +26,9 @@ Before running, ensure you have completed the [Setup Guide](docs/11_Developer_Gu
 ## Per-Component Setup & Verification
 
 ### 1. Database & Cache
-- Start MySQL. Ensure `insurance_db` exists.
-- Start Redis.
-- **Verify:** `redis-cli ping` must return `PONG`.
+- Start **MySQL 8** locally. Ensure `insurance_db` exists and credentials match `application.properties`.
+- Start **Redis & ELK Stack** via Docker. Navigate to `insurance-policy-claim-management-system` and run `docker-compose up -d`.
+- **Verify:** Open Kibana at `http://localhost:5601` and verify Redis is accessible via `docker exec -it insurance-redis redis-cli ping`.
 
 ### 2. Spring Boot Backend
 1. Open terminal in the backend root directory.

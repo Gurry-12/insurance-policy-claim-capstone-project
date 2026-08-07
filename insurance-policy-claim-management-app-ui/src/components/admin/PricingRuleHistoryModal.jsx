@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getPricingRuleHistory } from '../../services/pricingRuleService';
 import { notify } from '../../utils/notificationService';
+import EmptyState from "../ui/EmptyState";
 
 const PricingRuleHistoryModal = ({ ruleId, isOpen, onClose }) => {
   const [history, setHistory] = useState([]);
@@ -48,7 +49,7 @@ const PricingRuleHistoryModal = ({ ruleId, isOpen, onClose }) => {
               ) : history.length > 0 ? (
                 <div className="table-responsive">
                   <table className="table table-hover align-middle">
-                    <thead className="table-light">
+                    <thead className="bg-surface">
                       <tr>
                         <th>No.</th>
                         <th>Date</th>

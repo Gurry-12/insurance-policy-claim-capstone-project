@@ -21,7 +21,6 @@ import lombok.Setter;
 
 @Entity
 	@Table(name = "refresh_tokens", indexes = {
-			@Index(name = "refresh_token_jti", columnList = "jti", unique = true),
 			@Index(name = "refresh_token_user", columnList = "user_id"),
 			@Index(name = "refresh_token_hash", columnList = "token_hash"),
 			@Index(name = "refresh_token_expires", columnList = "expires_at") })
@@ -44,8 +43,7 @@ public class RefreshToken {
 	@Column(name = "token_hash", nullable = false, length = 64)
 	private String tokenHash;
 
-	@Column(name = "jti", nullable = false, unique = true, length = 36)
-	private String jti;
+
 
 	@Column(name = "expires_at", nullable = false)
 	private LocalDateTime expiresAt;
@@ -53,8 +51,6 @@ public class RefreshToken {
 	@Column(name = "revoked", nullable = false)
 	private boolean revoked;
 
-	@Column(name = "replaced_by", length = 36)
-	private String replacedBy;
 
 	/** Snapshot of app_user.token_version at issue time for reuse detection. */
 	@Column(name = "token_version", nullable = false)

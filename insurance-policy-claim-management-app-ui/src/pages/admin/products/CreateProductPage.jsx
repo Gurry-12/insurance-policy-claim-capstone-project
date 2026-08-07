@@ -4,6 +4,7 @@ import PageHeader from '../../../components/common/PageHeader';
 import FormInput from '../../../components/forms/FormInput';
 import FormSelect from '../../../components/forms/FormSelect';
 import FormTextarea from '../../../components/forms/FormTextarea';
+import FormGuidelines from '../../../components/ui/FormGuidelines';
 import AlertModal from '../../../components/modals/AlertModal';
 import ErrorAlert from '../../../components/ui/ErrorAlert';
 import { createProduct } from '../../../services/productService';
@@ -86,6 +87,15 @@ const CreateProductPage = () => {
         title="Create Product"
         subtitle="Add a new insurance product"
         onBack={() => navigate("/admin/products")}
+      />
+
+      <FormGuidelines
+        title="Rules for Creating a Product"
+        rules={[
+          "Product Name is required and can only contain letters and spaces.",
+          "Product Description is required.",
+          "Select the appropriate Category for the product."
+        ]}
       />
 
       {globalError && (

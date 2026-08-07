@@ -8,6 +8,7 @@ import StatusBadge from "../../../components/ui/StatusBadge";
 import { Shield, ArrowLeft, CreditCard, History, Download } from "lucide-react";
 import usePolicyPdf from "../../../hooks/PdfDownload/usePolicyPdf";
 import { formatINR } from "../../../utils/formatters";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const CustomerPolicyDetailPage = () => {
   const { policyId } = useParams();
@@ -145,7 +146,7 @@ const showPayButton =
         {/* Right Side: Plan Coverage & Details */}
         <div className="col-lg-8">
           <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 16 }}>
-            <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+            <div className="card-header bg-surface border-bottom-0 pt-4 pb-0">
               <h5 className="fw-bold mb-0 text-primary">Policy Information</h5>
             </div>
             <div className="card-body p-4">
@@ -185,14 +186,14 @@ const showPayButton =
           </div>
 
           <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 16 }}>
-            <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
+            <div className="card-header bg-surface border-bottom-0 pt-4 pb-0">
               <h5 className="fw-bold mb-0 text-primary">Payment History</h5>
             </div>
             <div className="card-body p-4">
               {Array.isArray(payments) && payments.length > 0 ? (
                 <div className="table-responsive">
                   <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light">
+                    <thead className="bg-surface">
                       <tr>
                         <th>Transaction Ref</th>
                         <th>Amount</th>
@@ -219,7 +220,7 @@ const showPayButton =
                   </table>
                 </div>
               ) : (
-                <div className="text-muted py-3">No payments found for this policy.</div>
+                <EmptyState icon="bi-receipt" title="No Payments" message="No payments found for this policy." />
               )}
             </div>
           </div>

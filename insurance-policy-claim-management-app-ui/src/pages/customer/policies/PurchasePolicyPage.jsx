@@ -8,6 +8,7 @@ import PageHeader from "../../../components/common/PageHeader";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import Stepper from "../../../components/common/Stepper";
 import ErrorAlert from "../../../components/ui/ErrorAlert";
+import CoverageOptionCard from "../../../components/common/CoverageOptionCard";
 import PremiumBreakdownCard from "../../../components/customer/PremiumBreakdownCard";
 import QuoteCountdownTimer from "../../../components/customer/QuoteCountdownTimer";
 import { Shield, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
@@ -227,39 +228,29 @@ const PurchasePolicyPage = () => {
                     Choose the coverage amount that best suits your needs.
                   </p>
 
+                  {planDetails.coverageOptions?.filter(
+                    (opt) => (opt.isActive ?? opt.active) !== false
+                  ).length === 0 && (
+                    <div className="text-center py-4 text-muted">
+                      <i className="bi bi-shield-exclamation mb-2 d-block fs-2" />
+                      No coverage options available for this plan.
+                    </div>
+                  )}
+
                   <div className="row g-3">
-                    {planDetails.coverageOptions?.filter(opt => (opt.isActive ?? opt.active) !== false).map((opt, idx) => {
-                      const amount = opt.coverageAmount || opt;
-                      const isSelected = selectedCoverage === String(amount);
-                      return (
-                        <div key={idx} className="col-md-6">
-                          <div
-                            className={`p-3 rounded-3 border text-center cursor-pointer transition-all ${
-                              isSelected
-                                ? "border-primary bg-primary bg-opacity-10"
-                                : "border-light bg-light"
-                            }`}
-                            style={{ cursor: "pointer" }}
-                            onClick={() => setSelectedCoverage(String(amount))}
-                          >
-                            <div
-                              className={`fw-bold fs-5 ${isSelected ? "text-primary" : "text-dark"}`}
-                            >
-                              ₹{(amount / 100000).toLocaleString("en-IN")}L
-                            </div>
-                            <small className="text-muted">Coverage</small>
-                            {isSelected && (
-                              <div className="mt-2">
-                                <CheckCircle
-                                  size={18}
-                                  className="text-primary"
-                                />
-                              </div>
-                            )}
-                          </div>
+                    {planDetails.coverageOptions
+                      ?.filter((opt) => (opt.isActive ?? opt.active) !== false)
+                      .sort((a, b) => a.displayOrder - b.displayOrder)
+                      .map((opt, idx) => (
+                        <div key={opt.id ?? idx} className="col-md-6">
+                          <CoverageOptionCard
+                            option={opt}
+                            mode="select"
+                            isSelected={selectedCoverage === String(opt.coverageAmount)}
+                            onSelect={(o) => setSelectedCoverage(String(o.coverageAmount))}
+                          />
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 </div>
               )}

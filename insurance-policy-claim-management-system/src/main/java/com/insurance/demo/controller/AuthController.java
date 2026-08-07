@@ -63,7 +63,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/refresh")
-	@Operation(summary = "Refresh Access Token", description = "Rotates the HttpOnly refresh token and returns a fresh access token.")
+	@Operation(summary = "Refresh Access Token", description = "Validates the HttpOnly refresh token and returns a fresh access token.")
 	public ApiResponseDTO<RefreshResponseDTO> refresh(
 			@CookieValue(name = RefreshTokenCookieManager.COOKIE_NAME, required = false) String refreshToken,
 			HttpServletResponse response) {
@@ -73,8 +73,6 @@ public class AuthController {
 		}
 
 		RefreshResponseDTO dto = authService.refresh(refreshToken);
-
-		refreshTokenCookieManager.addCookie(response, dto.getRefreshToken());
 
 		return new ApiResponseDTO<>(MessageConstants.Auth.TOKEN_REFRESHED, true, dto, java.time.LocalDateTime.now());
 	}

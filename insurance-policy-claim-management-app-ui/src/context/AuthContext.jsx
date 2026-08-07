@@ -22,7 +22,7 @@ const readStoredUser = () => {
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(readStoredUser);
-  const [isRestoring, setIsRestoring] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(() => localStorage.getItem(SESSION_MARKER) === "1");
 
   useEffect(() => {
     const handleTokenRefreshed = (event) => {

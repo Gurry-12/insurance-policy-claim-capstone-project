@@ -1,6 +1,9 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import ErrorAlert from '../../../components/ui/ErrorAlert';
+import SearchSelect from '../../../components/forms/SearchSelect';
 import { getAllCustomers } from '../../../services/customerService';
 import { getAllPlans } from '../../../services/planService';
 import { generateQuoteAsAdmin } from '../../../services/quoteService';
@@ -163,40 +166,33 @@ const IssuePolicyPage = () => {
             </div>
             <div className="row g-3">
               <div className="col-md-6">
-                <label style={labelStyle}>Customer *</label>
-                <select
-                  className={`form-select ${errors.customerId ? 'is-invalid' : ''}`}
-                  style={inputStyle}
+                <SearchSelect
+                  name="customerId"
                   value={form.customerId}
                   onChange={handleChange}
-                  name="customerId"
-                >
-                  <option value="">Select customer...</option>
-                  {customers.map(c => (
-                    <option key={c.id || c.customerId} value={c.id || c.customerId}>
-                      {c.fullName || c.name} ({c.email})
-                    </option>
-                  ))}
-                </select>
-                {errors.customerId && <div className="invalid-feedback">{errors.customerId}</div>}
+                  options={customers.map(c => ({
+                    value: c.id || c.customerId,
+                    label: c.fullName || c.name,
+                    subtitle: c.email,
+                    icon: 'User'
+                  }))}
+                  placeholder="Select customer..."
+                  error={errors.customerId}
+                />
               </div>
               <div className="col-md-6">
-                <label style={labelStyle}>Plan *</label>
-                <select
-                  className={`form-select ${errors.planId ? 'is-invalid' : ''}`}
-                  style={inputStyle}
+                <SearchSelect
+                  name="planId"
                   value={form.planId}
                   onChange={handleChange}
-                  name="planId"
-                >
-                  <option value="">Select plan...</option>
-                  {plans.map(p => (
-                    <option key={p.planId || p.id} value={p.planId || p.id}>
-                      {p.planName || p.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.planId && <div className="invalid-feedback">{errors.planId}</div>}
+                  options={plans.map(p => ({
+                    value: p.planId || p.id,
+                    label: p.planName || p.name,
+                    icon: 'FileText'
+                  }))}
+                  placeholder="Select plan..."
+                  error={errors.planId}
+                />
               </div>
             </div>
           </div>
@@ -211,20 +207,18 @@ const IssuePolicyPage = () => {
             </div>
             <div className="row g-3 mb-3">
               <div className="col-md-6">
-                <label style={labelStyle}>Duration *</label>
-                <select
-                  className={`form-select ${errors.duration ? 'is-invalid' : ''}`}
-                  style={inputStyle}
+                <SearchSelect
+                  name="duration"
                   value={form.duration}
                   onChange={handleChange}
-                  name="duration"
-                >
-                  <option value="">Select...</option>
-                  {durations.map(yr => (
-                    <option key={yr} value={yr}>{yr} {yr === 1 ? 'Year' : 'Years'}</option>
-                  ))}
-                </select>
-                {errors.duration && <div className="invalid-feedback">{errors.duration}</div>}
+                  options={durations.map(yr => ({
+                    value: yr,
+                    label: `${yr} ${yr === 1 ? 'Year' : 'Years'}`,
+                    icon: 'Calendar'
+                  }))}
+                  placeholder="Select duration..."
+                  error={errors.duration}
+                />
               </div>
               <div className="col-md-6">
                 <label style={labelStyle}>Premium Type</label>

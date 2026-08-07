@@ -43,10 +43,10 @@ const DataTable = ({
     return (
       <div className="table-responsive" style={compact ? {} : { minHeight: '440px', maxHeight: '600px', overflowY: 'auto' }}>
         <table className={`table align-middle mb-0 ${compact ? 'table-sm' : ''}`} style={compact ? { fontSize: '0.85rem' } : {}}>
-          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-body-bg, #fff)' }}>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-surface, #fff)' }}>
             <tr>
               {columns.map((col, idx) => (
-                <th key={idx} className="border-0 bg-white" style={{ minWidth: col.minWidth }}>
+                <th key={idx} className="border-0 bg-surface" style={{ minWidth: col.minWidth }}>
                   {col.header}
                 </th>
               ))}
@@ -72,10 +72,10 @@ const DataTable = ({
         style={compact ? { opacity: 0.55, transition: 'opacity 150ms ease' } : { minHeight: '440px', maxHeight: '600px', overflowY: 'auto', opacity: 0.55, transition: 'opacity 150ms ease' }}
       >
         <table className={`table table-hover align-middle mb-0 ${compact ? 'table-sm' : ''}`} style={compact ? { fontSize: '0.85rem' } : {}}>
-          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-body-bg, #fff)' }}>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-surface, #fff)' }}>
             <tr>
               {columns.map((col, idx) => (
-                <th key={idx} className="border-0 bg-white" style={{ minWidth: col.minWidth }}>
+                <th key={idx} className="border-0 bg-surface" style={{ minWidth: col.minWidth }}>
                   {col.header}
                 </th>
               ))}
@@ -121,10 +121,10 @@ const DataTable = ({
         className={`table table-hover align-middle mb-0 ${compact ? 'table-sm' : ''}`}
         style={compact ? { fontSize: '0.85rem' } : {}}
       >
-        <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-body-bg, #fff)' }}>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'var(--ip-surface, #fff)' }}>
           <tr>
             {columns.map((col, idx) => (
-              <th key={idx} className="border-0 bg-white" style={{ minWidth: col.minWidth }}>
+              <th key={idx} className="border-0 bg-surface" style={{ minWidth: col.minWidth }}>
                 {col.header}
               </th>
             ))}

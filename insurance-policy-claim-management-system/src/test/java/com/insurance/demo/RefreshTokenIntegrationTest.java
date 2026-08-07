@@ -19,12 +19,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +36,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.insurance.demo.config.RefreshTokenCookieManager;
 import com.insurance.demo.enums.Role;
@@ -61,9 +54,8 @@ import com.insurance.demo.util.MessageConstants;
 import jakarta.servlet.http.Cookie;
 
 /**
- * Integration tests for the Stage 3 refresh-token flow: HttpOnly cookie
- * issuance and rotation, opaque token hashing, reuse/family revocation, and
- * revocation on logout, password reset and deactivation.
+ * Integration tests for the refresh-token flow: HttpOnly cookie
+ * issuance, opaque token hashing, and revocation on logout, password reset and deactivation.
  *
  * <p>Runs against the real MySQL datasource configured in
  * {@code env.properties}, consistent with {@link JwtSecurityIntegrationTest}.
@@ -155,11 +147,11 @@ class RefreshTokenIntegrationTest {
 	}
 
 	// ------------------------------------------------------------------
-	// Rotation
+	// Refresh
 	// ------------------------------------------------------------------
 
 	@Test
-	void refreshRotatesCookieAndIssuesNewAccessToken() throws Exception {
+	void refreshIssuesNewAccessToken() throws Exception {
 		AppUser customer = createActiveCustomer();
 		MvcResult loginResult = login(customer.getEmail(), DEFAULT_PASSWORD);
 		String cookieA = loginResult.getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
@@ -174,16 +166,13 @@ class RefreshTokenIntegrationTest {
 
 		String accessToken = objectMapper.readTree(refreshResult.getResponse().getContentAsString()).path("data")
 				.path("accessToken").asText();
-		String cookieB = refreshResult.getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
-		assertNotNull(cookieB);
-		assertNotEquals(cookieA, cookieB, "refresh must rotate the token");
 
 		mockMvc.perform(get("/api/customers/profile").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
 				.andExpect(status().isOk());
 
-		// A further rotation also works (the new token is active).
+		// A further refresh also works (the token remains active).
 		mockMvc.perform(post("/api/auth/refresh")
-				.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookieB)))
+				.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookieA)))
 				.andExpect(status().isOk());
 	}
 
@@ -194,33 +183,6 @@ class RefreshTokenIntegrationTest {
 				.andExpect(jsonPath("$.message").value(MessageConstants.Auth.SESSION_EXPIRED));
 	}
 
-	// ------------------------------------------------------------------
-	// Reuse / family revocation
-	// ------------------------------------------------------------------
-
-	@Test
-	void reusingARotatedTokenRevokesTheWholeSessionFamily() throws Exception {
-		AppUser customer = createActiveCustomer();
-		MvcResult loginResult = login(customer.getEmail(), DEFAULT_PASSWORD);
-		String cookieA = loginResult.getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
-
-		MvcResult refreshResult = mockMvc
-				.perform(post("/api/auth/refresh")
-						.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookieA)))
-				.andExpect(status().isOk()).andReturn();
-		String cookieB = refreshResult.getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
-
-		// Replaying the revoked token signals a possible compromise...
-		mockMvc.perform(post("/api/auth/refresh")
-				.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookieA)))
-				.andExpect(status().isUnauthorized());
-
-		// ...so even the fresh replacement token must no longer work.
-		mockMvc.perform(post("/api/auth/refresh")
-				.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookieB)))
-				.andExpect(status().isUnauthorized());
-	}
-
 	@Test
 	void expiredRefreshTokenIsRejected() throws Exception {
 		AppUser customer = createActiveCustomer();
@@ -229,50 +191,6 @@ class RefreshTokenIntegrationTest {
 
 		mockMvc.perform(post("/api/auth/refresh").cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, rawToken)))
 				.andExpect(status().isUnauthorized());
-	}
-
-	@Test
-	void concurrentRefreshesOfTheSameTokenAllowOnlyOneWinnerAndRevokeTheFamily() throws Exception {
-		AppUser customer = createActiveCustomer();
-		MvcResult loginResult = login(customer.getEmail(), DEFAULT_PASSWORD);
-		String cookie = loginResult.getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
-
-		int threads = 8;
-		ExecutorService pool = Executors.newFixedThreadPool(threads);
-		CountDownLatch start = new CountDownLatch(1);
-		try {
-			List<Future<MvcResult>> futures = new ArrayList<>();
-			for (int i = 0; i < threads; i++) {
-				futures.add(pool.submit(() -> {
-					start.await();
-					return mockMvc.perform(post("/api/auth/refresh")
-							.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, cookie))).andReturn();
-				}));
-			}
-			start.countDown();
-
-			List<MvcResult> results = new ArrayList<>();
-			for (Future<MvcResult> future : futures) {
-				results.add(future.get(60, TimeUnit.SECONDS));
-			}
-
-			List<MvcResult> ok = results.stream().filter(r -> r.getResponse().getStatus() == 200).toList();
-			List<MvcResult> unauthorized = results.stream().filter(r -> r.getResponse().getStatus() == 401).toList();
-			String statuses = results.stream().map(r -> String.valueOf(r.getResponse().getStatus())).toList().toString();
-			assertEquals(1, ok.size(), "exactly one concurrent refresh may win the rotation race; statuses=" + statuses);
-			assertEquals(threads - 1, unauthorized.size(),
-					"the remaining attempts must be rejected; statuses=" + statuses);
-
-			// The losers detected a replay, so the whole family is dead: even the
-			// winner's freshly-issued cookie must no longer be accepted.
-			String winningCookie = ok.get(0).getResponse().getCookie(RefreshTokenCookieManager.COOKIE_NAME).getValue();
-			assertNotNull(winningCookie);
-			mockMvc.perform(post("/api/auth/refresh")
-					.cookie(withCookie(RefreshTokenCookieManager.COOKIE_NAME, winningCookie)))
-					.andExpect(status().isUnauthorized());
-		} finally {
-			pool.shutdownNow();
-		}
 	}
 
 	// ------------------------------------------------------------------
@@ -358,7 +276,7 @@ class RefreshTokenIntegrationTest {
 		user.setFullName("Refresh Token Test User");
 		user.setEmail(email);
 		user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
-		user.setMobileNumber("+91" + ThreadLocalRandom.current().nextLong(1000000000L, 9999999999L));
+		user.setMobileNumber("+91" + java.util.concurrent.ThreadLocalRandom.current().nextLong(1000000000L, 9999999999L));
 		user.setRole(role);
 		user.setIsActive(true);
 		user.setEmailVerified(true);
@@ -371,7 +289,7 @@ class RefreshTokenIntegrationTest {
 
 	private void seedExpiredToken(AppUser user, String rawToken) {
 		RefreshToken token = RefreshToken.builder().user(user).tokenHash(sha256Hex(rawToken))
-				.jti(UUID.randomUUID().toString()).expiresAt(LocalDateTime.now().minusMinutes(1)).revoked(false)
+				.expiresAt(LocalDateTime.now().minusMinutes(1)).revoked(false)
 				.tokenVersion(0L).build();
 		refreshTokenRepository.save(token);
 	}

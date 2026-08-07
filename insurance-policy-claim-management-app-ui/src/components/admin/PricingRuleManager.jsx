@@ -5,6 +5,7 @@ import { notify } from '../../utils/notificationService';
 import PricingRuleHistoryModal from './PricingRuleHistoryModal';
 import PremiumBreakdownCard from '../customer/PremiumBreakdownCard';
 import ErrorAlert from '../ui/ErrorAlert';
+import SearchSelect from '../forms/SearchSelect';
 
 const PricingRuleManager = ({ productId, planId, onUpdate }) => {
   const [activeRule, setActiveRule] = useState(null);
@@ -229,7 +230,7 @@ const PricingRuleManager = ({ productId, planId, onUpdate }) => {
 
         {/* Simulation / Preview Tool */}
         {showPreview && (
-          <div className="bg-white border rounded-3 p-4 mb-3 shadow-sm fade-in">
+          <div className="bg-surface border rounded-3 p-4 mb-3 shadow-sm fade-in">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h6 className="fw-bold m-0"><i className="bi bi-magic me-2 text-primary"></i>Premium Simulator</h6>
               <button className="btn-close" onClick={() => setShowPreview(false)}></button>
@@ -247,11 +248,17 @@ const PricingRuleManager = ({ productId, planId, onUpdate }) => {
                     <input type="number" step="1" className="form-control form-control-sm" value={previewVars.duration} onChange={(e) => setPreviewVars({...previewVars, duration: Number(e.target.value)})} onKeyDown={(e) => { if (e.key === '.' || e.key === 'e') e.preventDefault(); }} />
                   </div>
                   <div className="mb-4">
-                    <label className="form-label small text-muted mb-1">Test Premium Type</label>
-                    <select className="form-select form-select-sm" value={previewVars.premiumType} onChange={(e) => setPreviewVars({...previewVars, premiumType: e.target.value})}>
-                      <option value="ANNUAL">ANNUAL</option>
-                      <option value="ONE_TIME">ONE_TIME</option>
-                    </select>
+                    <SearchSelect
+                      label="Test Premium Type"
+                      name="premiumType"
+                      value={previewVars.premiumType}
+                      onChange={(e) => setPreviewVars({...previewVars, premiumType: e.target.value})}
+                      options={[
+                        { value: 'ANNUAL', label: 'Annual Premium', icon: 'CalendarCheck', subtitle: 'Billed once every year' },
+                        { value: 'ONE_TIME', label: 'One Time Premium', icon: 'Zap', subtitle: 'Single upfront payment' }
+                      ]}
+                      isSearchable={false}
+                    />
                   </div>
                   <button type="submit" className="btn btn-outline-primary btn-sm w-100" disabled={isProcessing}>
                     {isProcessing ? "Calculating..." : "Run Simulation"}

@@ -10,6 +10,7 @@ import useCustomerPdf from "../../../hooks/PdfDownload/useCustomerPdf";
 import useTableState from "../../../hooks/useTableState";
 import PaginationBar from "../../../components/tables/PaginationBar";
 import { formatINR } from "../../../utils/formatters";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const StaffCustomerDetailPage = () => {
   const { id } = useParams();
@@ -236,9 +237,7 @@ const StaffCustomerDetailPage = () => {
                   />
                 </>
               ) : (
-                <p className="text-muted text-center my-4">
-                  No policies found for this customer.
-                </p>
+                <EmptyState icon="bi-shield-x" title="No Policies" message="No policies found for this customer." />
               )}
             </div>
           </div>

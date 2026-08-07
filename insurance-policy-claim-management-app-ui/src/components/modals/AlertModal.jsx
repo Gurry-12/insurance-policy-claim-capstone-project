@@ -1,4 +1,4 @@
-﻿import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 
 const AlertModal = ({ isOpen, title, message, onClose, type = 'info' }) => {
   const handleEscape = useCallback((e) => {

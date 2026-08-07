@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "../../../components/common/PageHeader";
 import StatusBadge from "../../../components/ui/StatusBadge";
@@ -10,6 +10,7 @@ import useCustomerPdf from "../../../hooks/PdfDownload/useCustomerPdf";
 import useTableState from "../../../hooks/useTableState";
 import PaginationBar from "../../../components/tables/PaginationBar";
 import { formatINR } from "../../../utils/formatters";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const CustomerDetailPage = () => {
   const { id } = useParams();
@@ -236,9 +237,7 @@ const CustomerDetailPage = () => {
                   />
                 </>
               ) : (
-                <p className="text-muted text-center my-4">
-                  No policies found for this customer.
-                </p>
+                <EmptyState icon="bi-shield-x" title="No Policies" message="No policies found for this customer." />
               )}
             </div>
           </div>

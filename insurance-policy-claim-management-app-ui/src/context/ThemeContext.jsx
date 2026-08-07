@@ -1,6 +1,5 @@
-﻿import { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const ThemeContext = createContext(null);
 
 export const ThemeProvider = ({ children }) => {
@@ -9,18 +8,27 @@ export const ThemeProvider = ({ children }) => {
   );
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.setAttribute('data-bs-theme', theme);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    root.setAttribute('data-bs-theme', theme);
     localStorage.setItem('ss_theme', theme);
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  }, []);
+  const toggleTheme = (newTheme) => {
+    setTheme(newTheme);
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
+};
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === null) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
 };

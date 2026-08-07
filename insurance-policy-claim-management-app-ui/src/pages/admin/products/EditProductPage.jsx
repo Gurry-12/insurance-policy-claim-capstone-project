@@ -4,6 +4,7 @@ import PageHeader from '../../../components/common/PageHeader';
 import FormInput from '../../../components/forms/FormInput';
 import FormSelect from '../../../components/forms/FormSelect';
 import FormTextarea from '../../../components/forms/FormTextarea';
+import FormGuidelines from '../../../components/ui/FormGuidelines';
 import AlertModal from '../../../components/modals/AlertModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/ui/ErrorAlert';
@@ -110,6 +111,16 @@ const EditProductPage = () => {
         title="Edit Product"
         subtitle={`Editing Product: ${formData.name || 'Details'}`}
         onBack={() => navigate("/admin/products")}
+      />
+
+      <FormGuidelines
+        title="Rules for Editing a Product"
+        rules={[
+          "Product Name is required and can only contain letters and spaces.",
+          "Product Description is required.",
+          "Select the appropriate Category for the product."
+        ]}
+        defaultExpanded={false}
       />
 
       <ErrorAlert message={globalError || error} onClose={() => { setError(''); setGlobalError(''); }} />

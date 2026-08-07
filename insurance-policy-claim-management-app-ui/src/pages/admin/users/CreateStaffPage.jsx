@@ -4,6 +4,7 @@ import PageHeader from '../../../components/common/PageHeader';
 import FormInput from '../../../components/forms/FormInput';
 import AlertModal from '../../../components/modals/AlertModal';
 import ModernSelect from '../../../components/forms/ModernSelect';
+import FormGuidelines from '../../../components/ui/FormGuidelines';
 import { createStaff } from '../../../services/userService';
 import { notify } from '../../../utils/notificationService';
 import { SPECIALITY_OPTIONS } from "../../../utils/options";
@@ -125,6 +126,16 @@ const CreateStaffPage = () => {
         title="Create New Staff"
         subtitle="Register a new insurance Staff into the system"
         onBack={() => navigate("/admin/users")}
+      />
+
+      <FormGuidelines
+        title="Rules for Adding Staff"
+        rules={[
+          "Staff First and Last Name can only contain letters and spaces (2-100 characters).",
+          "Phone must be a valid 10-digit number.",
+          "Password must be 8-64 characters and contain at least one letter and one digit.",
+          "A Product Speciality must be selected."
+        ]}
       />
 
       <div

@@ -324,7 +324,7 @@ const PricingRulePanel = ({ planId }) => {
                 <h6 className="fw-bold small text-muted mt-4 mb-2">Rule History</h6>
                 <div className="table-responsive">
                   <table className="table table-sm table-hover align-middle" style={{ fontSize: '0.82rem' }}>
-                    <thead className="table-light">
+                    <thead className="bg-surface">
                       <tr>
                         <th>Rule ID</th>
                         <th>Risk Rate</th>

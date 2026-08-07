@@ -36,15 +36,16 @@ flowchart LR
 > [!IMPORTANT]
 > Requires Java 17, Node 20+, Docker (for Redis/MySQL), and Maven. See [`docs/11_Developer_Guide/Setup.md`](./docs/11_Developer_Guide/Setup.md) for detailed prerequisites and environment variables.
 
-### 1. Start Infrastructure (Redis & MySQL)
+### 1. Start Infrastructure (Redis & ELK Stack)
 ```bash
-# Starts Redis on port 6379 and ensures MySQL is running on 3306
+cd insurance-policy-claim-management-system
+# Starts Redis on port 6379 and the ELK Stack (Elasticsearch, Logstash, Kibana on 5601)
 docker-compose up -d
 ```
 
 ### 2. Start Backend (Spring Boot)
 ```bash
-cd insurance-policy-claim-management-system
+# Ensure MySQL 8 is running locally on port 3306
 # Copy env.properties.example to env.properties and fill credentials
 ./mvnw spring-boot:run
 ```

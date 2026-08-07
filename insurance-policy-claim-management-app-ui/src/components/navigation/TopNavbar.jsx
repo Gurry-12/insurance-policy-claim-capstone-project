@@ -1,10 +1,9 @@
-﻿import { useContext } from 'react';
+import { useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ThemeContext } from '../../context/ThemeContext';
 import useAuth from '../../hooks/useAuth';
+import ThemeSwitcher from '../ui/ThemeSwitcher';
 
 const TopNavbar = ({ onMenuClick, breadcrumb }) => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,16 +59,11 @@ const TopNavbar = ({ onMenuClick, breadcrumb }) => {
         
 
         {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="btn btn-sm text-secondary p-1 border-0"
-          title="Toggle Light/Dark Theme"
-          aria-label="Toggle Light/Dark Theme"
-        >
-          <i className={`bi ${theme === 'dark' ? 'bi-sun-fill' : 'bi-moon-fill'} fs-6`} />
-        </button>
- 
-        <div className="vr bg-secondary opacity-25 mx-1" style={{ width: '1px', height: '24px' }}></div>
+        <div className="d-none d-sm-block">
+          <ThemeSwitcher />
+        </div>
+        
+        <div className="vr bg-secondary opacity-25 mx-1 d-none d-sm-block" style={{ width: '1px', height: '24px' }}></div>
  
         {/* User Profile Info (Static/Restored) */}
         <div className="d-flex align-items-center gap-2">

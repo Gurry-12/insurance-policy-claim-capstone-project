@@ -80,11 +80,7 @@ public class AppSecurityProperties {
 
 		private String jwtBlacklistPrefix = "auth:blacklist:jwt:";
 
-		private String refreshTokenPrefix = "auth:refresh:";
 
-		private String gracePrefix = "auth:refresh:grace:";
-
-		private long graceWindowSeconds = 10;
 
 	}
 

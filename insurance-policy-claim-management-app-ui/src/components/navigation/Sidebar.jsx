@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { notify } from "../../utils/notificationService";
 import useAuth from "../../hooks/useAuth";
 import SpecialityBadge from "../ui/SpecialityBadge";
+import ThemeSwitcher from "../ui/ThemeSwitcher";
 import logoImg from "../../assets/logo/insurance-heart-vector.png";
 import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 
@@ -116,6 +117,11 @@ const Sidebar = ({ navItems, isOpen, setIsOpen, isCollapsed, setIsCollapsed, tit
               </div>
             )}
           </div>
+          
+          <div className="d-sm-none mt-3 mb-2 d-flex justify-content-center">
+            <ThemeSwitcher />
+          </div>
+
           <button
             onClick={handleLogout}
             className="ip-sidebar-logout mt-2"

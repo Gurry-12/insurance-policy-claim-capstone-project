@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../../../components/common/PageHeader';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/ui/ErrorAlert';
+import FormGuidelines from '../../../components/ui/FormGuidelines';
+import CoverageOptionsManager from '../../../components/admin/CoverageOptionsManager';
 import { getAllProducts } from '../../../services/productService';
 import { getPlanById, updatePlan } from '../../../services/planService';
+import { getCoverageOptions } from '../../../services/coverageOptionService';
 import { notify } from '../../../utils/notificationService';
 import { PREMIUM_TYPE_OPTIONS } from '../../../utils/options';
+import SearchSelect from '../../../components/forms/SearchSelect';
 
 const DURATION_OPTIONS = [1, 2, 3, 5, 7, 10, 15, 20, 25, 30];
 
@@ -49,6 +53,7 @@ const EditPlanPage = () => {
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [coverageOptions, setCoverageOptions] = useState([]);
 
   const [form, setForm] = useState({
     planName: '',
@@ -58,6 +63,16 @@ const EditPlanPage = () => {
     termsAndConditions: '',
     activeStatus: true,
   });
+
+  const refreshCoverage = useCallback(async () => {
+    try {
+      const res = await getCoverageOptions(id);
+      const list = res?.data || res || [];
+      setCoverageOptions(Array.isArray(list) ? list : []);
+    } catch {
+      // non-fatal — plan data may embed coverage options
+    }
+  }, [id]);
 
   useEffect(() => {
     const fetchPlanAndProducts = async () => {
@@ -81,6 +96,9 @@ const EditPlanPage = () => {
           termsAndConditions: plan.termsAndConditions || '',
           activeStatus: plan.activeStatus ?? plan.isActive ?? plan.active ?? true,
         });
+        // Seed coverage from plan data first, then refresh from dedicated endpoint
+        setCoverageOptions(plan.coverageOptions || []);
+        refreshCoverage();
       } catch (err) {
         setError(err.message || 'Failed to load plan details');
       } finally {
@@ -88,7 +106,7 @@ const EditPlanPage = () => {
       }
     };
     fetchPlanAndProducts();
-  }, [id]);
+  }, [id, refreshCoverage]);
 
   const toggleDuration = (yr) => {
     setForm((f) => ({
@@ -160,11 +178,22 @@ const EditPlanPage = () => {
   const selectedProduct = products.find((p) => (p.productId || p.id) == form.productId);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <PageHeader
         title="Edit Plan"
         subtitle={form.planName}
         onBack={() => navigate(`/admin/plans/${id}`)}
+      />
+
+      <FormGuidelines
+        title="Rules for Editing a Plan"
+        rules={[
+          "Plan Name must be at least 3 characters long.",
+          "You must select an Active Product and a Premium Type.",
+          "At least one Allowed Duration and one Coverage Option is required.",
+          "All Coverage Options must have a valid label."
+        ]}
+        defaultExpanded={false}
       />
 
       {formError && (
@@ -198,23 +227,29 @@ const EditPlanPage = () => {
                 )}
               </div>
               <div className="col-md-4">
-                <label style={labelStyle}>Product *</label>
-                <select
-                  className={`form-select ${!form.productId ? 'is-invalid' : ''}`}
-                  style={inputStyle}
+                <SearchSelect
+                  name="productId"
                   value={form.productId}
                   onChange={(e) => setForm((f) => ({ ...f, productId: e.target.value }))}
-                >
-                  <option value="">Select product...</option>
-                  {products.map((p) => (
-                    <option key={p.productId || p.id} value={p.productId || p.id}>
-                      {p.productName}
-                    </option>
-                  ))}
-                </select>
-                {!form.productId && (
-                  <div className="text-danger small mt-1">Please select an insurance product</div>
-                )}
+                  options={products.map((p) => {
+                    let icon = 'Shield';
+                    if (p.productType === 'HEALTH') icon = 'HeartPulse';
+                    if (p.productType === 'LIFE') icon = 'User';
+                    if (p.productType === 'MOTOR') icon = 'CarFront';
+                    if (p.productType === 'TRAVEL') icon = 'Plane';
+                    
+                    return {
+                      value: p.productId || p.id,
+                      label: p.productName,
+                      subtitle: p.productType,
+                      icon: icon,
+                      badge: 'Active',
+                      statusColor: p.productType === 'LIFE' ? 'success' : 'brand'
+                    };
+                  })}
+                  placeholder="Select product..."
+                  error={!form.productId ? 'Please select an insurance product' : ''}
+                />
               </div>
             </div>
           </div>
@@ -260,31 +295,21 @@ const EditPlanPage = () => {
               <i className="bi bi-clock-history me-2" style={{ color: 'var(--ip-brand)' }} />
               Allowed Durations *
             </div>
-            <div className="d-flex flex-wrap gap-2">
-              {DURATION_OPTIONS.map((yr) => {
-                const selected = form.durations.includes(yr);
-                return (
-                  <button
-                    key={yr}
-                    type="button"
-                    className="btn"
-                    style={{
-                      borderRadius: 'var(--ip-radius-pill)',
-                      padding: '0.45rem 1rem',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      minWidth: '72px',
-                      border: selected ? 'none' : '1.5px solid var(--ip-border)',
-                      backgroundColor: selected ? 'var(--ip-success)' : 'transparent',
-                      color: selected ? '#fff' : 'var(--ip-text-secondary)',
-                      transition: 'all 0.2s',
-                    }}
-                    onClick={() => toggleDuration(yr)}
-                  >
-                    {yr} {yr === 1 ? 'Yr' : 'Yrs'}
-                  </button>
-                );
-              })}
+            <div style={{ position: 'relative' }}>
+              <SearchSelect
+                name="durations"
+                isMulti={true}
+                isCreatable={true}
+                value={form.durations}
+                onChange={(e) => setForm((f) => ({ ...f, durations: e.target.value.map(v => parseInt(v, 10)).filter(n => !isNaN(n)).sort((a,b)=>a-b) }))}
+                options={DURATION_OPTIONS.map(yr => ({
+                  value: yr,
+                  label: `${yr} ${yr === 1 ? 'Year' : 'Years'}`,
+                  icon: 'Calendar'
+                }))}
+                placeholder="Select or type custom (e.g. 12)..."
+                error={form.durations.length === 0 ? 'Select at least one duration' : ''}
+              />
             </div>
             {form.durations.length === 0 && (
               <div className="text-danger small mt-2">
@@ -294,6 +319,13 @@ const EditPlanPage = () => {
             )}
           </div>
         </div>
+
+        {/* Coverage Options Manager */}
+        <CoverageOptionsManager
+          planId={id}
+          existingOptions={coverageOptions}
+          onUpdate={refreshCoverage}
+        />
 
         {/* Terms & Conditions */}
         <div className="card border-0" style={sectionCard}>
@@ -347,24 +379,7 @@ const EditPlanPage = () => {
           </div>
         </div>
 
-        {/* Info Banner */}
-        <div
-          className="p-3"
-          style={{
-            borderRadius: 'var(--ip-radius-md)',
-            backgroundColor: 'var(--ip-brand-light)',
-            border: '1px solid var(--ip-brand-muted)',
-          }}
-        >
-          <div className="d-flex align-items-start gap-2">
-            <i className="bi bi-info-circle text-primary mt-1" />
-            <div className="small" style={{ color: 'var(--ip-text-secondary)' }}>
-              <strong style={{ color: 'var(--ip-brand)' }}>Coverage options and pricing rules</strong>{' '}
-              are managed from the{' '}
-              <strong style={{ color: 'var(--ip-brand)' }}>Plan Details</strong> page after saving.
-            </div>
-          </div>
-        </div>
+
 
         {/* Actions */}
         {!isFormValid && (

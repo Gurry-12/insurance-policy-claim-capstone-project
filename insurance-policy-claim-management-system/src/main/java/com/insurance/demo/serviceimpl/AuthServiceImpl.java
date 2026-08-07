@@ -121,12 +121,12 @@ public class AuthServiceImpl implements AuthService {
 
 	@Override
 	public RefreshResponseDTO refresh(String rawRefreshToken) {
-		RefreshTokenService.RotatedRefreshToken rotated = refreshTokenService.rotate(rawRefreshToken);
+		AppUser user = refreshTokenService.validateRefreshToken(rawRefreshToken);
 
 		String accessToken = jwtService.generateToken(
-				new AppUserDetails(rotated.user()), rotated.user().getTokenVersion());
+				new AppUserDetails(user), user.getTokenVersion());
 
-		RefreshResponseDTO dto = new RefreshResponseDTO(accessToken, "Bearer", rotated.rawToken());
+		RefreshResponseDTO dto = new RefreshResponseDTO(accessToken, "Bearer");
 		return dto;
 	}
 

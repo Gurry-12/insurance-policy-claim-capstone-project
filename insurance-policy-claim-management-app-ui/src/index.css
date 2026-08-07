@@ -124,21 +124,21 @@
   --ip-brand-light: #1e293b;
   --ip-brand-muted: #334155;
 
-  --ip-topbar-bg: #09090b;
-  --ip-topbar-border: #27272a;
+  --ip-topbar-bg: #111827;
+  --ip-topbar-border: rgba(255,255,255,0.08);
   --ip-topbar-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 
-  --ip-bg: #09090b;
-  --ip-surface: #18181b;
-  --ip-surface-raised: #27272a;
+  --ip-bg: #0F172A;
+  --ip-surface: #111827;
+  --ip-surface-raised: #1E293B;
 
-  --ip-text-primary: #e4e4e7;
-  --ip-text-secondary: #a1a1aa;
-  --ip-text-muted: #71717a;
-  --ip-text-inverse: #09090b;
+  --ip-text-primary: #F8FAFC;
+  --ip-text-secondary: #94A3B8;
+  --ip-text-muted: #94A3B8;
+  --ip-text-inverse: #0F172A;
 
-  --ip-border: #27272a;
-  --ip-border-strong: #3f3f46;
+  --ip-border: rgba(255,255,255,0.08);
+  --ip-border-strong: rgba(255,255,255,0.15);
   --ip-border-focus: #3b82f6;
 
   --ip-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -147,9 +147,9 @@
   --ip-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5), 0 4px 6px rgba(0, 0, 0, 0.4);
   --ip-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6), 0 8px 10px rgba(0, 0, 0, 0.4);
 
-  --ip-sidebar-bg: #09090b;
-  --ip-sidebar-surface: #18181b;
-  --ip-sidebar-border: #27272a;
+  --ip-sidebar-bg: #111827;
+  --ip-sidebar-surface: #1E293B;
+  --ip-sidebar-border: rgba(255,255,255,0.08);
   --ip-sidebar-text: #71717a;
   --ip-sidebar-text-active: #f4f4f5;
   --ip-sidebar-accent: #3b82f6;
@@ -216,6 +216,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+body, .card, .btn, .form-control, .form-select, .dropdown-menu, .modal-content, .offcanvas, .table, .ip-main-wrapper, .ip-topbar, .ip-sidebar {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+
 [data-theme="dark"] .text-dark {
   color: var(--ip-text-primary) !important;
 }
@@ -226,6 +230,30 @@
 
 [data-theme="dark"] .bg-white {
   background-color: var(--ip-surface) !important;
+}
+
+.bg-surface {
+  background-color: var(--ip-surface) !important;
+}
+
+[data-theme="dark"] .page-link {
+  background-color: var(--ip-surface);
+  border-color: var(--ip-border);
+  color: var(--ip-text-primary);
+}
+[data-theme="dark"] .page-link:hover {
+  background-color: var(--ip-surface-raised);
+  border-color: var(--ip-border-focus);
+}
+[data-theme="dark"] .page-item.active .page-link {
+  background-color: var(--ip-brand);
+  border-color: var(--ip-brand);
+  color: #fff;
+}
+[data-theme="dark"] .page-item.disabled .page-link {
+  background-color: var(--ip-bg);
+  border-color: var(--ip-border);
+  color: var(--ip-text-muted);
 }
 
 [data-theme="dark"] .bg-light {
@@ -1954,3 +1982,548 @@ textarea.form-control {
 [data-theme="dark"] .ip-spec-TRAVEL    { --spec-bg: #0a1e28; --spec-border: #0e3640; }
 [data-theme="dark"] .ip-spec-INSURANCE { --spec-bg: #1a0f30; --spec-border: #2e1a52; }
 [data-theme="dark"] .ip-spec-ALL       { --spec-bg: #0e1420; --spec-border: #1e293b; }
+
+/* ── Coverage Option Cards ─────────────────────────────────── */
+.coverage-option-card {
+  transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+  user-select: none;
+}
+
+/* Select mode hover */
+.coverage-option-card[role="button"]:hover:not([tabindex="-1"]) {
+  box-shadow: var(--ip-shadow-md) !important;
+  transform: translateY(-2px);
+  border-color: var(--ip-brand-muted) !important;
+}
+
+/* Admin mode hover */
+.coverage-option-card--admin:hover {
+  box-shadow: var(--ip-shadow-md) !important;
+  transform: translateY(-1px);
+}
+
+/* Keyboard focus ring */
+.coverage-option-card[role="button"]:focus-visible {
+  outline: 2.5px solid var(--ip-brand);
+  outline-offset: 2px;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .coverage-option-card {
+  background-color: var(--ip-surface);
+  border-color: var(--ip-border);
+}
+
+/* ── Create Plan Page ──────────────────────────────────────── */
+
+/* Section entrance animation */
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-section-in {
+  animation: sectionIn 0.35s ease both;
+}
+.create-plan-section:nth-child(1) { animation-delay: 0.05s; }
+.create-plan-section:nth-child(2) { animation-delay: 0.10s; }
+.create-plan-section:nth-child(3) { animation-delay: 0.15s; }
+.create-plan-section:nth-child(4) { animation-delay: 0.20s; }
+.create-plan-section:nth-child(5) { animation-delay: 0.25s; }
+
+/* Section card hover lift */
+.create-plan-section {
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.create-plan-section:hover {
+  box-shadow: var(--ip-shadow-lg) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Duration Chip ─────────────────────────────────────────── */
+.duration-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--ip-radius-pill);
+  border: 1.5px solid var(--ip-border);
+  background: var(--ip-surface);
+  color: var(--ip-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  line-height: 1;
+}
+.duration-chip:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+  background: #7c3aed0d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(124,58,237,0.15);
+}
+.duration-chip--active {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.3);
+}
+.duration-chip--active:hover {
+  background: linear-gradient(135deg, #6d28d9, #5b21b6);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.duration-chip:active {
+  transform: scale(0.96);
+}
+.duration-chip:focus-visible {
+  outline: 2.5px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* ── Premium Type Card ─────────────────────────────────────── */
+.premium-type-card {
+  padding: 1rem;
+  border-radius: var(--ip-radius-md);
+  border: 1.5px solid var(--ip-border);
+  background: var(--ip-surface);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.premium-type-card:hover {
+  border-color: var(--ip-brand-muted);
+  box-shadow: var(--ip-shadow-md);
+  transform: translateY(-2px);
+}
+.premium-type-card--active {
+  border-color: var(--ip-brand);
+  background: var(--ip-brand-light);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1), var(--ip-shadow-sm);
+}
+.premium-type-card--active:hover {
+  border-color: var(--ip-brand-hover);
+  transform: translateY(-1px);
+}
+.premium-type-card:focus-visible {
+  outline: 2.5px solid var(--ip-brand);
+  outline-offset: 2px;
+}
+.premium-type-card:active {
+  transform: scale(0.98);
+}
+.premium-type-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ip-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* ── Coverage Preview Mini-cards ───────────────────────────── */
+.coverage-preview-card {
+  position: relative;
+  border-radius: var(--ip-radius-md);
+  border: 1.5px solid var(--ip-success-border);
+  background: var(--ip-success-bg);
+  padding: 0.65rem 0.75rem;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.coverage-preview-card:hover {
+  box-shadow: var(--ip-shadow-sm);
+  transform: translateY(-1px);
+}
+.coverage-preview-card__order {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ip-success);
+  background: var(--ip-success-subtle);
+  border-radius: var(--ip-radius-pill);
+  padding: 1px 6px;
+}
+.coverage-preview-card__amount {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--spec-color);
+  border: 1px solid var(--spec-border);
+}
+.ip-speciality-badge-sm {
+  padding: 0.2em 0.6em;
+  font-size: 0.68rem;
+  gap: 5px;
+}
+.ip-speciality-badge-lg {
+  padding: 0.45em 1em;
+  font-size: 0.8rem;
+}
+.ip-spec-HEALTH    { --spec-color: #e11d48; --spec-bg: #fff1f2; --spec-border: #fecdd3; }
+.ip-spec-LIFE      { --spec-color: #16a34a; --spec-bg: #f0fdf4; --spec-border: #bbf7d0; }
+.ip-spec-MOTOR     { --spec-color: #2563eb; --spec-bg: #eff6ff; --spec-border: #bfdbfe; }
+.ip-spec-TRAVEL    { --spec-color: #0891b2; --spec-bg: #ecfeff; --spec-border: #a5f3fc; }
+.ip-spec-INSURANCE { --spec-color: #7c3aed; --spec-bg: #f5f3ff; --spec-border: #ddd6fe; }
+.ip-spec-ALL       { --spec-color: #64748b; --spec-bg: #f1f5f9; --spec-border: #cbd5e1; }
+
+[data-theme="dark"] .ip-spec-HEALTH    { --spec-bg: #2a1017; --spec-border: #4a1622; }
+[data-theme="dark"] .ip-spec-LIFE      { --spec-bg: #0a1f14; --spec-border: #0f301e; }
+[data-theme="dark"] .ip-spec-MOTOR     { --spec-bg: #0f1a30; --spec-border: #1e2a45; }
+[data-theme="dark"] .ip-spec-TRAVEL    { --spec-bg: #0a1e28; --spec-border: #0e3640; }
+[data-theme="dark"] .ip-spec-INSURANCE { --spec-bg: #1a0f30; --spec-border: #2e1a52; }
+[data-theme="dark"] .ip-spec-ALL       { --spec-bg: #0e1420; --spec-border: #1e293b; }
+
+/* ── Coverage Option Cards ─────────────────────────────────── */
+.coverage-option-card {
+  transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+  user-select: none;
+}
+
+/* Select mode hover */
+.coverage-option-card[role="button"]:hover:not([tabindex="-1"]) {
+  box-shadow: var(--ip-shadow-md) !important;
+  transform: translateY(-2px);
+  border-color: var(--ip-brand-muted) !important;
+}
+
+/* Admin mode hover */
+.coverage-option-card--admin:hover {
+  box-shadow: var(--ip-shadow-md) !important;
+  transform: translateY(-1px);
+}
+
+/* Keyboard focus ring */
+.coverage-option-card[role="button"]:focus-visible {
+  outline: 2.5px solid var(--ip-brand);
+  outline-offset: 2px;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .coverage-option-card {
+  background-color: var(--ip-surface);
+  border-color: var(--ip-border);
+}
+
+/* ── Create Plan Page ──────────────────────────────────────── */
+
+/* Section entrance animation */
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-section-in {
+  animation: sectionIn 0.35s ease both;
+}
+.create-plan-section:nth-child(1) { animation-delay: 0.05s; }
+.create-plan-section:nth-child(2) { animation-delay: 0.10s; }
+.create-plan-section:nth-child(3) { animation-delay: 0.15s; }
+.create-plan-section:nth-child(4) { animation-delay: 0.20s; }
+.create-plan-section:nth-child(5) { animation-delay: 0.25s; }
+
+/* Section card hover lift */
+.create-plan-section {
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.create-plan-section:hover {
+  box-shadow: var(--ip-shadow-lg) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Duration Chip ─────────────────────────────────────────── */
+.duration-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--ip-radius-pill);
+  border: 1.5px solid var(--ip-border);
+  background: var(--ip-surface);
+  color: var(--ip-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  line-height: 1;
+}
+.duration-chip:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+  background: #7c3aed0d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(124,58,237,0.15);
+}
+.duration-chip--active {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.3);
+}
+.duration-chip--active:hover {
+  background: linear-gradient(135deg, #6d28d9, #5b21b6);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.duration-chip:active {
+  transform: scale(0.96);
+}
+.duration-chip:focus-visible {
+  outline: 2.5px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* ── Premium Type Card ─────────────────────────────────────── */
+.premium-type-card {
+  padding: 1rem;
+  border-radius: var(--ip-radius-md);
+  border: 1.5px solid var(--ip-border);
+  background: var(--ip-surface);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.premium-type-card:hover {
+  border-color: var(--ip-brand-muted);
+  box-shadow: var(--ip-shadow-md);
+  transform: translateY(-2px);
+}
+.premium-type-card--active {
+  border-color: var(--ip-brand);
+  background: var(--ip-brand-light);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1), var(--ip-shadow-sm);
+}
+.premium-type-card--active:hover {
+  border-color: var(--ip-brand-hover);
+  transform: translateY(-1px);
+}
+.premium-type-card:focus-visible {
+  outline: 2.5px solid var(--ip-brand);
+  outline-offset: 2px;
+}
+.premium-type-card:active {
+  transform: scale(0.98);
+}
+.premium-type-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ip-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* ── Coverage Preview Mini-cards ───────────────────────────── */
+.coverage-preview-card {
+  position: relative;
+  border-radius: var(--ip-radius-md);
+  border: 1.5px solid var(--ip-success-border);
+  background: var(--ip-success-bg);
+  padding: 0.65rem 0.75rem;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.coverage-preview-card:hover {
+  box-shadow: var(--ip-shadow-sm);
+  transform: translateY(-1px);
+}
+.coverage-preview-card__order {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ip-success);
+  background: var(--ip-success-subtle);
+  border-radius: var(--ip-radius-pill);
+  padding: 1px 6px;
+}
+.coverage-preview-card__amount {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--ip-success);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  padding-right: 1.5rem;
+}
+.coverage-preview-card__label {
+  font-size: 0.7rem;
+  color: var(--ip-text-muted);
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+/* ── Dark mode Create Plan ─────────────────────────────────── */
+[data-theme="dark"] .duration-chip {
+  background: var(--ip-surface);
+  border-color: var(--ip-border);
+  color: var(--ip-text-secondary);
+}
+[data-theme="dark"] .premium-type-card {
+  background: var(--ip-surface);
+  border-color: var(--ip-border);
+}
+[data-theme="dark"] .premium-type-card--active {
+  background: rgba(37,99,235,0.1);
+}
+[data-theme="dark"] .coverage-preview-card {
+  background: rgba(22,163,74,0.07);
+  border-color: rgba(22,163,74,0.2);
+}
+
+/* ── Keyboard Accessibility (a11y) ─────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--ip-brand, #2563eb) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2) !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.duration-chip:focus-visible,
+.master-glass-card:focus-visible,
+.inner-form-card:focus-visible {
+  outline: 2px solid var(--ip-brand, #2563eb) !important;
+  outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   ENTERPRISE BUTTON SYSTEM
+   ========================================================================== */
+
+.ip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  border-radius: var(--ip-radius-md, 8px);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ip-btn:disabled,
+.ip-btn.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ip-btn:focus-visible {
+  outline: 2px solid var(--ip-brand);
+  outline-offset: 2px;
+}
+
+/* Sizing */
+.ip-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
+.ip-btn-md { padding: 0.5rem 1rem; font-size: 0.95rem; }
+.ip-btn-lg { padding: 0.75rem 1.5rem; font-size: 1.05rem; border-radius: var(--ip-radius-lg); }
+
+/* Primary Variant */
+.ip-btn-primary {
+  background-color: var(--ip-brand);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+}
+.ip-btn-primary:hover:not(:disabled) {
+  background-color: var(--ip-brand-hover, #4338ca);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
+}
+.ip-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Secondary (Outline) Variant */
+.ip-btn-secondary {
+  background-color: transparent;
+  border-color: var(--ip-border);
+  color: var(--ip-text-primary);
+}
+.ip-btn-secondary:hover:not(:disabled) {
+  background-color: var(--ip-surface-raised, rgba(0,0,0,0.05));
+  border-color: var(--ip-border-focus);
+}
+
+/* Ghost Variant */
+.ip-btn-ghost {
+  background-color: transparent;
+  color: var(--ip-text-secondary);
+}
+.ip-btn-ghost:hover:not(:disabled) {
+  background-color: var(--ip-surface-raised, rgba(0,0,0,0.05));
+  color: var(--ip-text-primary);
+}
+
+/* Danger Variant */
+.ip-btn-danger {
+  background-color: transparent;
+  border-color: var(--ip-danger, #ef4444);
+  color: var(--ip-danger, #ef4444);
+}
+.ip-btn-danger:hover:not(:disabled) {
+  background-color: var(--ip-danger, #ef4444);
+  color: #fff;
+}
+
+/* Success Variant */
+.ip-btn-success {
+  background-color: var(--ip-success, #22c55e);
+  color: #fff;
+}
+.ip-btn-success:hover:not(:disabled) {
+  background-color: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(34, 197, 94, 0.25);
+}
+
+/* Warning Variant */
+.ip-btn-warning {
+  background-color: var(--ip-warning, #f59e0b);
+  color: #fff;
+}
+.ip-btn-warning:hover:not(:disabled) {
+  background-color: #d97706;
+}
+
+/* Dark Mode Overrides */
+[data-theme='dark'] .ip-btn-secondary:hover:not(:disabled),
+[data-theme='dark'] .ip-btn-ghost:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Icon Button Base */
+.ip-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ip-radius-md, 8px);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--ip-text-secondary);
+  padding: 0.35rem;
+  line-height: 1;
+}
+
+.ip-icon-btn:hover:not(:disabled) {
+  background-color: var(--ip-surface-raised, rgba(0,0,0,0.05));
+  color: var(--ip-text-primary);
+}
+
+[data-theme='dark'] .ip-icon-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+}

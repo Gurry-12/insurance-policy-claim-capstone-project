@@ -1,4 +1,4 @@
-﻿const getPageNumbers = (currentPage, totalPages) => {
+const getPageNumbers = (currentPage, totalPages) => {
   const delta = 2;
   const pages = [];
 
