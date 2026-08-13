@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { notify } from "../../utils/notificationService";
 import { resendOtpApi } from "../../services/authService";
@@ -54,10 +54,10 @@ const ResendOtp = ({ email = '', triggerButton = true, isOpenProp, onClose, onSu
     try {
       setLoading(true);
 
-      const res = await resendOtpApi(
-        formData.email.trim(),
-        "+91" + formData.phone.trim()
-      );
+      const res = await resendOtpApi({
+        email: formData.email.trim(),
+        phone: "+91" + formData.phone.trim()
+      });
 
       if (res?.success) {
         notify.success(res, "New verification codes sent!");

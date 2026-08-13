@@ -53,6 +53,7 @@ const EditPlanPage = () => {
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [coverageOptions, setCoverageOptions] = useState([]);
 
   const [form, setForm] = useState({
@@ -121,12 +122,13 @@ const EditPlanPage = () => {
     if (!form.planName || form.planName.trim().length < 2) return false;
     if (!form.productId) return false;
     if (!form.durations || form.durations.length === 0) return false;
-    if (!form.termsAndConditions || !form.termsAndConditions.trim()) return false;
+    if (!form.termsAndConditions || form.termsAndConditions.trim().length < 15) return false;
     return true;
   }, [form]);
 
   const handleSubmit = async () => {
     setFormError('');
+    setSubmitAttempted(true);
     if (!form.planName.trim()) {
       const msg = 'Plan name is required';
       setFormError(msg); return notify.error(msg);
@@ -139,8 +141,8 @@ const EditPlanPage = () => {
       const msg = 'Select at least one duration';
       setFormError(msg); return notify.error(msg);
     }
-    if (!form.termsAndConditions.trim()) {
-      const msg = 'Terms & conditions are required';
+    if (form.termsAndConditions.trim().length < 15) {
+      const msg = 'Terms & conditions must be at least 15 characters';
       setFormError(msg); return notify.error(msg);
     }
 
@@ -216,13 +218,13 @@ const EditPlanPage = () => {
                 <label style={labelStyle}>Plan Name *</label>
                 <input
                   type="text"
-                  className={`form-control ${!form.planName.trim() ? 'is-invalid' : ''}`}
+                  className={`form-control ${(submitAttempted || form.planName.trim().length > 0) && !form.planName.trim() ? 'is-invalid' : ''}`}
                   style={inputStyle}
                   value={form.planName}
                   onChange={(e) => setForm((f) => ({ ...f, planName: e.target.value }))}
                   placeholder="e.g. Health Guard Platinum"
                 />
-                {!form.planName.trim() && (
+                {(submitAttempted || form.planName.trim().length > 0) && !form.planName.trim() && (
                   <div className="text-danger small mt-1">Plan name is required (min 2 chars)</div>
                 )}
               </div>
@@ -248,7 +250,7 @@ const EditPlanPage = () => {
                     };
                   })}
                   placeholder="Select product..."
-                  error={!form.productId ? 'Please select an insurance product' : ''}
+                  error={submitAttempted && !form.productId ? 'Please select an insurance product' : ''}
                 />
               </div>
             </div>
@@ -308,10 +310,10 @@ const EditPlanPage = () => {
                   icon: 'Calendar'
                 }))}
                 placeholder="Select or type custom (e.g. 12)..."
-                error={form.durations.length === 0 ? 'Select at least one duration' : ''}
+                error={submitAttempted && form.durations.length === 0 ? 'Select at least one duration' : ''}
               />
             </div>
-            {form.durations.length === 0 && (
+            {submitAttempted && form.durations.length === 0 && (
               <div className="text-danger small mt-2">
                 <i className="bi bi-exclamation-circle me-1" />
                 Select at least one duration
@@ -335,19 +337,34 @@ const EditPlanPage = () => {
               Terms & Conditions *
             </div>
             <textarea
-              className={`form-control ${!form.termsAndConditions.trim() ? 'is-invalid' : ''}`}
+              className={`form-control ${
+                (submitAttempted || form.termsAndConditions.length > 0) &&
+                form.termsAndConditions.trim().length < 15
+                  ? 'is-invalid'
+                  : form.termsAndConditions.trim().length >= 15
+                  ? 'is-valid'
+                  : ''
+              }`}
               style={{ ...inputStyle, resize: 'vertical' }}
               rows={4}
               value={form.termsAndConditions}
               onChange={(e) => setForm((f) => ({ ...f, termsAndConditions: e.target.value }))}
               placeholder="Describe coverage terms, rules, and conditions..."
             />
-            {!form.termsAndConditions.trim() && (
-              <div className="text-danger small mt-1">
-                <i className="bi bi-exclamation-circle me-1" />
-                Terms & conditions are required
-              </div>
-            )}
+            <div className="d-flex justify-content-between mt-1">
+              {(submitAttempted || form.termsAndConditions.length > 0) &&
+                form.termsAndConditions.trim().length < 15 && (
+                  <div className="text-danger small">
+                    <i className="bi bi-exclamation-circle me-1" />
+                    {form.termsAndConditions.trim().length === 0
+                      ? 'Terms & conditions are required'
+                      : `At least 15 characters required (${15 - form.termsAndConditions.trim().length} more needed)`}
+                  </div>
+                )}
+              <span className="ms-auto small" style={{ color: 'var(--ip-text-muted)', fontSize: '0.7rem' }}>
+                {form.termsAndConditions.length} / min 15 characters
+              </span>
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import PageHeader from "../../../components/common/PageHeader";
 import { notify } from "../../../utils/notificationService";
@@ -21,8 +21,23 @@ const StaffRecordPaymentPage = () => {
     paymentStatus: "SUCCESS",
   });
 
-  const [errors, setErrors] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
   const [policyDetails, setPolicyDetails] = useState(null);
+
+  const validate = () => {
+    const errs = {};
+    if (!formData.policyId) {
+      errs.policyId = "Policy is required.";
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      errs.amount = "Amount must be greater than zero.";
+    }
+    return errs;
+  };
+
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
 
   useEffect(() => {
     if (policyId) {
@@ -42,29 +57,20 @@ const StaffRecordPaymentPage = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    if (serverErrors[e.target.name]) {
+      setServerErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
 
-    setLoading(true);
-
-    const errs = {};
-    if (!formData.policyId) {
-      errs.policyId = "Policy is required.";
-    }
-    if (!formData.amount || Number(formData.amount) <= 0) {
-      errs.amount = "Amount must be greater than zero.";
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      setLoading(false);
+    if (Object.keys(clientErrors).length > 0) {
       return;
     }
+    
+    setLoading(true);
 
     try {
       const res = await recordPayment(formData);
@@ -73,7 +79,7 @@ const StaffRecordPaymentPage = () => {
       setTimeout(() => navigate("/staff/payments"), 2000);
     } catch (err) {
       if (err.fieldErrors) {
-        setErrors(err.fieldErrors);
+        setServerErrors(err.fieldErrors);
         notify.error("Please correct the highlighted fields.");
       } else {
         notify.error(err);
@@ -118,7 +124,7 @@ const StaffRecordPaymentPage = () => {
                     onChange={handleChange}
                     required={true}
                     isDisabled={true}
-                    error={errors.policyId}
+                    error={(submitAttempted) ? errors.policyId : ""}
                     options={
                       policyDetails
                         ? [
@@ -141,13 +147,13 @@ const StaffRecordPaymentPage = () => {
                   <input
                     type="number"
                     name="amount"
-                    className={`form-control form-control-lg ${errors.amount ? "is-invalid" : ""}`}
+                    className={`form-control form-control-lg ${(errors.amount && (submitAttempted || formData.amount)) ? "is-invalid" : ""}`}
                     value={formData.amount}
                     placeholder="Amount auto-filled"
                     required
                     readOnly
                   />
-                  {errors.amount && (
+                  {errors.amount && (submitAttempted || formData.amount) && (
                     <div className="invalid-feedback">{errors.amount}</div>
                   )}
                 </div>

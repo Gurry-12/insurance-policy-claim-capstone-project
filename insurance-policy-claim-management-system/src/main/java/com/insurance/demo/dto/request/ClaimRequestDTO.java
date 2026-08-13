@@ -8,6 +8,7 @@ import com.insurance.demo.util.MessageConstants;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,7 @@ public class ClaimRequestDTO {
 	private BigDecimal claimAmount;
 
 	@NotBlank(message = MessageConstants.Validation.CLAIM_REASON_REQUIRED)
+	@Size(max = 2000, message = "Claim reason cannot exceed 2000 characters")
 	private String claimReason;
 
 	@NotNull(message = MessageConstants.Validation.INCIDENT_DATE_REQUIRED)

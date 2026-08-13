@@ -289,6 +289,7 @@ const CreatePlanPage = () => {
   const navigate = useNavigate();
   const [loading,    setLoading]    = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [error,      setError]      = useState('');
   const [products,   setProducts]   = useState([]);
 
@@ -333,10 +334,14 @@ const CreatePlanPage = () => {
   }, [form.productId, products]);
 
   /* coverage validation helper */
-  const getCoverageError = (opt, index) => {
+  const getCoverageError = (opt, index, isSubmitting) => {
+    if (opt.amount === '' || opt.amount === null || opt.amount === undefined) {
+      return isSubmitting ? 'Coverage amount is required' : '';
+    }
     const amt = Number(opt.amount);
-    if (!amt) return '';
+    if (isNaN(amt)) return 'Invalid amount';
     if (amt < 50000) return 'Coverage amount must be at least ₹50,000';
+    if (amt > 50000000) return 'Coverage amount cannot exceed ₹5,00,00,000';
     if (amt % 50000 !== 0) return 'Coverage amount must be in multiples of ₹50,000';
     
     // Check for ascending / duplicate order
@@ -415,7 +420,7 @@ const CreatePlanPage = () => {
     if (form.baseRiskRate === '' || Number(form.baseRiskRate) < 0 || Number(form.baseRiskRate) > 1) return false;
     if (form.processingFee === '' || Number(form.processingFee) < 0)   return false;
     if (form.gst === '' || Number(form.gst) < 0)                       return false;
-    if (!form.termsAndConditions || !form.termsAndConditions.trim())   return false;
+    if (!form.termsAndConditions || form.termsAndConditions.trim().length < 15) return false;
     return true;
   }, [form]);
 
@@ -440,7 +445,7 @@ const CreatePlanPage = () => {
       },
       {
         label:    'Terms',
-        complete: form.termsAndConditions.trim().length > 0,
+        complete: form.termsAndConditions.trim().length >= 15,
       },
     ];
   }, [form.planName, form.productId, form.coverageOptions, form.durations, form.termsAndConditions]);
@@ -448,6 +453,7 @@ const CreatePlanPage = () => {
   /* submit */
   const handleSubmit = async () => {
     setError('');
+    setSubmitAttempted(true);
     if (!form.planName.trim()) { const m = 'Plan name is required'; setError(m); return notify.error(m); }
     if (!form.productId)       { const m = 'Select a product';      setError(m); return notify.error(m); }
     if (form.durations.length === 0) { const m = 'Select at least one duration'; setError(m); return notify.error(m); }
@@ -460,8 +466,8 @@ const CreatePlanPage = () => {
       if (error || !opt.amount) { const m = error || `Invalid amount for ${opt.label}`; setError(m); return notify.error(m); }
     }
 
-    if (!form.termsAndConditions.trim()) {
-      const m = 'Terms & conditions are required'; setError(m); return notify.error(m);
+    if (form.termsAndConditions.trim().length < 15) {
+      const m = 'Terms & conditions must be at least 15 characters'; setError(m); return notify.error(m);
     }
     setSubmitting(true);
     try {
@@ -502,7 +508,9 @@ const CreatePlanPage = () => {
   if (loading) return <LoadingSpinner text="Loading products..." />;
 
   const selectedProduct = products.find((p) => (p.productId || p.id) == form.productId);
+  const MIN_TERMS_LENGTH = 15;
   const termsLen        = form.termsAndConditions.length;
+  const termsValid      = form.termsAndConditions.trim().length >= MIN_TERMS_LENGTH;
 
   /* ─── RENDER ─────────────────────────────────────────────── */
   return (
@@ -648,7 +656,7 @@ const CreatePlanPage = () => {
                       };
                     })}
                     placeholder="Search insurance product…"
-                    error={!form.productId && submitting ? 'Please select an insurance product' : ''}
+                    error={submitAttempted && !form.productId ? 'Please select an insurance product' : ''}
                   />
                 </div>
                 {/* product badge */}
@@ -680,7 +688,7 @@ const CreatePlanPage = () => {
                     </small>
                   </div>
                 )}
-                {!form.productId && (
+                {submitAttempted && !form.productId && (
                   <div className="text-danger small mt-1">
                     <i className="bi bi-exclamation-circle me-1" />Select an insurance product
                   </div>
@@ -692,7 +700,7 @@ const CreatePlanPage = () => {
                 <label style={labelStyle}>Plan Name *</label>
                 <input
                   type="text"
-                  className={`form-control ${form.planName.trim().length > 0 && form.planName.trim().length < 2 ? 'is-invalid' : ''}`}
+                  className={`form-control ${(submitAttempted || form.planName.trim().length > 0) && (!form.planName.trim() || form.planName.trim().length < 2) ? 'is-invalid' : ''}`}
                   style={inputStyle}
                   value={form.planName}
                   onChange={(e) => setForm((f) => ({ ...f, planName: e.target.value }))}
@@ -700,7 +708,7 @@ const CreatePlanPage = () => {
                   maxLength={100}
                 />
                 <div className="d-flex justify-content-between mt-1">
-                  {form.planName.trim().length > 0 && form.planName.trim().length < 2 ? (
+                  {(submitAttempted || form.planName.trim().length > 0) && (!form.planName.trim() || form.planName.trim().length < 2) ? (
                     <span className="text-danger small">
                       <i className="bi bi-exclamation-circle me-1" />Minimum 2 characters
                     </span>
@@ -735,8 +743,8 @@ const CreatePlanPage = () => {
 
             <div className="d-flex flex-column gap-3 mb-4">
               {form.coverageOptions.map((opt, index) => {
-                const errorMsg = getCoverageError(opt, index);
-                const hasLabelError = !opt.label.trim();
+                const errorMsg = getCoverageError(opt, index, submitAttempted);
+                const hasLabelError = (submitAttempted || opt.label.trim().length > 0) && !opt.label.trim();
                 return (
                   <div key={opt.id} className="p-3" style={{ 
                     border: '1px solid var(--ip-border)', 
@@ -754,7 +762,7 @@ const CreatePlanPage = () => {
                           type="text"
                           className={`form-control ${hasLabelError ? 'is-invalid' : ''}`}
                           style={{...inputStyle, padding: '0.5rem 0.75rem', fontSize: '0.82rem'}}
-                          placeholder="e.g. Silver Cover"
+                          placeholder={`e.g. ${['Base Cover', 'Silver Cover', 'Gold Cover', 'Platinum Cover', 'Diamond Cover'][index % 5]}`}
                           value={opt.label}
                           onChange={(e) => handleCoverageChange(index, 'label', e.target.value)}
                         />
@@ -796,7 +804,7 @@ const CreatePlanPage = () => {
                         {errorMsg || 'Label cannot be empty.'}
                       </div>
                     )}
-                    {(!errorMsg && opt.amount >= 50000) && (
+                    {(!errorMsg && opt.amount >= 50000 && opt.label.trim().length > 0) && (
                       <div className="mt-2 text-success" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
                         <i className="bi bi-check-circle me-1" />
                         Valid (₹{Number(opt.amount).toLocaleString('en-IN')})
@@ -961,7 +969,13 @@ const CreatePlanPage = () => {
             accentColor="var(--ip-info)"
           >
             <textarea
-              className={`form-control ${form.termsAndConditions.trim().length === 0 ? 'is-invalid' : ''}`}
+              className={`form-control ${
+                (submitAttempted || termsLen > 0) && !termsValid
+                  ? 'is-invalid'
+                  : termsValid
+                  ? 'is-valid'
+                  : ''
+              }`}
               style={{
                 ...inputStyle,
                 resize: 'vertical',
@@ -974,17 +988,22 @@ const CreatePlanPage = () => {
               placeholder="Describe coverage terms, exclusions, claims process and policy obligations…"
             />
             <div className="d-flex justify-content-between mt-1">
-              {form.termsAndConditions.trim().length === 0 ? (
+              {(submitAttempted || termsLen > 0) && !termsValid ? (
                 <span className="text-danger small">
-                  <i className="bi bi-exclamation-circle me-1" />Terms & conditions are required
+                  <i className="bi bi-exclamation-circle me-1" />
+                  {form.termsAndConditions.trim().length === 0
+                    ? 'Terms & conditions are required'
+                    : `At least 15 characters required (${MIN_TERMS_LENGTH - form.termsAndConditions.trim().length} more needed)`}
                 </span>
-              ) : (
+              ) : termsValid ? (
                 <span className="small" style={{ color: 'var(--ip-success)', fontSize: '0.75rem' }}>
                   <i className="bi bi-check-circle me-1" />Terms provided
                 </span>
+              ) : (
+                <span />
               )}
               <span style={{ fontSize: '0.68rem', color: 'var(--ip-text-muted)' }}>
-                {termsLen} characters
+                {termsLen} / min 15 characters
               </span>
             </div>
           </SectionCard>
@@ -1219,10 +1238,10 @@ const CreatePlanPage = () => {
                   </div>
                   <ValidationRow ok={form.planName.trim().length >= 2} text="Plan name (min 2 chars)" />
                   <ValidationRow ok={!!form.productId}                 text="Insurance product selected" />
-                  <ValidationRow ok={form.coverageOptions.length > 0 && form.coverageOptions.every((o, i) => o.amount && o.label && !getCoverageError(o, i))} text={`Coverage options valid (${form.coverageOptions.length})`} />
+                  <ValidationRow ok={form.coverageOptions.length > 0 && form.coverageOptions.every((o, i) => o.amount && o.label.trim() && !getCoverageError(o, i, true))} text={`Coverage options valid (${form.coverageOptions.length})`} />
                   <ValidationRow ok={form.durations.length > 0}       text={`Durations selected (${form.durations.length})`} />
                   <ValidationRow ok={!!form.premiumType}               text="Premium type chosen" />
-                  <ValidationRow ok={form.termsAndConditions.trim().length > 0} text="Terms & conditions added" />
+                  <ValidationRow ok={form.termsAndConditions.trim().length >= 15} text="Terms & conditions (min 15 chars)" />
                 </div>
 
                 {/* Premium preview */}

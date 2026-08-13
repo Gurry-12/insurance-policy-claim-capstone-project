@@ -22,44 +22,27 @@ const CreateStaffPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
 
-  const [errors, setErrors] = useState({});
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    // Digits-only enforcement for phone, max 10 digits
-    if (name === 'phone') {
-      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
-      setFormData(prev => ({ ...prev, phone: digitsOnly }));
-      if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
-      return;
-    }
-
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
-    if (name === 'firstName' || name === 'lastName') {
-      if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+  const validate = () => {
     const errs = {};
-
-    if (!formData.firstName.trim()) errs.firstName = 'First Name is required.';
-    if (!formData.lastName.trim()) errs.lastName = 'Last Name is required.';
+    const nameRegex = /^[a-zA-Z\s]+$/;
     
-    if (formData.firstName.trim() && formData.lastName.trim()) {
-      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-      const nameRegex = /^[a-zA-Z\s]+$/;
-      if (!nameRegex.test(fullName)) {
-        errs.firstName = 'Only letters and spaces are allowed.';
-        errs.lastName = 'Only letters and spaces are allowed.';
-      } else if (fullName.length < 2 || fullName.length > 100) {
-        errs.firstName = 'Name should be between 2 and 100 characters combined.';
-      }
+    if (!formData.firstName.trim()) {
+      errs.firstName = 'First Name is required.';
+    } else if (!nameRegex.test(formData.firstName.trim())) {
+      errs.firstName = 'Only letters and spaces are allowed.';
+    } else if (formData.firstName.trim().length < 2 || formData.firstName.trim().length > 50) {
+      errs.firstName = 'First Name should be between 2 and 50 characters.';
+    }
+
+    if (!formData.lastName.trim()) {
+      errs.lastName = 'Last Name is required.';
+    } else if (!nameRegex.test(formData.lastName.trim())) {
+      errs.lastName = 'Only letters and spaces are allowed.';
+    } else if (formData.lastName.trim().length < 2 || formData.lastName.trim().length > 50) {
+      errs.lastName = 'Last Name should be between 2 and 50 characters.';
     }
 
     if (!formData.email.trim()) {
@@ -90,8 +73,36 @@ const CreateStaffPage = () => {
       errs.productSpeciality = 'Product Speciality is required.';
     }
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+    return errs;
+  };
+
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // Digits-only enforcement for phone, max 10 digits
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, phone: digitsOnly }));
+      if (serverErrors.phone) setServerErrors(prev => ({ ...prev, phone: '' }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (serverErrors[name]) setServerErrors(prev => ({ ...prev, [name]: '' }));
+    if (name === 'firstName' || name === 'lastName') {
+      if (serverErrors.fullName) setServerErrors(prev => ({ ...prev, fullName: '' }));
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitAttempted(true);
+    setSubmitting(true);
+    
+    if (Object.keys(clientErrors).length > 0) {
       setSubmitting(false);
       return;
     }
@@ -111,7 +122,7 @@ const CreateStaffPage = () => {
       })
       .catch((err) => {
         if (err.fieldErrors) {
-          setErrors(err.fieldErrors);
+          setServerErrors(err.fieldErrors);
           notify.error("Please correct the highlighted fields.");
         } else {
           notify.error(err);
@@ -160,7 +171,7 @@ const CreateStaffPage = () => {
                   onChange={handleChange}
                   required
                   placeholder="e.g. John"
-                  error={errors.firstName}
+                  error={(submitAttempted || formData.firstName.length > 0) ? errors.firstName : ''}
                 />
               </div>
               <div className="col-md-6">
@@ -171,7 +182,7 @@ const CreateStaffPage = () => {
                   onChange={handleChange}
                   required
                   placeholder="e.g. Doe"
-                  error={errors.lastName}
+                  error={(submitAttempted || formData.lastName.length > 0) ? errors.lastName : ''}
                 />
               </div>
             </div>
@@ -186,7 +197,7 @@ const CreateStaffPage = () => {
                   onChange={handleChange}
                   required
                   placeholder="john.doe@example.com"
-                  error={errors.email}
+                  error={(submitAttempted || formData.email.length > 0) ? errors.email : ''}
                 />
               </div>
               <div className="col-md-6">
@@ -196,9 +207,9 @@ const CreateStaffPage = () => {
                 </label>
                 <div
                   className={`d-flex align-items-center rounded overflow-hidden ${
-                    errors.phone
+                    (errors.phone && (submitAttempted || formData.phone.length > 0))
                       ? 'border border-danger'
-                      : formData.phone.length === 10
+                      : formData.phone.length === 10 && !errors.phone
                       ? 'border border-success'
                       : 'border'
                   }`}
@@ -208,7 +219,7 @@ const CreateStaffPage = () => {
                     className="px-3 py-2 fw-semibold flex-shrink-0"
                     style={{
                       borderRight: '1px solid #dee2e6',
-                      color: errors.phone ? '#dc3545' : formData.phone.length === 10 ? '#198754' : 'var(--ip-primary)',
+                      color: (errors.phone && (submitAttempted || formData.phone.length > 0)) ? '#dc3545' : formData.phone.length === 10 && !errors.phone ? '#198754' : 'var(--ip-primary)',
                       fontSize: '0.9rem',
                       background: '#f8f9fa',
                       userSelect: 'none',
@@ -243,7 +254,7 @@ const CreateStaffPage = () => {
                     {formData.phone.length}/10
                   </span>
                 </div>
-                {errors.phone && (
+                {errors.phone && (submitAttempted || formData.phone.length > 0) && (
                   <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>
                     <i className="bi bi-x-circle-fill me-1" />{errors.phone}
                   </div>
@@ -268,7 +279,7 @@ const CreateStaffPage = () => {
                       id="staff-password"
                       name="password"
                       type={showPw ? "text" : "password"}
-                      className={`form-control pristine-input${errors.password ? ' is-invalid' : ''}`}
+                      className={`form-control pristine-input${(errors.password && (submitAttempted || formData.password.length > 0)) ? ' is-invalid' : ''}`}
                       placeholder="Password"
                       value={formData.password}
                       onChange={handleChange}
@@ -285,7 +296,7 @@ const CreateStaffPage = () => {
                       <i className={`bi ${showPw ? 'bi-eye-slash' : 'bi-eye'}`} />
                     </button>
                   </div>
-                  {errors.password && (
+                  {errors.password && (submitAttempted || formData.password.length > 0) && (
                     <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>
                       <i className="bi bi-x-circle-fill" /> {errors.password}
                     </div>
@@ -300,7 +311,7 @@ const CreateStaffPage = () => {
                     onChange={handleChange}
                     required={true}
                     options={SPECIALITY_OPTIONS}
-                    error={errors.productSpeciality}
+                    error={(submitAttempted) ? errors.productSpeciality : ''}
                   />
               </div>
             </div>

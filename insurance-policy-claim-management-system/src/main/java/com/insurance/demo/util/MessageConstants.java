@@ -238,6 +238,7 @@ public final class MessageConstants {
         public static final String DURATION_REQUIRED = "Duration must be greater than zero.";
         public static final String DURATION_MAX = "Duration cannot exceed 40 years.";
         public static final String TERMS_REQUIRED = "Terms and conditions are required.";
+        public static final String TERMS_MIN_LENGTH = "Terms and conditions must be at least 15 characters.";
 
         public static final String START_DATE_REQUIRED = "Start date is required.";
         public static final String START_DATE_PAST_PRESENT = "start date can not be in future.";

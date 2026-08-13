@@ -64,9 +64,9 @@ public class ClaimDocumentServiceImpl implements ClaimDocumentService {
 				throw new BadRequestException(MessageConstants.Document.INVALID_FILE_TYPE_JPEG_PNG_PDF);
 			}
 
-			// File size validation: max 10 MB per file
-			if (file.getSize() > 10 * 1024 * 1024) {
-				throw new BadRequestException(MessageConstants.Document.EXCEEDS_SIZE_10MB);
+			// File size validation: max 5 MB per file (consistent with raiseClaim path)
+			if (file.getSize() > 5 * 1024 * 1024) {
+				throw new BadRequestException(MessageConstants.Document.EXCEEDS_SIZE_5MB);
 			}
 		}
 

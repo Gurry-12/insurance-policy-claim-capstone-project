@@ -51,24 +51,11 @@ const EditProfilePage = () => {
     loadProfile();
   }, []);
 
-  
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
 
-  const [errors, setErrors] = useState({});
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    if (errors[e.target.name]) {
-      setErrors(prev => ({ ...prev, [e.target.name]: '' }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const validate = () => {
     const errs = {};
-
     if (!formData.dateOfBirth) errs.dateOfBirth = "Date of Birth is required";
     if (!formData.address?.trim()) errs.address = "Address is required";
     if (!formData.city?.trim()) errs.city = "City is required";
@@ -84,9 +71,27 @@ const EditProfilePage = () => {
       errs.nomineeName = "Nominee Name must contain letters only.";
     }
     if (!formData.nomineeRelation) errs.nomineeRelation = "Nominee Relation is required";
+    return errs;
+  };
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    if (serverErrors[e.target.name]) {
+      setServerErrors(prev => ({ ...prev, [e.target.name]: '' }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitAttempted(true);
+
+    if (Object.keys(clientErrors).length > 0) {
       return;
     }
 
@@ -103,7 +108,7 @@ const EditProfilePage = () => {
     } catch (error) {
       console.error(error);
       if (error.fieldErrors) {
-        setErrors(error.fieldErrors);
+        setServerErrors(error.fieldErrors);
         notify.error("Please correct the highlighted fields.");
       } else {
         notify.error(error?.message || "Failed to save profile");
@@ -136,7 +141,7 @@ const EditProfilePage = () => {
                       name="dateOfBirth"
                       selectedDate={formData.dateOfBirth}
                       onChange={handleChange}
-                      error={errors.dateOfBirth}
+                      error={(submitAttempted || formData.dateOfBirth) ? errors.dateOfBirth : ''}
                       required={true}
                       maxDate={new Date()}
                     />
@@ -151,14 +156,14 @@ const EditProfilePage = () => {
                     <label className="form-label fw-medium">Address <span className="text-danger">*</span></label>
                     <textarea
                       name="address"
-                      className={`form-control ${errors.address ? 'is-invalid' : ''}`}
+                      className={`form-control ${(errors.address && (submitAttempted || formData.address.length > 0)) ? 'is-invalid' : ''}`}
                       value={formData.address}
                       onChange={handleChange}
                       placeholder="Street address, P.O. box, etc."
                       rows="3"
                       required
                     />
-                    {errors.address && <div className="invalid-feedback">{errors.address}</div>}
+                    {errors.address && (submitAttempted || formData.address.length > 0) && <div className="invalid-feedback">{errors.address}</div>}
                   </div>
 
                   <div className="col-md-4">
@@ -166,13 +171,13 @@ const EditProfilePage = () => {
                     <input
                       type="text"
                       name="city"
-                      className={`form-control ${errors.city ? 'is-invalid' : ''}`}
+                      className={`form-control ${(errors.city && (submitAttempted || formData.city.length > 0)) ? 'is-invalid' : ''}`}
                       value={formData.city}
                       onChange={handleChange}
                       placeholder="City"
                       required
                     />
-                    {errors.city && <div className="invalid-feedback">{errors.city}</div>}
+                    {errors.city && (submitAttempted || formData.city.length > 0) && <div className="invalid-feedback">{errors.city}</div>}
                   </div>
 
                   <div className="col-md-4">
@@ -180,13 +185,13 @@ const EditProfilePage = () => {
                     <input
                       type="text"
                       name="state"
-                      className={`form-control ${errors.state ? 'is-invalid' : ''}`}
+                      className={`form-control ${(errors.state && (submitAttempted || formData.state.length > 0)) ? 'is-invalid' : ''}`}
                       value={formData.state}
                       onChange={handleChange}
                       placeholder="State"
                       required
                     />
-                    {errors.state && <div className="invalid-feedback">{errors.state}</div>}
+                    {errors.state && (submitAttempted || formData.state.length > 0) && <div className="invalid-feedback">{errors.state}</div>}
                   </div>
 
                   <div className="col-md-4">
@@ -194,13 +199,13 @@ const EditProfilePage = () => {
                     <input
                       type="text"
                       name="pinCode"
-                      className={`form-control ${errors.pinCode ? 'is-invalid' : ''}`}
+                      className={`form-control ${(errors.pinCode && (submitAttempted || formData.pinCode.length > 0)) ? 'is-invalid' : ''}`}
                       value={formData.pinCode}
                       onChange={handleChange}
                       placeholder="Postal code"
                       required
                     />
-                    {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
+                    {errors.pinCode && (submitAttempted || formData.pinCode.length > 0) && <div className="invalid-feedback">{errors.pinCode}</div>}
                   </div>
 
                   <div className="col-12">
@@ -213,13 +218,13 @@ const EditProfilePage = () => {
                     <input
                       type="text"
                       name="nomineeName"
-                      className={`form-control ${errors.nomineeName ? 'is-invalid' : ''}`}
+                      className={`form-control ${(errors.nomineeName && (submitAttempted || formData.nomineeName.length > 0)) ? 'is-invalid' : ''}`}
                       value={formData.nomineeName}
                       onChange={handleChange}
                       placeholder="Full name of nominee"
                       required
                     />
-                    {errors.nomineeName && <div className="invalid-feedback">{errors.nomineeName}</div>}
+                    {errors.nomineeName && (submitAttempted || formData.nomineeName.length > 0) && <div className="invalid-feedback">{errors.nomineeName}</div>}
                   </div>
 
                   <div className="col-md-6">
@@ -228,7 +233,7 @@ const EditProfilePage = () => {
                       name="nomineeRelation"
                       value={formData.nomineeRelation}
                       onChange={handleChange}
-                      error={errors.nomineeRelation}
+                      error={(submitAttempted) ? errors.nomineeRelation : ''}
                       options={NOMINEE_RELATIONS}
                       required={true}
                       placeholder="Select Relation"

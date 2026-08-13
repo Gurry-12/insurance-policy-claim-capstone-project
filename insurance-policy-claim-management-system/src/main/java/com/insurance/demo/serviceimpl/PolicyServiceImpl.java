@@ -129,6 +129,16 @@ public class PolicyServiceImpl implements PolicyService {
 				
 		validateQuoteForPurchase(quote, customer.getId());
 
+		// Start date can be today or up to 90 days in the future (for forward-dated issuance).
+		// It must not be more than 90 days ahead to prevent data-entry errors.
+		java.time.LocalDate today = java.time.LocalDate.now();
+		if (requestDTO.getStartDate().isBefore(today.minusDays(1))) {
+			throw new BadRequestException("Policy start date cannot be more than 1 day in the past.");
+		}
+		if (requestDTO.getStartDate().isAfter(today.plusDays(90))) {
+			throw new BadRequestException("Policy start date cannot be more than 90 days in the future.");
+		}
+
 		PolicyPlan plan = quote.getPolicyPlan();
 		ProductType productType = plan.getInsuranceProduct().getProductType();
 

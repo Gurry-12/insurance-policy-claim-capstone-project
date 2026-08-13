@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { notify } from "../../../utils/notificationService";
 import { recordPayment } from "../../../services/paymentService";
@@ -49,7 +49,22 @@ const RecordPaymentPage = () => {
     fetchPolicies();
   }, [policyId]);
 
-  const [errors, setErrors] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!formData.policyId) {
+      errs.policyId = "Policy is required";
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      errs.amount = "Amount must be greater than zero";
+    }
+    return errs;
+  };
+
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,24 +81,16 @@ const RecordPaymentPage = () => {
         [name]: value,
       }));
     }
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (serverErrors[name]) {
+      setServerErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = {};
+    setSubmitAttempted(true);
 
-    if (!formData.policyId) {
-      errs.policyId = "Policy is required";
-    }
-    if (!formData.amount || Number(formData.amount) <= 0) {
-      errs.amount = "Amount must be greater than zero";
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+    if (Object.keys(clientErrors).length > 0) {
       return;
     }
 
@@ -100,7 +107,7 @@ const RecordPaymentPage = () => {
     } catch (error) {
       console.error(error);
       if (error.fieldErrors) {
-        setErrors(error.fieldErrors);
+        setServerErrors(error.fieldErrors);
         notify.error("Please correct the highlighted fields.");
       } else {
         notify.error(error);
@@ -148,7 +155,7 @@ const RecordPaymentPage = () => {
                       onChange={handleChange}
                       required={true}
                       isDisabled={!!policyId}
-                      error={errors.policyId}
+                      error={(submitAttempted) ? errors.policyId : ''}
                       options={policies.map(policy => ({
                         value: policy.id || policy.policyId,
                         label: policy.planName ? `${policy.planName} (No: ${policy.policyNumber})` : `Policy No: ${policy.policyNumber}`
@@ -156,7 +163,7 @@ const RecordPaymentPage = () => {
                       placeholder="-- Select a Policy --"
                     />
                   )}
-                  {errors.policyId && <div className="invalid-feedback d-block">{errors.policyId}</div>}
+                  {errors.policyId && submitAttempted && <div className="invalid-feedback d-block">{errors.policyId}</div>}
                 </div>
 
                 <div className="mb-4">
@@ -164,14 +171,14 @@ const RecordPaymentPage = () => {
                   <input
                     type="number"
                     name="amount"
-                    className={`form-control form-control-lg ${errors.amount ? 'is-invalid' : ''}`}
+                    className={`form-control form-control-lg ${(errors.amount && (submitAttempted || formData.amount)) ? 'is-invalid' : ''}`}
                     value={formData.amount}
                     required
                     min="1"
                     placeholder="Amount auto-filled"
                     readOnly
                   />
-                  {errors.amount && <div className="invalid-feedback">{errors.amount}</div>}
+                  {errors.amount && (submitAttempted || formData.amount) && <div className="invalid-feedback">{errors.amount}</div>}
                 </div>
 
                 <div className="mb-4">

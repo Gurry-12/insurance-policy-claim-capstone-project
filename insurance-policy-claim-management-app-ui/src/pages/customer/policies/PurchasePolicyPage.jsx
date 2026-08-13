@@ -38,10 +38,21 @@ const PurchasePolicyPage = () => {
   const [quoteData, setQuoteData] = useState(null);
   const [quoteExpired, setQuoteExpired] = useState(false);
 
-  // Purchase state
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!acceptedTerms) {
+      errs.acceptedTerms = "You must accept the terms and declarations.";
+    }
+    return errs;
+  };
+
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -100,9 +111,10 @@ const PurchasePolicyPage = () => {
 
   const handlePurchase = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     setGlobalError('');
-    if (!acceptedTerms) {
-      setErrors({ acceptedTerms: "You must accept the terms and declarations." });
+    
+    if (Object.keys(clientErrors).length > 0) {
       return;
     }
     if (quoteExpired) {
@@ -462,13 +474,13 @@ const PurchasePolicyPage = () => {
                     <div className="mb-4 form-check">
                       <input
                         type="checkbox"
-                        className={`form-check-input ${errors.acceptedTerms ? "is-invalid" : ""}`}
+                        className={`form-check-input ${(errors.acceptedTerms && submitAttempted) ? "is-invalid" : ""}`}
                         id="termsCheck"
                         checked={acceptedTerms}
                         disabled={quoteExpired}
                         onChange={(e) => {
                           setAcceptedTerms(e.target.checked);
-                          if (errors.acceptedTerms) setErrors({});
+                          if (serverErrors.acceptedTerms) setServerErrors({});
                         }}
                       />
                       <label
@@ -480,7 +492,7 @@ const PurchasePolicyPage = () => {
                         my policy coverage will begin starting today. Note:
                         Cancellation policies apply as per standard terms.
                       </label>
-                      {errors.acceptedTerms && (
+                      {errors.acceptedTerms && submitAttempted && (
                         <div className="input-error-tip text-danger mt-1">
                           <i className="bi bi-x-circle-fill" />{" "}
                           {errors.acceptedTerms}

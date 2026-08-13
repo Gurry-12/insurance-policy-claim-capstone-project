@@ -104,8 +104,8 @@ const StaffClaimDetailPage = () => {
 
   const handleUnderReview = async () => {
     try {
-      await assignClaim(id);
       await markUnderReview(id);
+      await assignClaim(id);
       setClaim({
         ...claim,
         claimStatus: "UNDER_REVIEW",

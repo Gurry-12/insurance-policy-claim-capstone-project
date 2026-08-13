@@ -60,7 +60,7 @@ public class Claim {
 	private BigDecimal claimAmount;
 
 	@NotBlank(message = "Claim reason is required")
-	@Column(nullable = false)
+	@Column(name = "claim_reason", nullable = false, columnDefinition = "TEXT")
 	private String claimReason;
 
 	@NotNull(message = "Incident date is required")

@@ -8,6 +8,7 @@ import com.insurance.demo.util.MessageConstants;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,6 +34,7 @@ public class PlanRequestDTO {
 
 
 	@NotBlank(message = MessageConstants.Validation.TERMS_REQUIRED)
+	@Size(min = 15, message = MessageConstants.Validation.TERMS_MIN_LENGTH)
 	private String termsAndConditions;
 
 	@NotNull(message = MessageConstants.Validation.ACTIVE_STATUS_REQUIRED)

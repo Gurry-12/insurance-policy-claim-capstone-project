@@ -141,13 +141,6 @@ public class PremiumPaymentServiceImpl implements PremiumPaymentService {
 			throw new DuplicateResourceException(MessageConstants.Payment.DUPLICATE_REFERENCE);
 		}
 
-		// Fix: compare against total required premium (premiumAmount * duration), not coverage amount
-		BigDecimal totalRequiredPremium = policy.getCalculatedPremium()
-				.multiply(BigDecimal.valueOf(policy.getPolicyDuration()));
-		if (policy.getTotalPremiumPaid().add(dto.getAmount()).compareTo(totalRequiredPremium) > 0) {
-			throw new BadRequestException(MessageConstants.Payment.PREMIUM_LIMIT_EXCEEDED);
-		}
-
 		PremiumPayment payment = new PremiumPayment();
 		payment.setAmount(dto.getAmount());
 		payment.setPaymentMode(dto.getPaymentMode());
@@ -156,11 +149,17 @@ public class PremiumPaymentServiceImpl implements PremiumPaymentService {
 		payment.setPaymentDate(LocalDateTime.now());
 
 		if (PaymentStatus.SUCCESS.equals(dto.getPaymentStatus())) {
+			// Overflow guard applies only to successful payments
+			BigDecimal totalRequiredPremium = policy.getCalculatedPremium()
+					.multiply(BigDecimal.valueOf(policy.getPolicyDuration()));
+			if (policy.getTotalPremiumPaid().add(dto.getAmount()).compareTo(totalRequiredPremium) > 0) {
+				throw new BadRequestException(MessageConstants.Payment.PREMIUM_LIMIT_EXCEEDED);
+			}
 			payment.setPaymentStatus(PaymentStatus.SUCCESS);
-		}
-
-		if (PaymentStatus.FAILED.equals(dto.getPaymentStatus())) {
+		} else if (PaymentStatus.FAILED.equals(dto.getPaymentStatus())) {
 			payment.setPaymentStatus(PaymentStatus.FAILED);
+		} else {
+			throw new BadRequestException("Invalid payment status. Accepted values: SUCCESS, FAILED.");
 		}
 
 		PremiumPayment savedPayment = paymentRepository.save(payment);

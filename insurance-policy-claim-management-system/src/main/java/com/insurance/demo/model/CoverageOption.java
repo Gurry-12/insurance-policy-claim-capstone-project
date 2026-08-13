@@ -3,6 +3,7 @@ package com.insurance.demo.model;
 import java.math.BigDecimal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Check;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -22,7 +24,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "coverage_options", indexes = { @Index(name = "idx_coverage_plan_id", columnList = "plan_id") })
+@Table(name = "coverage_options",
+		indexes = { @Index(name = "idx_coverage_plan_id", columnList = "plan_id") },
+		uniqueConstraints = { @UniqueConstraint(name = "uk_coverage_amount_plan", columnNames = { "coverage_amount", "plan_id" }) })
+@Check(constraints = "coverage_amount % 50000 = 0")
 @Getter
 @Setter
 @NoArgsConstructor

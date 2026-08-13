@@ -44,56 +44,48 @@ const RaiseClaimPage = () => {
     fetchPolicies();
   }, []);
 
-  useEffect(() => {
-    if (!selectedPolicyDetails) return;
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
 
-    // eslint-disable-next-line react-hooks/immutability
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      let changed = false;
-
-      if (claim.claimAmount) {
-        const amount = Number(claim.claimAmount);
+  const validate = () => {
+    const errs = {};
+    if (!claim.policyId) errs.policyId = 'Policy is required';
+    
+    if (!claim.claimAmount) {
+      errs.claimAmount = 'Claim amount is required';
+    } else {
+      const amount = Number(claim.claimAmount);
+      if (amount <= 0) {
+        errs.claimAmount = 'Claim amount must be greater than 0';
+      } else if (selectedPolicyDetails) {
         const remaining = selectedPolicyDetails.remainingClaimAmount ?? selectedPolicyDetails.selectedCoverage ?? 0;
-        if (amount <= 0) {
-          if (newErrors.claimAmount !== 'Claim amount must be greater than 0') {
-            newErrors.claimAmount = 'Claim amount must be greater than 0';
-            changed = true;
-          }
-        } else if (amount > remaining) {
-          const msg = `Cannot exceed remaining coverage (${formatINR(remaining)})`;
-          if (newErrors.claimAmount !== msg) {
-            newErrors.claimAmount = msg;
-            changed = true;
-          }
-        } else if (newErrors.claimAmount) {
-          delete newErrors.claimAmount;
-          changed = true;
+        if (amount > remaining) {
+          errs.claimAmount = `Cannot exceed remaining coverage (${formatINR(remaining)})`;
         }
       }
-
-      if (claim.incidentDate && selectedPolicyDetails.startDate) {
-        const incDate = new Date(claim.incidentDate);
-        const startDate = new Date(selectedPolicyDetails.startDate);
-        incDate.setHours(0,0,0,0);
-        startDate.setHours(0,0,0,0);
-        if (incDate < startDate) {
-          const msg = `Date cannot be before policy start date (${startDate.toLocaleDateString()})`;
-          if (newErrors.incidentDate !== msg) {
-            newErrors.incidentDate = msg;
-            changed = true;
-          }
-        } else if (newErrors.incidentDate) {
-          delete newErrors.incidentDate;
-          changed = true;
-        }
+    }
+    
+    if (!claim.incidentDate) {
+      errs.incidentDate = 'Incident date is required';
+    } else if (selectedPolicyDetails && selectedPolicyDetails.startDate) {
+      const incDate = new Date(claim.incidentDate);
+      const startDate = new Date(selectedPolicyDetails.startDate);
+      incDate.setHours(0,0,0,0);
+      startDate.setHours(0,0,0,0);
+      if (incDate < startDate) {
+        errs.incidentDate = `Date cannot be before policy start date (${startDate.toLocaleDateString()})`;
       }
+    }
+    
+    if (!claim.claimReason?.trim()) errs.claimReason = 'Claim reason is required';
+    else if (claim.claimReason.length > 2000) errs.claimReason = 'Claim reason cannot exceed 2000 characters';
+    if (files.length === 0) errs.files = 'Upload at least one document';
+    
+    return errs;
+  };
 
-      return changed ? newErrors : prev;
-    });
-  }, [claim.claimAmount, claim.incidentDate, selectedPolicyDetails]);
-
-  const [errors, setErrors] = useState({});
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
 
   const handleChange = async (e) => {
     const { name, value } = e.target;
@@ -116,8 +108,8 @@ const RaiseClaimPage = () => {
       }
     }
 
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (serverErrors[name]) {
+      setServerErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -154,8 +146,8 @@ const RaiseClaimPage = () => {
           docType: selectedDocType
         }));
         setFiles((prev) => [...prev, ...categorizedFiles]);
-        if (errors.files) {
-          setErrors((prev) => ({ ...prev, files: '' }));
+        if (serverErrors.files) {
+          setServerErrors((prev) => ({ ...prev, files: '' }));
         }
       }
     }
@@ -167,39 +159,9 @@ const RaiseClaimPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = {};
+    setSubmitAttempted(true);
 
-    if (!claim.policyId) errs.policyId = 'Policy is required';
-    if (!claim.claimAmount) {
-      errs.claimAmount = 'Claim amount is required';
-    } else {
-      const amount = Number(claim.claimAmount);
-      if (amount <= 0) {
-        errs.claimAmount = 'Claim amount must be greater than 0';
-      } else if (selectedPolicyDetails) {
-        const remaining = selectedPolicyDetails.remainingClaimAmount ?? selectedPolicyDetails.selectedCoverage ?? 0;
-        if (amount > remaining) {
-          errs.claimAmount = `Cannot exceed remaining coverage (${formatINR(remaining)})`;
-        }
-      }
-    }
-    
-    if (!claim.incidentDate) {
-      errs.incidentDate = 'Incident date is required';
-    } else if (selectedPolicyDetails && selectedPolicyDetails.startDate) {
-      const incDate = new Date(claim.incidentDate);
-      const startDate = new Date(selectedPolicyDetails.startDate);
-      incDate.setHours(0,0,0,0);
-      startDate.setHours(0,0,0,0);
-      if (incDate < startDate) {
-        errs.incidentDate = `Date cannot be before policy start date (${startDate.toLocaleDateString()})`;
-      }
-    }
-    if (!claim.claimReason?.trim()) errs.claimReason = 'Claim reason is required';
-    if (files.length === 0) errs.files = 'Upload at least one document';
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+    if (Object.keys(clientErrors).length > 0) {
       setGlobalError('Please fill all required fields correctly.');
       return;
     }
@@ -231,7 +193,7 @@ const RaiseClaimPage = () => {
     } catch (error) {
       console.error(error);
       if (error.fieldErrors) {
-        setErrors(error.fieldErrors);
+        setServerErrors(error.fieldErrors);
         setGlobalError("Please correct the highlighted fields.");
         notify.error("Please correct the highlighted fields.");
       } else {
@@ -348,7 +310,7 @@ const RaiseClaimPage = () => {
                         }))
                       }
                       placeholder={isLoadingPolicies ? "Loading policies..." : "Choose an active policy..."}
-                      error={errors.policyId}
+                      error={(submitAttempted) ? errors.policyId : ''}
                       required={true}
                       isDisabled={isLoadingPolicies}
                     />
@@ -384,14 +346,14 @@ const RaiseClaimPage = () => {
                         type="number"
                         step="1"
                         min="1"
-                        className={`form-control border-start-0 ps-0 bg-light ${errors.claimAmount ? 'is-invalid' : ''}`}
+                        className={`form-control border-start-0 ps-0 bg-light ${(errors.claimAmount && (submitAttempted || String(claim.claimAmount).length > 0)) ? 'is-invalid' : ''}`}
                         name="claimAmount"
                         value={claim.claimAmount}
                         onChange={handleChange}
                         placeholder="e.g. 5000"
                         onKeyDown={(e) => { if (e.key === '.' || e.key === 'e') e.preventDefault(); }}
                       />
-                      {errors.claimAmount && <div className="invalid-feedback">{errors.claimAmount}</div>}
+                      {errors.claimAmount && (submitAttempted || String(claim.claimAmount).length > 0) && <div className="invalid-feedback">{errors.claimAmount}</div>}
                     </div>
                   </div>
 
@@ -401,7 +363,7 @@ const RaiseClaimPage = () => {
                       name="incidentDate"
                       selectedDate={claim.incidentDate}
                       onChange={handleChange}
-                      error={errors.incidentDate}
+                      error={(submitAttempted || claim.incidentDate) ? errors.incidentDate : ''}
                       required={true}
                       minDate={selectedPolicyDetails?.startDate ? new Date(selectedPolicyDetails.startDate.split('T')[0]) : null}
                       maxDate={new Date()}
@@ -417,14 +379,18 @@ const RaiseClaimPage = () => {
                         <AlertCircle size={20} className="text-muted" />
                       </span>
                       <textarea
-                        className={`form-control border-start-0 ps-0 bg-light ${errors.claimReason ? 'is-invalid' : ''}`}
+                        className={`form-control border-start-0 ps-0 bg-light ${(errors.claimReason && (submitAttempted || claim.claimReason.length > 0)) ? 'is-invalid' : ''}`}
                         rows="4"
                         name="claimReason"
                         value={claim.claimReason}
                         onChange={handleChange}
                         placeholder="Please describe what happened in detail..."
+                        maxLength={2000}
                       />
-                      {errors.claimReason && <div className="invalid-feedback">{errors.claimReason}</div>}
+                      {errors.claimReason && (submitAttempted || claim.claimReason.length > 0) && <div className="invalid-feedback">{errors.claimReason}</div>}
+                      <small className={`d-block text-end mt-1 ${claim.claimReason.length > 1900 ? 'text-warning' : 'text-muted'}`}>
+                        {claim.claimReason.length}/2000 characters
+                      </small>
                     </div>
                   </div>
                 </div>
@@ -513,7 +479,7 @@ const RaiseClaimPage = () => {
                       </div>
                     </div>
                   )}
-                  {errors.files && <div className="text-danger small mt-2 d-block">{errors.files}</div>}
+                  {errors.files && submitAttempted && <div className="text-danger small mt-2 d-block">{errors.files}</div>}
                 </div>
 
                 <div className="d-flex justify-content-end mt-5 pt-3 border-top">

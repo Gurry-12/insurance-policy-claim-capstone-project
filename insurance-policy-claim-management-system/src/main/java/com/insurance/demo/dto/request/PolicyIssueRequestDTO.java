@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import com.insurance.demo.util.MessageConstants;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +23,5 @@ public class PolicyIssueRequestDTO {
 	private Long quoteId;
 
 	@NotNull(message = MessageConstants.Validation.START_DATE_REQUIRED)
-	@PastOrPresent(message = MessageConstants.Validation.START_DATE_PAST_PRESENT)
 	private LocalDate startDate;
 }

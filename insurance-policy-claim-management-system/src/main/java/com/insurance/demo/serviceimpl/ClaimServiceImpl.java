@@ -536,8 +536,8 @@ public class ClaimServiceImpl implements ClaimService {
 		Claim claim = claimRepository.findById(claimId)
 				.orElseThrow(() -> new ResourceNotFoundException(MessageConstants.Product.NOT_FOUND + claimId));
 
-		if (claim.getClaimStatus() != ClaimStatus.SUBMITTED) {
-			throw new BadRequestException(MessageConstants.ClaimReview.ASSIGN_MUST_BE_SUBMITTED);
+		if (claim.getClaimStatus() != ClaimStatus.UNDER_REVIEW) {
+			throw new BadRequestException(MessageConstants.ClaimReview.MUST_BE_UNDER_REVIEW_TO_ASSIGN);
 		}
 
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();

@@ -94,8 +94,10 @@ const CoverageOptionModal = ({
     const order = Number(displayOrder);
     const editingId = mode === 'edit' ? (initialData?.id || initialData?.coverageOptionId) : null;
 
-    if (!coverageAmount || isNaN(amt) || amt <= 0) {
-      errs.coverageAmount = 'Coverage amount is required and must be positive.';
+    if (!coverageAmount || isNaN(amt) || amt < 50000) {
+      errs.coverageAmount = 'Coverage amount must be at least ₹50,000.';
+    } else if (amt > 50000000) {
+      errs.coverageAmount = 'Coverage amount cannot exceed ₹5,00,00,000.';
     } else {
       if (amt % 50000 !== 0) {
         errs.coverageAmount = 'Coverage amount must be a multiple of ₹50,000.';

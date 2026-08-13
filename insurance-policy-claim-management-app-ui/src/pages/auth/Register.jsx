@@ -18,7 +18,8 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState(INIT);
-  const [errors, setErrors] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
@@ -30,32 +31,12 @@ const Register = () => {
     if (name === 'mobileNumber') {
       const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
       setFormData((prev) => ({ ...prev, mobileNumber: digitsOnly }));
-      if (errors.mobileNumber) setErrors((prev) => ({ ...prev, mobileNumber: '' }));
+      if (serverErrors.mobileNumber) setServerErrors((prev) => ({ ...prev, mobileNumber: '' }));
       return;
     }
 
-    setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
-
-      // Real-time confirm password validation
-      if (name === 'confirmPassword' || name === 'password') {
-        const pw = name === 'password' ? value : updated.password;
-        const cpw = name === 'confirmPassword' ? value : updated.confirmPassword;
-        if (cpw) {
-          if (pw !== cpw) {
-            setErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match.' }));
-          } else {
-            setErrors((prev) => ({ ...prev, confirmPassword: '' }));
-          }
-        } else {
-          setErrors((prev) => ({ ...prev, confirmPassword: '' }));
-        }
-      } else if (errors[name]) {
-        setErrors((prev) => ({ ...prev, [name]: '' }));
-      }
-
-      return updated;
-    });
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (serverErrors[name]) setServerErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validate = () => {
@@ -78,17 +59,22 @@ const Register = () => {
     } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,64}$/.test(formData.password)) {
       errs.password = "Password must be 8-64 characters and contain at least one letter and one digit.";
     }
-    if (formData.password !== formData.confirmPassword) {
+    if (!formData.confirmPassword) {
+      errs.confirmPassword = "Confirm password is required.";
+    } else if (formData.password !== formData.confirmPassword) {
       errs.confirmPassword = "Passwords do not match.";
     }
     return errs;
   };
 
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) {
-      setErrors(errs);
+    setSubmitAttempted(true);
+    
+    if (Object.keys(clientErrors).length) {
       return;
     }
 
@@ -163,7 +149,7 @@ const Register = () => {
                     name="fullName"
                     type="text"
                     autoComplete="name"
-                    className={`form-control pristine-input ${errors.fullName ? 'is-invalid' : ''}`}
+                    className={`form-control pristine-input ${(errors.fullName && (submitAttempted || formData.fullName.length > 0)) ? 'is-invalid' : ''}`}
                     placeholder="Shyam Verma"
                     value={formData.fullName}
                     onChange={handleChange}
@@ -171,7 +157,7 @@ const Register = () => {
                     aria-invalid={errors.fullName ? "true" : "false"}
                     aria-describedby={errors.fullName ? "fullname-error" : undefined}
                   />
-                  {errors.fullName && (
+                  {errors.fullName && (submitAttempted || formData.fullName.length > 0) && (
                     <div id="fullname-error" className="input-error-tip text-danger mt-1" aria-live="polite">
                       <i className="bi bi-x-circle-fill" /> {errors.fullName}
                     </div>
@@ -185,9 +171,9 @@ const Register = () => {
                   </label>
                   <div
                     className={`d-flex align-items-center rounded overflow-hidden ${
-                      errors.mobileNumber
+                      (errors.mobileNumber && (submitAttempted || formData.mobileNumber.length > 0))
                         ? 'border border-danger'
-                        : formData.mobileNumber.length === 10
+                        : formData.mobileNumber.length === 10 && !errors.mobileNumber
                         ? 'border border-success'
                         : 'border'
                     }`}
@@ -197,7 +183,7 @@ const Register = () => {
                       className="px-3 py-2 fw-semibold flex-shrink-0"
                       style={{
                         borderRight: '1px solid var(--ip-border)',
-                        color: errors.mobileNumber ? '#dc3545' : formData.mobileNumber.length === 10 ? '#198754' : 'var(--ip-brand)',
+                        color: (errors.mobileNumber && (submitAttempted || formData.mobileNumber.length > 0)) ? '#dc3545' : formData.mobileNumber.length === 10 && !errors.mobileNumber ? '#198754' : 'var(--ip-brand)',
                         fontSize: '0.9rem',
                         background: 'var(--ip-surface-subtle)',
                         userSelect: 'none',
@@ -236,7 +222,7 @@ const Register = () => {
                       {formData.mobileNumber.length}/10
                     </span>
                   </div>
-                  {errors.mobileNumber && (
+                  {errors.mobileNumber && (submitAttempted || formData.mobileNumber.length > 0) && (
                     <div id="mobile-error" className="input-error-tip text-danger mt-1" aria-live="polite" style={{ fontSize: '0.8rem' }}>
                       <i className="bi bi-x-circle-fill me-1" />{errors.mobileNumber}
                     </div>
@@ -258,7 +244,7 @@ const Register = () => {
                     name="email"
                     type="email"
                     autoComplete="email"
-                    className={`form-control pristine-input ${errors.email ? 'is-invalid' : ''}`}
+                    className={`form-control pristine-input ${(errors.email && (submitAttempted || formData.email.length > 0)) ? 'is-invalid' : ''}`}
                     placeholder="shyam.verma@yopmail.com"
                     value={formData.email}
                     onChange={handleChange}
@@ -266,7 +252,7 @@ const Register = () => {
                     aria-invalid={errors.email ? "true" : "false"}
                     aria-describedby={errors.email ? "email-error" : undefined}
                   />
-                  {errors.email && (
+                  {errors.email && (submitAttempted || formData.email.length > 0) && (
                     <div id="email-error" className="input-error-tip text-danger mt-1" aria-live="polite">
                       <i className="bi bi-x-circle-fill" /> {errors.email}
                     </div>
@@ -284,7 +270,7 @@ const Register = () => {
                       name="password"
                       type={showPw ? "text" : "password"}
                       autoComplete="new-password"
-                      className={`form-control pristine-input ${errors.password ? 'is-invalid' : ''}`}
+                      className={`form-control pristine-input ${(errors.password && (submitAttempted || formData.password.length > 0)) ? 'is-invalid' : ''}`}
                       placeholder="Password"
                       value={formData.password}
                       onChange={handleChange}
@@ -303,7 +289,7 @@ const Register = () => {
                       />
                     </button>
                   </div>
-                  {errors.password && (
+                  {errors.password && (submitAttempted || formData.password.length > 0) && (
                     <div id="password-error" className="input-error-tip text-danger mt-1" aria-live="polite">
                       <i className="bi bi-x-circle-fill" /> {errors.password}
                     </div>
@@ -325,7 +311,7 @@ const Register = () => {
                       type={showConfirmPw ? "text" : "password"}
                       autoComplete="new-password"
                       className={`form-control pristine-input ${
-                        errors.confirmPassword
+                        (errors.confirmPassword && (submitAttempted || formData.confirmPassword.length > 0))
                           ? 'is-invalid'
                           : formData.confirmPassword && formData.password === formData.confirmPassword
                           ? 'is-valid'
@@ -349,7 +335,7 @@ const Register = () => {
                       />
                     </button>
                   </div>
-                  {errors.confirmPassword && (
+                  {errors.confirmPassword && (submitAttempted || formData.confirmPassword.length > 0) && (
                     <div id="confirm-password-error" className="input-error-tip text-danger mt-1" aria-live="polite">
                       <i className="bi bi-x-circle-fill" /> {errors.confirmPassword}
                     </div>

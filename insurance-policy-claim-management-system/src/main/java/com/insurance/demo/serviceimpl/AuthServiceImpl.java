@@ -262,7 +262,10 @@ public class AuthServiceImpl implements AuthService {
 
 		otpService.verifyOtp(user, request.getEmailOtp(), request.getPhoneOtp());
 
-		if (Boolean.FALSE.equals(user.getIsActive())) {
+		// Only re-activate accounts that were deactivated because they hadn't
+		// completed initial email/phone verification. Admin-deactivated accounts
+		// (emailVerified = true but isActive = false) must NOT be re-activated here.
+		if (Boolean.FALSE.equals(user.getIsActive()) && !Boolean.TRUE.equals(user.getEmailVerified())) {
 			user.setEmailVerified(Boolean.TRUE);
 			user.setPhoneVerified(Boolean.TRUE);
 			user.setIsActive(Boolean.TRUE);

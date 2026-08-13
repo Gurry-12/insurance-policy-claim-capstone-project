@@ -28,7 +28,7 @@ public class CreateStaffRequestDTO {
 	private String email;
 
 	@NotBlank(message = MessageConstants.Validation.PASSWORD_REQUIRED)
-	//@Pattern(regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@#$%^&+=!]).{6,15}$", message = MessageConstants.Validation.PASSWORD_PATTERN)
+	@Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,64}$", message = MessageConstants.Validation.PASSWORD_PATTERN)
 	private String password;
 
 	@NotBlank(message = MessageConstants.Validation.MOBILE_REQUIRED)

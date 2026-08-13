@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import "../css/Login.css";
@@ -19,7 +19,8 @@ const VerifyOtp = () => {
     phoneOtp: "",
   });
 
-  const [errors, setErrors] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
 
@@ -42,7 +43,7 @@ const VerifyOtp = () => {
       : value;
 
     setFormData((prev) => ({ ...prev, [name]: sanitizedValue }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (serverErrors[name]) setServerErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
@@ -61,11 +62,14 @@ const VerifyOtp = () => {
     return errs;
   };
 
+  const clientErrors = validate();
+  const errors = { ...clientErrors, ...serverErrors };
+
   const handleVerifySubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) {
-      setErrors(errs);
+    setSubmitAttempted(true);
+    
+    if (Object.keys(clientErrors).length) {
       return;
     }
 
@@ -123,13 +127,13 @@ const VerifyOtp = () => {
                 id="otp-email"
                 name="email"
                 type="email"
-                className={`form-control pristine-input ${errors.email ? "is-invalid" : ""}`}
+                className={`form-control pristine-input ${(errors.email && (submitAttempted || formData.email.length > 0)) ? "is-invalid" : ""}`}
                 placeholder="username@gmail.com"
                 value={formData.email}
                 onChange={handleChange}
                 disabled={!!targetEmail}
               />
-              {errors.email && (
+              {errors.email && (submitAttempted || formData.email.length > 0) && (
                 <div className="input-error-tip text-danger mt-1">
                   <i className="bi bi-x-circle-fill" /> {errors.email}
                 </div>
@@ -145,13 +149,13 @@ const VerifyOtp = () => {
                 name="emailOtp"
                 type="text"
                 maxLength={6}
-                className={`form-control pristine-input otp-input-field ${errors.emailOtp ? "is-invalid" : ""}`}
+                className={`form-control pristine-input otp-input-field ${(errors.emailOtp && (submitAttempted || formData.emailOtp.length > 0)) ? "is-invalid" : ""}`}
                 placeholder="------"
                 value={formData.emailOtp}
                 onChange={handleChange}
                 disabled={loading}
               />
-              {errors.emailOtp && (
+              {errors.emailOtp && (submitAttempted || formData.emailOtp.length > 0) && (
                 <div className="input-error-tip text-danger mt-1">
                   <i className="bi bi-x-circle-fill" /> {errors.emailOtp}
                 </div>
@@ -167,13 +171,13 @@ const VerifyOtp = () => {
                 name="phoneOtp"
                 type="text"
                 maxLength={6}
-                className={`form-control pristine-input otp-input-field ${errors.phoneOtp ? "is-invalid" : ""}`}
+                className={`form-control pristine-input otp-input-field ${(errors.phoneOtp && (submitAttempted || formData.phoneOtp.length > 0)) ? "is-invalid" : ""}`}
                 placeholder="------"
                 value={formData.phoneOtp}
                 onChange={handleChange}
                 disabled={loading}
               />
-              {errors.phoneOtp && (
+              {errors.phoneOtp && (submitAttempted || formData.phoneOtp.length > 0) && (
                 <div className="input-error-tip text-danger mt-1">
                   <i className="bi bi-x-circle-fill" /> {errors.phoneOtp}
                 </div>

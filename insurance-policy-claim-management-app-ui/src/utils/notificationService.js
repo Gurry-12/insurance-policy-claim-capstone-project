@@ -8,12 +8,12 @@ class NotificationService {
 
   success(response, fallback = "Operation successful") {
     const message = typeof response === 'string' ? response : (response?.message || fallback);
-    toast.success(message, { duration: 3000 });
+    toast.success(message, { duration: 10000 });
   }
 
   error(error, fallback = "An unexpected error occurred") {
     const message = typeof error === 'string' ? error : (error?.message || fallback);
-    toast.error(message, { duration: 4000 });
+    toast.error(message, { duration: 10000 });
   }
 
   warning(message, duration = 4000) {
