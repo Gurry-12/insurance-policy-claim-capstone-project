@@ -120,13 +120,16 @@ public class AuthServiceImpl implements AuthService {
 	}
 
 	@Override
-	public RefreshResponseDTO refresh(String rawRefreshToken) {
+	public RefreshResponseDTO refresh(String rawRefreshToken, String oldAccessToken) {
 		AppUser user = refreshTokenService.validateRefreshToken(rawRefreshToken);
 
-		String accessToken = jwtService.generateToken(
+		String newAccessToken = jwtService.generateToken(
 				new AppUserDetails(user), user.getTokenVersion());
 
-		RefreshResponseDTO dto = new RefreshResponseDTO(accessToken, "Bearer");
+		// Proactively blacklist the old access token so it cannot be used anymore
+		blacklistAccessToken(oldAccessToken);
+
+		RefreshResponseDTO dto = new RefreshResponseDTO(newAccessToken, "Bearer");
 		return dto;
 	}
 

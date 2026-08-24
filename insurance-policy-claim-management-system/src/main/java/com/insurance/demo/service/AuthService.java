@@ -26,7 +26,7 @@ public interface AuthService {
 
 	ApiResponseDTO<String> resetPassword(ResetPasswordRequestDTO request);
 
-	RefreshResponseDTO refresh(String rawRefreshToken);
+	RefreshResponseDTO refresh(String rawRefreshToken, String oldAccessToken);
 
 	void logout(String rawRefreshToken, String accessToken);
 

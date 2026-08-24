@@ -66,13 +66,19 @@ public class AuthController {
 	@Operation(summary = "Refresh Access Token", description = "Validates the HttpOnly refresh token and returns a fresh access token.")
 	public ApiResponseDTO<RefreshResponseDTO> refresh(
 			@CookieValue(name = RefreshTokenCookieManager.COOKIE_NAME, required = false) String refreshToken,
+			@RequestHeader(name = "Authorization", required = false) String authHeader,
 			HttpServletResponse response) {
 
 		if (refreshToken == null || refreshToken.isBlank()) {
 			throw new RefreshTokenException(MessageConstants.Auth.SESSION_EXPIRED);
 		}
 
-		RefreshResponseDTO dto = authService.refresh(refreshToken);
+		String accessToken = null;
+		if (authHeader != null && authHeader.startsWith("Bearer ")) {
+			accessToken = authHeader.substring(7);
+		}
+
+		RefreshResponseDTO dto = authService.refresh(refreshToken, accessToken);
 
 		return new ApiResponseDTO<>(MessageConstants.Auth.TOKEN_REFRESHED, true, dto, java.time.LocalDateTime.now());
 	}

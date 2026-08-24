@@ -86,13 +86,17 @@ export const AuthProvider = ({ children }) => {
     if (!isForced) {
       localStorage.setItem("isLoggingOut", "true");
     }
+    
+    // Fire the server logout in the background using the current token
+    revokeServerSession(token);
+
+    // INSTANTLY clear local state to unmount protected components
     clearToken();
     localStorage.removeItem(USER_STORAGE_KEY);
     localStorage.removeItem(SESSION_MARKER);
     setToken(null);
     setUser(null);
-    revokeServerSession();
-  }, []);
+  }, [token]);
 
   return (
     <AuthContext.Provider

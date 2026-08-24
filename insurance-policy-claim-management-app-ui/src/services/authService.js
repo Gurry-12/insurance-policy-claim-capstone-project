@@ -1,3 +1,4 @@
+import axios from 'axios';
 import axiosInstance from '../api/axiosInstance';
 import { jwtDecode } from 'jwt-decode';
 
@@ -50,9 +51,12 @@ export const refreshSession = async () => {
   return response.data.accessToken;
 };
 
-export const logout = async () => {
+export const logout = async (token) => {
   try {
-    await axiosInstance.post('/auth/logout');
+    await axios.post(import.meta.env.VITE_API_BASE_URL + '/auth/logout', null, {
+      withCredentials: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
   } catch {
     // Best-effort server-side revocation; the local session is already cleared.
   }

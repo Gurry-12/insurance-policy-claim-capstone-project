@@ -84,5 +84,6 @@ For extended test data, execute the SQL scripts found in [`demo-data/`](./demo-d
 
 ## Essential Links
 - 📖 [Full Documentation (`docs/`)](./docs/README.md)
-- 🧪 [Demo Data & API Payloads (`demo-data/`)](./demo-data/)
+- 🧪 [Audited Postman Collection (`postman/`)](./insurance-policy-claim-management-system/postman/Insurance_Policy_Claim_Management_AUDITED.postman_collection.json)
+- 💾 [Demo Data SQL (`demo-data/sql/`)](./demo-data/sql/)
 - 🖼️ [UI Screenshots (`screenshots/`)](./screenshots/)

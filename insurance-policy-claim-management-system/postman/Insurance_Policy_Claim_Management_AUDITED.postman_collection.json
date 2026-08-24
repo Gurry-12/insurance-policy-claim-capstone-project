@@ -1,0 +1,3404 @@
+{
+    "info": {
+        "_postman_id": "b1b2c3d4-e5f6-7890-abcd-ef1234567891",
+        "name": "Insurance Policy & Claim Management System \u2014 AUDITED",
+        "description": "Complete, audited, executable collection built from backend source code. Roles: ADMIN | INTERNAL_STAFF | CUSTOMER. Auth: JWT Bearer (saved automatically on login). Version: 2026-08. Base URL: {{baseUrl}} default http://localhost:8080",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080"
+        },
+        {
+            "key": "adminToken",
+            "value": ""
+        },
+        {
+            "key": "staffToken",
+            "value": ""
+        },
+        {
+            "key": "customerToken",
+            "value": ""
+        },
+        {
+            "key": "userId",
+            "value": ""
+        },
+        {
+            "key": "customerId",
+            "value": ""
+        },
+        {
+            "key": "productId",
+            "value": ""
+        },
+        {
+            "key": "planId",
+            "value": ""
+        },
+        {
+            "key": "optionId",
+            "value": ""
+        },
+        {
+            "key": "ruleId",
+            "value": ""
+        },
+        {
+            "key": "quoteId",
+            "value": ""
+        },
+        {
+            "key": "policyId",
+            "value": ""
+        },
+        {
+            "key": "paymentId",
+            "value": ""
+        },
+        {
+            "key": "claimId",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "00 \u2014 Authentication",
+            "description": "All auth endpoints. Run Register -> Verify OTP -> Login in sequence. Login scripts auto-save role tokens.",
+            "item": [
+                {
+                    "name": "Register (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"fullName\": \"Gurpreet Singh\", \"email\": \"customer@yopmail.com\", \"password\": \"Password@123\", \"mobileNumber\": \"+919876543210\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Registers a new CUSTOMER account. Account is locked until OTP verification. Sends OTP to email and phone."
+                    }
+                },
+                {
+                    "name": "Verify OTP",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer@yopmail.com\", \"emailOtp\": \"123456\", \"phoneOtp\": \"654321\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/verify-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Verifies both email OTP and phone OTP. Both are required. Activates the customer account."
+                    }
+                },
+                {
+                    "name": "Resend OTP",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer@yopmail.com\", \"phone\": \"+919876543210\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/resend-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "resend-otp"
+                            ]
+                        },
+                        "description": "Resends OTP to inactive accounts. Only works if the account is not yet active."
+                    }
+                },
+                {
+                    "name": "Login as Admin",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) { const d = pm.response.json().data; if (d && d.accessToken) pm.collectionVariables.set('adminToken', d.accessToken); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"admin@insurance.com\", \"password\": \"Admin@123\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticates Admin. Saves accessToken to adminToken variable. Refresh token is stored in HttpOnly cookie automatically."
+                    }
+                },
+                {
+                    "name": "Login as Internal Staff",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) { const d = pm.response.json().data; if (d && d.accessToken) pm.collectionVariables.set('staffToken', d.accessToken); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"staff@insurance.com\", \"password\": \"Staff@123\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticates INTERNAL_STAFF. Saves to staffToken. Switch to staffToken in collection auth when testing staff endpoints."
+                    }
+                },
+                {
+                    "name": "Login as Customer",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) { const d = pm.response.json().data; if (d && d.accessToken) pm.collectionVariables.set('customerToken', d.accessToken); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer@yopmail.com\", \"password\": \"Password@123\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticates CUSTOMER. Saves to customerToken."
+                    }
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/refresh",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "refresh"
+                            ]
+                        },
+                        "description": "Silently refreshes the access token using the HttpOnly refresh_token cookie. In Postman, requires cookie jar to be enabled. Returns new accessToken."
+                    }
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer@yopmail.com\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "description": "Sends password reset OTP to both email and phone. Always returns success (no user enumeration). Next: Reset Password."
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer@yopmail.com\", \"emailOtp\": \"123456\", \"phoneOtp\": \"654321\", \"newPassword\": \"NewPassword@456\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/reset-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "description": "Resets password using OTPs. Increments tokenVersion, invalidating all existing sessions."
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Revokes refresh token in DB and blacklists current access token in Redis. Clears the HttpOnly cookie."
+                    }
+                },
+                {
+                    "name": "Logout All Devices",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout-all",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "logout-all"
+                            ]
+                        },
+                        "description": "Revokes ALL refresh tokens for the authenticated user across all devices. Requires valid access token."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "01 \u2014 Admin \u2014 User Management",
+            "description": "Endpoints for managing all system users (ADMIN only). Create staff, activate/deactivate accounts, list users.",
+            "item": [
+                {
+                    "name": "Create Internal Staff",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('userId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"fullName\": \"Rahul Mehta\", \"email\": \"rahul.staff@insurance.com\", \"password\": \"Staff@123\", \"mobileNumber\": \"+919876543211\", \"productSpeciality\": \"HEALTH\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/staff",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "staff"
+                            ]
+                        },
+                        "description": "Creates INTERNAL_STAFF account. productSpeciality enum: HEALTH, MOTOR, LIFE, TRAVEL, PROPERTY. Sends OTP for activation."
+                    }
+                },
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users"
+                            ]
+                        },
+                        "description": "Returns all users (no pagination). Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Get User by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{userId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{userId}}"
+                            ]
+                        },
+                        "description": "Returns a specific user. Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Get Users (Paginated + Filtered)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "page"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "asc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated users with optional filtering by role, isActive, fullName, email."
+                    }
+                },
+                {
+                    "name": "Activate User",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{userId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{userId}}",
+                                "activate"
+                            ]
+                        },
+                        "description": "Manually activates a user account. Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Deactivate User",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users/{{userId}}/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users",
+                                "{{userId}}",
+                                "deactivate"
+                            ]
+                        },
+                        "description": "Deactivates a user account, preventing future logins. Role: ADMIN only."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "02 \u2014 Admin \u2014 Insurance Products",
+            "description": "Manage the top-level insurance product categories (HEALTH, MOTOR, LIFE, etc.). ADMIN only for write operations.",
+            "item": [
+                {
+                    "name": "Create Product",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('productId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"productName\": \"Health Shield\", \"productType\": \"HEALTH\", \"description\": \"Comprehensive health coverage for individuals and families.\", \"activeStatus\": true}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products"
+                            ]
+                        },
+                        "description": "Creates a new insurance product category. productType enum: HEALTH, MOTOR, LIFE, TRAVEL, PROPERTY. Saves productId."
+                    }
+                },
+                {
+                    "name": "Update Product",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"productName\": \"Health Shield Pro\", \"productType\": \"HEALTH\", \"description\": \"Updated comprehensive health coverage.\", \"activeStatus\": true}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/{{productId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "{{productId}}"
+                            ]
+                        },
+                        "description": "Full update of product details. Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Get Product by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/{{productId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "{{productId}}"
+                            ]
+                        },
+                        "description": "Retrieves a specific product. Accessible by all authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Active Products",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/active",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "active"
+                            ]
+                        },
+                        "description": "Lists all active products. Used by customers for product discovery. Accessible by all roles."
+                    }
+                },
+                {
+                    "name": "Get Products (Paginated + Filtered)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "page"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "asc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated list of all products. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Activate Product",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/{{productId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "{{productId}}",
+                                "activate"
+                            ]
+                        },
+                        "description": "Reactivates a deactivated product. Note: URL path is /activate not /active."
+                    }
+                },
+                {
+                    "name": "Deactivate Product",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/products/{{productId}}/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "products",
+                                "{{productId}}",
+                                "deactivate"
+                            ]
+                        },
+                        "description": "Marks product as inactive. Plans under it can no longer be purchased."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "03 \u2014 Admin \u2014 Policy Plans (Wizard)",
+            "description": "Create and manage policy plans. The wizard creates plan + coverage options + pricing rule in one call. ADMIN only for write operations.",
+            "item": [
+                {
+                    "name": "Create Plan (Wizard \u2014 All in One)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.plan && d.plan.id) pm.collectionVariables.set('planId', String(d.plan.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"planDetails\": {\"productId\": 1, \"planName\": \"Health Premium\", \"allowedDurations\": [1, 2, 3, 5, 10], \"supportedPremiumType\": \"ANNUAL\", \"termsAndConditions\": \"This plan covers hospitalization and surgical expenses up to the selected coverage amount.\", \"activeStatus\": true}, \"coverageOptions\": [{\"coverageAmount\": 100000, \"label\": \"1 Lakh Cover\", \"displayOrder\": 1, \"activeStatus\": true}, {\"coverageAmount\": 500000, \"label\": \"5 Lakh Cover\", \"displayOrder\": 2, \"activeStatus\": true}, {\"coverageAmount\": 1000000, \"label\": \"10 Lakh Cover\", \"displayOrder\": 3, \"activeStatus\": true}], \"pricingRule\": {\"baseRiskRate\": 0.005, \"processingFee\": 500.00, \"gst\": 18.0, \"effectiveFrom\": \"2026-01-01T00:00:00\", \"effectiveTo\": \"2027-12-31T23:59:59\", \"remarks\": \"Initial pricing rule for Health Premium plan\"}}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/wizard",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "wizard"
+                            ]
+                        },
+                        "description": "Creates plan with coverage options and pricing rule in one atomic call. supportedPremiumType enum: ANNUAL, MONTHLY, QUARTERLY, SEMI_ANNUAL. Saves planId."
+                    }
+                },
+                {
+                    "name": "Update Plan",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"productId\": 1, \"planName\": \"Health Premium Updated\", \"allowedDurations\": [1, 2, 5, 10], \"supportedPremiumType\": \"ANNUAL\", \"termsAndConditions\": \"Updated terms and conditions for the health premium plan.\", \"activeStatus\": true}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/{{planId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "{{planId}}"
+                            ]
+                        },
+                        "description": "Updates plan basic details only. Coverage options and pricing rules are managed separately."
+                    }
+                },
+                {
+                    "name": "Get Plan by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/{{planId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "{{planId}}"
+                            ]
+                        },
+                        "description": "Retrieves full plan details including coverage options. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get All Active Plans",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/active",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "active"
+                            ]
+                        },
+                        "description": "Lists all active plans across all products. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Active Plans by Product",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/{{productId}}/active",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "{{productId}}",
+                                "active"
+                            ]
+                        },
+                        "description": "Lists active plans for a specific product. Use after selecting a product. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Plans (Paginated + Filtered)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/page?pageNumber=0&pageSize=10&sortBy=createdDate&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "page"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdDate"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated plans with rich filtering. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Activate Plan",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/{{planId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "{{planId}}",
+                                "activate"
+                            ]
+                        },
+                        "description": "Makes a plan available for purchase."
+                    }
+                },
+                {
+                    "name": "Deactivate Plan",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans/{{planId}}/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "{{planId}}",
+                                "deactivate"
+                            ]
+                        },
+                        "description": "Prevents plan from being purchased. Does not affect existing policies."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "04 \u2014 Admin \u2014 Coverage Options",
+            "description": "Manage individual coverage tiers for a plan. All endpoints under /api/admin/policy-plans/{planId}/coverage-options. ADMIN only.",
+            "item": [
+                {
+                    "name": "Create Coverage Option",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('optionId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"coverageAmount\": 2000000, \"label\": \"20 Lakh Cover\", \"displayOrder\": 4, \"activeStatus\": true}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options"
+                            ]
+                        },
+                        "description": "Adds a new coverage tier to a plan. Saves optionId."
+                    }
+                },
+                {
+                    "name": "Update Coverage Option",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"coverageAmount\": 2500000, \"label\": \"25 Lakh Cover\", \"displayOrder\": 4, \"activeStatus\": true}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options/{{optionId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options",
+                                "{{optionId}}"
+                            ]
+                        },
+                        "description": "Updates an existing coverage option."
+                    }
+                },
+                {
+                    "name": "Get Coverage Options for Plan",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options"
+                            ]
+                        },
+                        "description": "Lists all coverage options (active and inactive) for a plan."
+                    }
+                },
+                {
+                    "name": "Activate Coverage Option",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options/{{optionId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options",
+                                "{{optionId}}",
+                                "activate"
+                            ]
+                        },
+                        "description": "Makes this coverage tier available for quoting."
+                    }
+                },
+                {
+                    "name": "Deactivate Coverage Option",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options/{{optionId}}/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options",
+                                "{{optionId}}",
+                                "deactivate"
+                            ]
+                        },
+                        "description": "Hides this coverage tier from quoting."
+                    }
+                },
+                {
+                    "name": "Delete Coverage Option",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options/{{optionId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options",
+                                "{{optionId}}"
+                            ]
+                        },
+                        "description": "Permanently removes a coverage option."
+                    }
+                },
+                {
+                    "name": "Regenerate Coverage Options",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"coverageOptions\": [{\"coverageAmount\": 500000, \"label\": \"5 Lakh\", \"displayOrder\": 1, \"activeStatus\": true}, {\"coverageAmount\": 1000000, \"label\": \"10 Lakh\", \"displayOrder\": 2, \"activeStatus\": true}]}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/policy-plans/{{planId}}/coverage-options/regenerate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "policy-plans",
+                                "{{planId}}",
+                                "coverage-options",
+                                "regenerate"
+                            ]
+                        },
+                        "description": "Replaces all coverage options for a plan in one operation."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "05 \u2014 Admin \u2014 Pricing Rules",
+            "description": "Manage dynamic pricing rules for plans. ADMIN only. Each plan should have one ACTIVE pricing rule at a time.",
+            "item": [
+                {
+                    "name": "Create Pricing Rule",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('ruleId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"planId\": 1, \"baseRiskRate\": 0.005, \"processingFee\": 500.00, \"gst\": 18.0, \"effectiveFrom\": \"2026-01-01T00:00:00\", \"effectiveTo\": \"2027-12-31T23:59:59\", \"remarks\": \"Standard rate for health plans\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules"
+                            ]
+                        },
+                        "description": "Creates a new pricing rule for a plan. Saves ruleId."
+                    }
+                },
+                {
+                    "name": "Update Pricing Rule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"planId\": 1, \"baseRiskRate\": 0.0055, \"processingFee\": 600.00, \"gst\": 18.0, \"effectiveFrom\": \"2026-06-01T00:00:00\", \"effectiveTo\": \"2027-12-31T23:59:59\", \"remarks\": \"Updated rate\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}"
+                            ]
+                        },
+                        "description": "Updates an existing pricing rule."
+                    }
+                },
+                {
+                    "name": "Get Pricing Rule by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}"
+                            ]
+                        },
+                        "description": "Retrieves a specific pricing rule."
+                    }
+                },
+                {
+                    "name": "List Pricing Rules (Paginated)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "asc"
+                                }
+                            ]
+                        },
+                        "description": "Lists pricing rules with optional filtering by planId and status."
+                    }
+                },
+                {
+                    "name": "Get Active Rule for Plan",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/plan/{{planId}}/active",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "plan",
+                                "{{planId}}",
+                                "active"
+                            ]
+                        },
+                        "description": "Returns the currently active pricing rule for a plan. Used before quoting to verify pricing is configured."
+                    }
+                },
+                {
+                    "name": "Get Pricing Rule History",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}/history",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}",
+                                "history"
+                            ]
+                        },
+                        "description": "Returns the audit log of changes to a pricing rule."
+                    }
+                },
+                {
+                    "name": "Activate Pricing Rule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}",
+                                "activate"
+                            ]
+                        },
+                        "description": "Activates a pricing rule. Only one rule per plan can be active at a time."
+                    }
+                },
+                {
+                    "name": "Deactivate Pricing Rule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}",
+                                "deactivate"
+                            ]
+                        },
+                        "description": "Deactivates a pricing rule."
+                    }
+                },
+                {
+                    "name": "Delete Pricing Rule",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/{{ruleId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "{{ruleId}}"
+                            ]
+                        },
+                        "description": "Permanently removes a pricing rule."
+                    }
+                },
+                {
+                    "name": "Preview Premium (Admin)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"planId\": 1, \"coverageAmount\": 500000, \"duration\": 2, \"premiumType\": \"ANNUAL\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/pricing-rules/preview",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "pricing-rules",
+                                "preview"
+                            ]
+                        },
+                        "description": "Preview the calculated premium without creating a quote. Useful for admin price testing."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "06 \u2014 Customer \u2014 Profile",
+            "description": "Customer profile management. POST creates the profile; PUT updates it; GET /profile returns own profile.",
+            "item": [
+                {
+                    "name": "Create Customer Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"dateOfBirth\": \"1995-06-15\", \"address\": \"123 MG Road\", \"city\": \"Jaipur\", \"state\": \"Rajasthan\", \"pinCode\": \"302001\", \"nomineeName\": \"Harpreet Singh\", \"nomineeRelation\": \"Brother\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers"
+                            ]
+                        },
+                        "description": "Creates customer profile for authenticated CUSTOMER. Profile is created automatically on registration; use PUT to update."
+                    }
+                },
+                {
+                    "name": "Get My Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers/profile",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers",
+                                "profile"
+                            ]
+                        },
+                        "description": "Returns the profile of the authenticated customer."
+                    }
+                },
+                {
+                    "name": "Update My Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"dateOfBirth\": \"1995-06-15\", \"address\": \"456 New Road\", \"city\": \"Jaipur\", \"state\": \"Rajasthan\", \"pinCode\": \"302001\", \"nomineeName\": \"Harpreet Singh\", \"nomineeRelation\": \"Brother\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers",
+                                "{{customerId}}"
+                            ]
+                        },
+                        "description": "Updates customer profile. Set customerId variable from the profile response."
+                    }
+                },
+                {
+                    "name": "Get Customer by ID (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers",
+                                "{{customerId}}"
+                            ]
+                        },
+                        "description": "Retrieves a customer by ID. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Get All Customers (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers"
+                            ]
+                        },
+                        "description": "Lists all customer profiles. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Get Customers (Paginated + Filtered)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/customers/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "customers",
+                                "page"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "asc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated customers with optional geo-filtering. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "07 \u2014 Customer \u2014 Generate Quote",
+            "description": "Generate a premium quote before purchasing a policy. The quoteId from this step is required for purchase.",
+            "item": [
+                {
+                    "name": "Generate Quote (Customer)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) { const d = pm.response.json().data; if (d && d.quoteId) pm.collectionVariables.set('quoteId', String(d.quoteId)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"planId\": 1, \"coverageAmount\": 500000, \"duration\": 2, \"premiumType\": \"ANNUAL\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/premium/calculate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "premium",
+                                "calculate"
+                            ]
+                        },
+                        "description": "Calculates premium for selected plan/coverage/duration. Returns quoteId required for purchase. premiumType enum: ANNUAL, MONTHLY, QUARTERLY, SEMI_ANNUAL. Saves quoteId."
+                    }
+                },
+                {
+                    "name": "Generate Quote (Admin/Staff for a Customer)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) { const d = pm.response.json().data; if (d && d.quoteId) pm.collectionVariables.set('quoteId', String(d.quoteId)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"customerId\": 1, \"planId\": 1, \"coverageAmount\": 500000, \"duration\": 2, \"premiumType\": \"ANNUAL\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/premium/admin/calculate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "premium",
+                                "admin",
+                                "calculate"
+                            ]
+                        },
+                        "description": "Admin/Staff generates a quote on behalf of a customer. Requires customerId. Saves quoteId."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "08 \u2014 Customer \u2014 Policy Purchase",
+            "description": "Purchase a policy using a quoteId. Quote must be PENDING (not expired or used). After purchase, make payment to activate.",
+            "item": [
+                {
+                    "name": "Purchase Policy (Customer)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('policyId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"quoteId\": 1, \"paymentReferenceId\": \"TXN-PREFLIGHT-001\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/purchase",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "purchase"
+                            ]
+                        },
+                        "description": "Creates policy in PENDING_PAYMENT status. quoteId is required (from Generate Quote). paymentReferenceId is optional. Saves policyId."
+                    }
+                },
+                {
+                    "name": "Issue Policy (Admin/Staff for a Customer)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('policyId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"customerId\": 1, \"quoteId\": 1, \"startDate\": \"2026-08-19\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/issue",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "issue"
+                            ]
+                        },
+                        "description": "Admin/Staff issues a policy manually for a customer. Requires both customerId and quoteId (not planId). Saves policyId."
+                    }
+                },
+                {
+                    "name": "Get My Policies (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/my-policies?pageNumber=0&pageSize=10&sortBy=id&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "my-policies"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Returns paginated list of all policies for the authenticated customer."
+                    }
+                },
+                {
+                    "name": "Get Policy by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/{{policyId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "{{policyId}}"
+                            ]
+                        },
+                        "description": "Returns details of a specific policy. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Claims for Policy",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/{{policyId}}/claims",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "{{policyId}}",
+                                "claims"
+                            ]
+                        },
+                        "description": "Returns all claims associated with a policy. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Policies by Customer ID (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/customer/{{customerId}}?pageNumber=0&pageSize=10&sortBy=id&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "customer",
+                                "{{customerId}}"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Returns policies for a specific customer. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Get All Policies (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies?pageNumber=0&pageSize=10&sortBy=id&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated list of all system policies with optional filtering. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Cancel Policy (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/policies/{{policyId}}/cancel",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "policies",
+                                "{{policyId}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancels an active or pending policy. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "09 \u2014 Payments",
+            "description": "Record and view premium payments. POST /api/payments records a payment and automatically activates PENDING policies on SUCCESS.",
+            "item": [
+                {
+                    "name": "Make Payment \u2014 SUCCESS",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('paymentId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"policyId\": 1, \"amount\": 25000.00, \"paymentMode\": \"UPI\", \"transactionReference\": \"TXN-2026-001\", \"paymentStatus\": \"SUCCESS\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ]
+                        },
+                        "description": "Records a successful payment. Policy moves from PENDING_PAYMENT to ACTIVE automatically. paymentStatus: SUCCESS or FAILED. Saves paymentId."
+                    }
+                },
+                {
+                    "name": "Make Payment \u2014 FAILED (for testing)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"policyId\": 1, \"amount\": 25000.00, \"paymentMode\": \"UPI\", \"transactionReference\": \"TXN-2026-FAIL-001\", \"paymentStatus\": \"FAILED\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments"
+                            ]
+                        },
+                        "description": "Records a failed payment. Policy remains in PENDING_PAYMENT status."
+                    }
+                },
+                {
+                    "name": "Get Payment by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/{{paymentId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{paymentId}}"
+                            ]
+                        },
+                        "description": "Retrieves a specific payment record. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get My Payments (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/my-payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "my-payments"
+                            ]
+                        },
+                        "description": "Returns all payment records for the authenticated customer. Role: CUSTOMER."
+                    }
+                },
+                {
+                    "name": "Get Payments for My Policy (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/my-policies/{{policyId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "my-policies",
+                                "{{policyId}}"
+                            ]
+                        },
+                        "description": "Returns payment history for a specific policy owned by the authenticated customer. Role: CUSTOMER."
+                    }
+                },
+                {
+                    "name": "Get Payments by Policy ID (Admin/Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/policy/{{policyId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "policy",
+                                "{{policyId}}"
+                            ]
+                        },
+                        "description": "Returns all payments for a policy. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Get All Payments (Admin/Staff \u2014 Paginated)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/payments/page?pageNumber=0&pageSize=10&sortBy=id&sortDirection=asc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "page"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "asc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated all payments with rich filtering. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "10 \u2014 Claims",
+            "description": "Full claim lifecycle. Customer raises -> Staff reviews -> Staff recommends -> Admin decides. Flow: SUBMITTED -> UNDER_REVIEW -> ASSIGNED -> RECOMMENDED_FOR_APPROVAL/REJECTION -> APPROVED/REJECTED.",
+            "item": [
+                {
+                    "name": "Raise Claim (Customer \u2014 with Documents)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 201) { const d = pm.response.json().data; if (d && d.id) pm.collectionVariables.set('claimId', String(d.id)); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "claim",
+                                    "value": "{\"policyId\": 1, \"claimAmount\": 50000.00, \"claimReason\": \"Hospitalization due to fever and infection\", \"incidentDate\": \"2026-07-15\"}",
+                                    "type": "text",
+                                    "contentType": "application/json"
+                                },
+                                {
+                                    "key": "files",
+                                    "type": "file",
+                                    "src": ""
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/raise",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "raise"
+                            ]
+                        },
+                        "description": "Raises a claim with supporting documents. Content-Type must be multipart/form-data. 'claim' part is JSON. 'files' part is one or more files. Saves claimId."
+                    }
+                },
+                {
+                    "name": "Get My Claims (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/my-claims",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "my-claims"
+                            ]
+                        },
+                        "description": "Returns all claims filed by the authenticated customer."
+                    }
+                },
+                {
+                    "name": "Get All Claims (Admin/Staff \u2014 Paginated)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims?pageNumber=0&pageSize=10&sortBy=createdDate&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdDate"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Paginated all claims with filtering. Roles: ADMIN, INTERNAL_STAFF."
+                    }
+                },
+                {
+                    "name": "Get Claim by ID",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}"
+                            ]
+                        },
+                        "description": "Returns full claim details. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Get Claim History / Audit Trail",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/history?pageNumber=0&pageSize=10&sortBy=id&sortDirection=desc",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "pageNumber",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "id"
+                                },
+                                {
+                                    "key": "sortDirection",
+                                    "value": "desc"
+                                }
+                            ]
+                        },
+                        "description": "Returns the complete status change audit trail for a claim. All authenticated roles."
+                    }
+                },
+                {
+                    "name": "Move Claim to Under Review (Internal Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{staffToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/under-review",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "under-review"
+                            ]
+                        },
+                        "description": "Staff picks up a SUBMITTED claim for review. Status: SUBMITTED -> UNDER_REVIEW. Role: INTERNAL_STAFF only."
+                    }
+                },
+                {
+                    "name": "Assign Claim to Self (Internal Staff)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{staffToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/assign",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "assign"
+                            ]
+                        },
+                        "description": "Staff assigns an UNDER_REVIEW claim to themselves. Status: UNDER_REVIEW -> ASSIGNED. Role: INTERNAL_STAFF only."
+                    }
+                },
+                {
+                    "name": "Staff Review \u2014 Recommend Approval",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{staffToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"recommendedStatus\": \"RECOMMENDED_FOR_APPROVAL\", \"remarks\": \"All documents verified. Claim is legitimate and within coverage limit.\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/review",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "review"
+                            ]
+                        },
+                        "description": "Staff recommends claim for approval. Status: ASSIGNED -> RECOMMENDED_FOR_APPROVAL. Role: INTERNAL_STAFF only."
+                    }
+                },
+                {
+                    "name": "Staff Review \u2014 Recommend Rejection",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{staffToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"recommendedStatus\": \"RECOMMENDED_FOR_REJECTION\", \"remarks\": \"Incident date does not match medical records provided.\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/review",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "review"
+                            ]
+                        },
+                        "description": "Staff recommends claim for rejection. Status: ASSIGNED -> RECOMMENDED_FOR_REJECTION. Role: INTERNAL_STAFF only."
+                    }
+                },
+                {
+                    "name": "Admin Final Decision \u2014 Approve",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"recommendedStatus\": \"APPROVED\", \"remarks\": \"Claim approved after final review. Amount will be disbursed within 7 working days.\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/final-decision",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "final-decision"
+                            ]
+                        },
+                        "description": "Admin makes final approval decision. Status: RECOMMENDED_FOR_APPROVAL -> APPROVED. Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Admin Final Decision \u2014 Reject",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{adminToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"recommendedStatus\": \"REJECTED\", \"remarks\": \"Claim rejected due to insufficient documentation.\"}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/claims/{{claimId}}/final-decision",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "claims",
+                                "{{claimId}}",
+                                "final-decision"
+                            ]
+                        },
+                        "description": "Admin makes final rejection decision. Status: RECOMMENDED_FOR_REJECTION -> REJECTED. Role: ADMIN only."
+                    }
+                },
+                {
+                    "name": "Upload Additional Documents (Customer)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{customerToken}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "files",
+                                    "type": "file",
+                                    "src": ""
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/document/upload/{{claimId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "document",
+                                "upload",
+                                "{{claimId}}"
+                            ]
+                        },
+                        "description": "Upload additional supporting documents to an existing claim. Note: URL is /upload/{{claimId}} (slash before claimId)."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "11 \u2014 Public",
+            "description": "Unauthenticated public endpoints. No auth required.",
+            "item": [
+                {
+                    "name": "Get Platform Statistics",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/public/stats",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "public",
+                                "stats"
+                            ]
+                        },
+                        "description": "Returns live platform statistics (total policies, claims, customers). Falls back to default numbers if DB is empty. No authentication required."
+                    }
+                }
+            ]
+        }
+    ]
+}

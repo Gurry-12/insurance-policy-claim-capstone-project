@@ -44,7 +44,10 @@ let pendingRefreshPromise = null;
 const refreshAccessToken = () => {
   if (pendingRefreshPromise) return pendingRefreshPromise;
   pendingRefreshPromise = axios
-    .post(`${BASE_URL}/auth/refresh`, null, { withCredentials: true })
+    .post(`${BASE_URL}/auth/refresh`, null, { 
+      withCredentials: true,
+      headers: getToken() ? { 'Authorization': `Bearer ${getToken()}` } : {}
+    })
     .then((response) => response.data?.data?.accessToken)
     .catch(() => {
       clearToken();
