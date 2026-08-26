@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Product API>
 > The top-level categories defining the insurance business lines.
 
 ---
@@ -110,4 +108,3 @@ flowchart TD
 
 ## Related Documents
 - `Plan_API.md`
-</Product API>

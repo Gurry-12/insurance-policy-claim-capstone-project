@@ -1,101 +1,160 @@
-</Agent System Instructions>
-<Payment API>
-> Securely processing and recording financial transactions for policies.
+> Recording premium payments and tracking the financial ledger for policies.
 
 ---
 
 ## Purpose
-This document details the Payment API, managing the recording and retrieval of transactions tied to policy purchases or renewals.
+This document explains the Payment API — the endpoints for recording, validating, and retrieving premium payments linked to insurance policies.
 
 ---
 
 ## Overview
-- **Payment Processing**: Validates and records payments linked to quotes/policies.
-- **Transaction History**: Allows users to view their payment history.
-- **Policy Linkage**: Links specific payments to policy IDs.
+- **Payment Recording**: Validates and records a payment installment against a policy.
+- **Policy Activation**: The first successful payment on a `PENDING_PAYMENT` policy sets it to `ACTIVE`.
+- **Annual Renewals**: For `ANNUAL` premium type, subsequent payments are recorded within a 15-day window before each due date.
+- **Transaction History**: Customers and Staff/Admins can view payment records.
 
 ---
 
 ## Business Context
-While actual credit card processing is mocked or handled by a 3rd party gateway (like Stripe/Razorpay) on the frontend, the backend must strictly validate the resulting transaction IDs, amounts, and statuses to ensure policies are only issued upon verified funds.
+Actual credit card processing is handled externally (frontend payment gateway). The backend records and validates the resulting payment outcome. The strict amount match check ensures no policy is activated with an incorrect payment.
 
 ---
 
 ## Feature Flow
 ```mermaid
 flowchart TD
-    A[Frontend Payment Gateway UI] -->|Success| B[Receive Txn ID]
-    B --> C[Call POST /api/payments]
-    C --> D{Validate Amount vs Quote}
-    D -- Match --> E[Save Payment Record]
-    E --> F[Trigger Policy Issuance]
-    D -- Mismatch --> G[Reject & Flag Alert]
+    A[Customer submits POST /api/payments] --> B{Policy exists & is owned by caller?}
+    B -- No --> C[403 Forbidden]
+    B -- Yes --> D{Policy CANCELLED or EXPIRED?}
+    D -- Yes --> E[400 Inactive Policy]
+    D -- No --> F{amount == policy.calculatedPremium?}
+    F -- No --> G[400 Amount Mismatch]
+    F -- Yes --> H{Premium Type?}
+    H -- ONE_TIME --> I{Already paid?}
+    I -- Yes --> J[400 Already Paid]
+    I -- No --> K[Save Payment + Activate Policy]
+    H -- ANNUAL --> L{Within 15-day renewal window?}
+    L -- No --> M[400 Payment Window Not Open]
+    L -- Yes --> N{All installments already paid?}
+    N -- Yes --> O[400 All Premiums Paid]
+    N -- No --> K
+    K --> P[200 OK: PaymentResponseDTO]
 ```
 
 ---
 
 ## API Documentation
 
-### 1. Record Payment
+### 1. Record Premium Payment
 | Field | Value |
 |---|---|
-| Purpose | Records a successful payment transaction. Usually called internally by Policy purchase flow, or explicitly via this endpoint for renewals. |
+| Purpose | Records a premium payment installment. Activates the policy on first successful payment. |
 | Method | POST |
 | URL | `/api/payments` |
-| Auth Required | Yes |
-| Request Body | `{ "quoteId": "123", "amount": 15000.00, "transactionId": "TXN999", "paymentMethod": "CREDIT_CARD" }` |
-| Response | `ApiResponseDTO` with Payment ID |
-| Validation | Amount must exactly equal the quote's calculated premium. |
-| Possible Errors | `400 Amount mismatch`, `400 Invalid Quote` |
-| Business Logic | Verifies quote, saves payment record, returns success state for policy issuance. |
-| Frontend Screen | Checkout Processing |
+| Auth Required | Yes (Customer, Internal Staff) |
+| Request Body | `{ "policyId": 42, "amount": 15000.00, "paymentMode": "UPI" }` |
+| Response | `ApiResponseDTO` with `PaymentResponseDTO` |
+| Validation | Amount must exactly equal `policy.calculatedPremium`. Policy must be owned by caller (if Customer). |
+| Possible Errors | `400 Amount mismatch`, `400 Policy not active`, `400 Already paid`, `403 Forbidden` |
+| Business Logic | Validates amount, saves `PremiumPayment` with unique `transactionReference`. Updates `policy.totalPremiumPaid`. Sets `policy.policyStatus = ACTIVE` on first success. |
+| Frontend Screen | Policy Payment Page |
+
+**PaymentMode values:** `UPI`, `CARD`, `NET_BANKING`, `CASH`
 
 ### 2. Get My Payments
 | Field | Value |
 |---|---|
-| Purpose | Fetch transaction history for the logged-in customer. |
+| Purpose | Returns all payments made by the authenticated customer. |
 | Method | GET |
 | URL | `/api/payments/my-payments` |
 | Auth Required | Yes (Customer) |
-| Request Body | None |
-| Response | List of payment records |
-| Validation | JWT validation |
-| Possible Errors | `401 Unauthorized` |
-| Business Logic | Queries Payment repository by `userId`. |
+| Response | `ApiResponseDTO` with list of `PaymentResponseDTO` |
+| Business Logic | Fetches all payments for policies owned by the authenticated customer. |
 | Frontend Screen | Billing History Page |
 
-### 3. Get Payments by Policy
+### 3. Get Payments for My Policy
 | Field | Value |
 |---|---|
-| Purpose | Fetch all payments associated with a specific policy. |
+| Purpose | Returns all payments for a specific policy owned by the authenticated customer. |
+| Method | GET |
+| URL | `/api/payments/my-policies/{policyId}` |
+| Auth Required | Yes (Customer) |
+| Response | List of `PaymentResponseDTO` |
+| Validation | Policy must belong to authenticated customer. |
+| Possible Errors | `403 Forbidden`, `404 Not Found` |
+| Frontend Screen | Policy Details Page |
+
+### 4. Get Payments by Policy (Staff/Admin)
+| Field | Value |
+|---|---|
+| Purpose | Returns all payments for any policy, accessible by Staff and Admin. |
 | Method | GET |
 | URL | `/api/payments/policy/{policyId}` |
-| Auth Required | Yes |
-| Request Body | None |
-| Response | List of payment records |
-| Validation | Must own policy or be Admin/Staff. |
+| Auth Required | Yes (Admin, Internal Staff) |
+| Response | List of `PaymentResponseDTO` |
 | Possible Errors | `403 Forbidden` |
-| Business Logic | Queries by `policyId`. |
-| Frontend Screen | Policy Details Page |
+| Frontend Screen | Staff/Admin Policy View |
+
+### 5. Get Payment by ID
+| Field | Value |
+|---|---|
+| Purpose | Returns details of a specific payment record. |
+| Method | GET |
+| URL | `/api/payments/{paymentId}` |
+| Auth Required | Yes |
+| Response | `ApiResponseDTO` with `PaymentResponseDTO` |
+| Validation | Customer can only view payments for their own policies. Staff/Admin can view any. |
+| Possible Errors | `403 Forbidden`, `404 Not Found` |
+
+### 6. Get All Payments (Staff/Admin)
+| Field | Value |
+|---|---|
+| Purpose | Returns all payment records system-wide with filters. |
+| Method | GET |
+| URL | `/api/payments/page` |
+| Auth Required | Yes (Admin, Internal Staff) |
+| Query Params | `page`, `size`, `sortBy`, `sortDirection`, `policyId`, `status` |
+| Response | Paginated `PaymentResponseDTO` |
+| Frontend Screen | Admin Payment Ledger |
+
+---
+
+## Business Rules
+| Rule | Reason |
+|---|---|
+| Amount must exactly match `calculatedPremium` | Prevents underpayment or overpayment edge cases. |
+| Payment links to `policyId` (not `quoteId`) | The policy is created first (from the quote). Payment records go against the policy. |
+| One-Time premium: only one SUCCESS payment | After a one-time payment, the full coverage is active and no further payments accepted. |
+| Annual premium: 15-day window | Renewals open 15 days before each due date to give customers time to pay without a coverage gap. |
+| Unique `transactionReference` | Prevents duplicate payment submissions. |
 
 ---
 
 ## Design Decisions
-1. **Why mock the payment gateway?**
-   As a capstone project, real financial transactions aren't feasible. We assume the frontend handles the 3rd-party gateway and sends a verifiable `transactionId` to this API. In production, this would involve a webhook from the payment provider to prevent client-side spoofing.
-2. **Strict Amount Validation:**
-   The exact match requirement (not approximate) prevents edge cases where rounding differences might leave a policy partially unpaid.
+1. **Why link payments to `policyId` and not `quoteId`?**
+   The Quote is consumed and marked USED when the Policy is created. After that point, the Policy is the binding contract. All payments are recorded against it.
+2. **Why strict amount matching instead of allowing partial payments?**
+   The system does not support partial payments. The full calculated premium is the installment amount. This avoids complex partial-payment tracking and edge cases in coverage calculation.
+
+---
+
+## Backend Implementation
+- **Controller**: `PremiumPaymentController.java`
+- **Service**: `PremiumPaymentServiceImpl.java`
+- **Repository**: `PremiumPaymentRepository.java`
 
 ---
 
 ## Interview Notes
-1. **Q: How would you secure this endpoint in a real-world scenario?**
-   **A:** I would implement a Webhook listener. Instead of trusting the client to send the payment success, the backend would wait for a server-to-server callback from Stripe/Razorpay containing a cryptographically signed payload confirming the payment.
-2. **Q: Why tie payments to Quotes rather than Policies initially?**
-   **A:** Because the policy doesn't exist until the payment is successful. The Quote holds the promised amount and configuration; the payment fulfills it, which triggers the creation of the Policy.
+1. **Q: How would you secure this endpoint in a production system?**
+   **A:** Implement a Webhook listener. Instead of trusting the client to send payment success, the backend would wait for a server-to-server callback from the payment provider (Stripe/Razorpay) containing a cryptographically signed payload.
+2. **Q: What happens if a payment is submitted twice for a one-time premium?**
+   **A:** The service checks whether an existing `SUCCESS` payment already exists for the policy. If so, a `BadRequestException` is thrown with an "Already Paid" message.
+3. **Q: How is the 15-day renewal window enforced?**
+   **A:** The service calculates the next due date based on the policy's `startDate` and how many `SUCCESS` payments have already been recorded. A payment is only accepted if the current date is within 15 days of the next due date.
 
 ---
 
 ## Related Documents
 - `Policy_API.md`
-</Payment API>
+- `../02_Business_Domain/Payment_Workflow.md`

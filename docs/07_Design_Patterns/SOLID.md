@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<SOLID Principles>
 > Core principles for maintainable and scalable software architecture.
 
 ---

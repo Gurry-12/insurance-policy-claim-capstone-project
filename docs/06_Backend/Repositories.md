@@ -1,4 +1,3 @@
-<Repositories>
 > Data access layer powered by Spring Data JPA and Hibernate.
 
 ---

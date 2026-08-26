@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Decision Records>
 > Architecture Decision Records (ADRs) for InsuranceFlow.
 
 ---

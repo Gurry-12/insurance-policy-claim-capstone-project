@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Pricing API>
 > The financial rules engine dictating base rates, multipliers, and taxes for plan premiums.
 
 ---
@@ -144,4 +142,3 @@ flowchart TD
 ## Related Documents
 - `Plan_API.md`
 - `Policy_API.md`
-</Pricing API>

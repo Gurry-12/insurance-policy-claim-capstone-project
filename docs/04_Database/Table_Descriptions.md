@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Table Descriptions>
 > Detailed dictionary of every table in the InsuranceFlow database.
 
 ---

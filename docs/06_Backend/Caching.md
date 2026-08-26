@@ -1,4 +1,3 @@
-<Caching>
 > Redis caching implementation for performance and stateful token management.
 
 ---

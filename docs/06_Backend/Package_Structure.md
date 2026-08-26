@@ -1,4 +1,3 @@
-<Package Structure>
 > The architectural organization of the Spring Boot backend codebase.
 
 ---

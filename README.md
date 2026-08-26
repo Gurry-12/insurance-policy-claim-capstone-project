@@ -34,7 +34,7 @@ flowchart LR
 ## Quick Start (4 Steps)
 
 > [!IMPORTANT]
-> Requires Java 17, Node 20+, Docker (for Redis/MySQL), and Maven. See [`docs/11_Developer_Guide/Setup.md`](./docs/11_Developer_Guide/Setup.md) for detailed prerequisites and environment variables.
+> Requires Java 17, Node 20+, Docker (for Redis/MySQL), and Maven. See [`docs/10_Developer_Guide/Setup.md`](./docs/10_Developer_Guide/Setup.md) for detailed prerequisites and environment variables.
 
 ### 1. Start Infrastructure (Redis & ELK Stack)
 ```bash
@@ -64,9 +64,9 @@ For extended test data, execute the SQL scripts found in [`demo-data/`](./demo-d
 ## Documentation Navigation: Who Should Read What?
 | Audience | Read These Files |
 |---|---|
-| **Recruiters** | [`docs/10_Evaluation/Project_Summary.md`](./docs/10_Evaluation/Project_Summary.md) (One-page overview) |
-| **Interviewers** | [`docs/01_System_Architecture/High_Level_Architecture.md`](./docs/01_System_Architecture/High_Level_Architecture.md), [`docs/10_Evaluation/Interview_Questions.md`](./docs/10_Evaluation/Interview_Questions.md) |
-| **Developers** | [`docs/README.md`](./docs/README.md) (Master Hub), [`docs/11_Developer_Guide/Setup.md`](./docs/11_Developer_Guide/Setup.md) |
+| **Recruiters** | [`docs/09_Evaluation/Project_Summary.md`](./docs/09_Evaluation/Project_Summary.md) (One-page overview) |
+| **Interviewers** | [`docs/01_System_Architecture/High_Level_Architecture.md`](./docs/01_System_Architecture/High_Level_Architecture.md), [`docs/09_Evaluation/Interview_Questions.md`](./docs/09_Evaluation/Interview_Questions.md) |
+| **Developers** | [`docs/README.md`](./docs/README.md) (Master Hub), [`docs/10_Developer_Guide/Setup.md`](./docs/10_Developer_Guide/Setup.md) |
 
 ## Tech Stack Summary
 | Layer | Technologies |

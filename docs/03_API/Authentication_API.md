@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Authentication API>
 > The secure gateway to InsuranceFlow, managing registration, login, dual-OTP verification, and token lifecycles.
 
 ---
@@ -92,11 +90,11 @@ flowchart TD
 | Method | POST |
 | URL | `/api/auth/verify-otp` |
 | Auth Required | No |
-| Request Body | `{ "email": "x@x.com", "otp": "123456", "context": "REGISTER" }` |
-| Response | `ApiResponseDTO` indicating success |
-| Validation | OTP must be 6 digits |
+| Request Body | `{ "email": "x@x.com", "emailOtp": "123456", "phoneOtp": "654321" }` |
+| Response | `ApiResponseDTO` with activated user details |
+| Validation | Both emailOtp and phoneOtp must be 6 digits |
 | Possible Errors | `400 Invalid OTP`, `400 OTP Expired`, `400 Max attempts reached` |
-| Business Logic | Checks Redis/DB for OTP match, validates expiry (5 min) and attempts (<5). Activates user if registration context. |
+| Business Logic | Verifies both email OTP and phone OTP. Sets emailVerified=true, phoneVerified=true, isActive=true on the AppUser. |
 | Frontend Screen | OTP Verification Modal |
 
 ### 3. Resend OTP
@@ -106,11 +104,11 @@ flowchart TD
 | Method | POST |
 | URL | `/api/auth/resend-otp` |
 | Auth Required | No |
-| Request Body | `{ "email": "x@x.com", "context": "REGISTER" }` |
-| Response | `ApiResponseDTO` |
-| Validation | Email format |
+| Request Body | `{ "email": "x@x.com", "phone": "+91XXXXXXXXXX" }` |
+| Response | `ApiResponseDTO` with OTP sent confirmation |
+| Validation | Valid email format, valid phone number |
 | Possible Errors | `404 User not found`, `429 Rate limit exceeded` |
-| Business Logic | Invalidates old OTP, generates new 6-digit OTP, resets attempts. |
+| Business Logic | Invalidates old OTP, generates new 6-digit OTP for both email and phone, resets attempt count. |
 | Frontend Screen | OTP Verification Modal |
 
 ### 4. Login
@@ -144,21 +142,31 @@ flowchart TD
 ### 6. Logout
 | Field | Value |
 |---|---|
-| Purpose | Ends the user session. |
+| Purpose | Ends the user session. Revokes the current refresh token and blacklists the access token. |
 | Method | POST |
 | URL | `/api/auth/logout` |
 | Auth Required | Yes |
 | Request Body | None |
 | Response | `ApiResponseDTO` |
-| Validation | Valid Access Token in header |
-| Possible Errors | `401 Unauthorized` |
-| Business Logic | Blacklists current access JWT in Redis, deletes refresh token from DB, clears HTTP-only cookie. |
+| Business Logic | Revokes current refresh token in DB, blacklists current access JWT in Redis (best-effort), clears HttpOnly cookie. |
 | Frontend Screen | Navbar/Sidebar Logout Button |
 
-### 7. Forgot Password
+### 7. Logout All Sessions
 | Field | Value |
 |---|---|
-| Purpose | Initiates password reset flow. |
+| Purpose | Revokes all active refresh tokens for the authenticated user. Forces logout on all devices. |
+| Method | POST |
+| URL | `/api/auth/logout-all` |
+| Auth Required | Yes |
+| Request Body | None |
+| Response | `ApiResponseDTO` |
+| Business Logic | Revokes all `RefreshToken` records for the user in DB. Increments `tokenVersion` to invalidate any outstanding JWTs. |
+| Frontend Screen | Security Settings Page |
+
+### 8. Forgot Password
+| Field | Value |
+|---|---|
+| Purpose | Initiates the password reset flow by sending an OTP. |
 | Method | POST |
 | URL | `/api/auth/forgot-password` |
 | Auth Required | No |
@@ -166,10 +174,10 @@ flowchart TD
 | Response | `ApiResponseDTO` |
 | Validation | Valid email |
 | Possible Errors | `404 Email not found` |
-| Business Logic | Generates and sends OTP (context: RESET_PASSWORD). |
+| Business Logic | Generates and sends OTP to the user's email and phone. |
 | Frontend Screen | Forgot Password Page |
 
-### 8. Reset Password
+### 9. Reset Password
 | Field | Value |
 |---|---|
 | Purpose | Sets a new password after OTP verification. |
@@ -250,8 +258,9 @@ flowchart TD
 | Component | Path |
 |---|---|
 | Auth Controller | `com.insurance.demo.controller.AuthController` |
-| JWT Utilities | `com.insurance.demo.security.JwtUtils` |
-| OTP Service | `com.insurance.demo.service.OtpService` |
+| JWT Service | `com.insurance.demo.security.JwtService` |
+| Refresh Token Service | `com.insurance.demo.security.RefreshTokenService` |
+| OTP Service | `com.insurance.demo.verification.OtpService` |
 
 ---
 
@@ -283,4 +292,3 @@ flowchart TD
 
 ## Future Enhancements
 - Add WebAuthn/Passkey support for passwordless login.
-</Authentication API>

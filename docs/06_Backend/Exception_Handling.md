@@ -1,4 +1,3 @@
-<Exception Handling>
 > Centralized and standardized error management.
 
 ---

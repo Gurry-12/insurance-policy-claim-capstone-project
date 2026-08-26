@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Factory Pattern>
 > Dynamic bean routing and instantiation.
 
 ---

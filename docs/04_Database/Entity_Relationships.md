@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Entity Relationships>
 > Deep dive into Hibernate entity mappings and database cascades.
 
 ---

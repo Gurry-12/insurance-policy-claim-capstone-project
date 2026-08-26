@@ -88,4 +88,4 @@ Access the system locally at `http://localhost:5173`.
 
 ## Related Documents
 - [Features Checklist](./Features_Checklist.md)
-- [Setup Guide](../11_Developer_Guide/Setup.md)
+- [Setup Guide](../10_Developer_Guide/Setup.md)

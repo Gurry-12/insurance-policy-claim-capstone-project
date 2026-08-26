@@ -1,4 +1,3 @@
-<Premium Calculation Service>
 > Strategy pattern implementation for dynamic and accurate insurance premium calculation.
 
 ---

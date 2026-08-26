@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Dependency Injection>
 > Inverting control to manage object lifecycles.
 
 ---

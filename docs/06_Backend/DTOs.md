@@ -1,4 +1,3 @@
-<DTOs>
 > Data Transfer Objects: The boundary contracts between the API and the outside world.
 
 ---

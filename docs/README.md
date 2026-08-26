@@ -30,18 +30,18 @@ flowchart LR
 
 ### 1. Recruiter
 _Fast, high-signal reading to understand project scope and completeness._
-- `10_Evaluation/Project_Summary.md` — One-page executive summary.
+- `09_Evaluation/Project_Summary.md` — One-page executive summary.
 - `00_Project_Overview/Features.md` — What the application can do, by role.
 
 ### 2. Interviewer
 _Deep-dive context to ask smart questions about architecture and design decisions._
 - `01_System_Architecture/High_Level_Architecture.md` — How the pieces fit together.
 - `07_Design_Patterns/README.md` — Why certain patterns (Strategy, Factory) were chosen.
-- `10_Evaluation/Interview_Questions.md` — Pre-written Q&A across architecture, security, and DB.
+- `09_Evaluation/Interview_Questions.md` — Pre-written Q&A across architecture, security, and DB.
 
 ### 3. Developer
 _Actionable guides to run, understand, and extend the system._
-- `11_Developer_Guide/Setup.md` — How to get it running locally.
+- `10_Developer_Guide/Setup.md` — How to get it running locally.
 - `03_API/README.md` — API payload and endpoint structures.
 - `04_Database/README.md` — Schema and entity relationships.
 - `08_Workflows/README.md` — End-to-end flows for key operations.
@@ -67,10 +67,10 @@ _Guidelines for adding new features and documentation._
 | `06_Backend/` | Spring Boot controllers, services, DTOs, security, and exceptions. |
 | `07_Design_Patterns/` | Strategy, Factory, Adapter, SOLID principles, and Decision Records. |
 | `08_Workflows/` | End-to-end flows (register, quote, purchase, pay, claim, admin). |
-| `09_Diagrams/` | Mermaid sequence, class, ER, activity, and flowcharts. |
-| `10_Evaluation/` | Summaries, checklists, interview Q&A, and project roadmap. |
-| `11_Developer_Guide/` | Setup, Run, Build, Environment, and Troubleshooting. |
-| `12_Knowledge_Base/` | 34 concept reference cards explaining specific project implementations. |
+| `09_Evaluation/` | Quality checklists, viva interview questions, audit reports, and roadmap. |
+| `10_Developer_Guide/` | Setup, Run, Build, Environment, and Troubleshooting. |
+| `11_Knowledge_Base/` | 40 concept reference cards explaining specific project implementations. |
+| `12_Team_Ownership_and_Viva/` | Balanced 1/3 team ownership model, 20-topic viva guide, and common knowledge summary. |
 
 ---
 
@@ -87,7 +87,7 @@ _Guidelines for adding new features and documentation._
 ---
 
 ## Start Here
-- 🚀 **Want to run it?** [Developer Guide](../11_Developer_Guide/Setup.md)
+- 🚀 **Want to run it?** [Developer Guide](./10_Developer_Guide/Setup.md)
 - 🧠 **Want to understand the code?** [Backend Architecture](01_System_Architecture/Backend_Architecture.md)
 - 📊 **Want to test it?** [Evaluator Demo](../demo-data/04-evaluator-demo.md)
 

@@ -1,4 +1,3 @@
-<Security>
 > Comprehensive security configuration and defense-in-depth mechanisms for InsuranceFlow.
 
 ---

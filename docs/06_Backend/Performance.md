@@ -1,4 +1,3 @@
-<Performance>
 > Optimization strategies and database tuning in the InsuranceFlow backend.
 
 ---

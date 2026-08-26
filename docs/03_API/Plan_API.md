@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Plan API>
 > Structuring the insurance offerings: managing coverage plans and their configurable options.
 
 ---
@@ -126,4 +124,3 @@ flowchart TD
 ## Related Documents
 - `Product_API.md`
 - `Pricing_API.md`
-</Plan API>

@@ -1,4 +1,3 @@
-<Services>
 > The core business logic layer of InsuranceFlow.
 
 ---

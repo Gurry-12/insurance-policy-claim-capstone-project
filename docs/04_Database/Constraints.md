@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Constraints>
 > Data integrity guardrails defined at the database level.
 
 ---

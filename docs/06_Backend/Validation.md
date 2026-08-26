@@ -1,4 +1,3 @@
-<Validation>
 > Multi-layered validation ensuring data integrity and business rule compliance.
 
 ---

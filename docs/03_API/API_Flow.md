@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<API Flow>
 > The central nervous system of InsuranceFlow, defining the standardized request, response, and error handling patterns across the entire API suite.
 
 ---
@@ -235,4 +233,3 @@ All errors are handled and return `ErrorResponseDTO`.
 
 ## Future Enhancements
 - Implement API versioning (e.g., `/api/v1/`) to support future breaking changes safely.
-</API Flow>

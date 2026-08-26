@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<ER Diagram>
 > Comprehensive map of the InsuranceFlow data model.
 
 ---

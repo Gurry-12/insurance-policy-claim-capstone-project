@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Adapter Pattern>
 > Bridging external APIs and incompatible interfaces.
 
 ---

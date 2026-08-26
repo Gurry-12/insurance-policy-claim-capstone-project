@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Strategy Pattern>
 > Dynamic premium calculation algorithms.
 
 ---

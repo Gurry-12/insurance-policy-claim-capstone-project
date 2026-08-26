@@ -1,4 +1,3 @@
-<JWT>
 > The core mechanism for stateless authentication and authorization in InsuranceFlow.
 
 ---

@@ -1,4 +1,3 @@
-<Controllers>
 > The HTTP entry points that route requests, validate inputs, and standardize responses.
 
 ---

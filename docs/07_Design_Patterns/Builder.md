@@ -1,5 +1,3 @@
-</Agent System Instructions>
-<Builder Pattern>
 > Step-by-step construction of complex objects.
 
 ---
