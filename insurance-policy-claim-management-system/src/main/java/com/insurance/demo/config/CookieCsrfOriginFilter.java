@@ -64,26 +64,35 @@ public class CookieCsrfOriginFilter extends OncePerRequestFilter {
 		filterChain.doFilter(request, response);
 	}
 
-	private boolean isAllowedOrigin(String origin) {
-		String allowed = properties.getCorsAllowedOrigin();
-		if (allowed == null || allowed.isBlank() || allowed.equals("*")) {
-			return true;
+	private static final List<String> STRICT_DEFAULT_ORIGINS = List.of(
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://127.0.0.1:5173",
+			"https://*.vercel.app",
+			"https://insurance-policy-claim-capstone-project-4u9icow04.vercel.app",
+			"https://insurance-policy-claim-capstone-pro.vercel.app"
+	);
+
+	private List<String> getAllowedOrigins() {
+		List<String> origins = new java.util.ArrayList<>(STRICT_DEFAULT_ORIGINS);
+		String configured = properties.getCorsAllowedOrigin();
+		if (configured != null && !configured.isBlank()) {
+			java.util.Arrays.stream(configured.split(","))
+					.map(String::trim)
+					.filter(s -> !s.isEmpty() && !origins.contains(s))
+					.forEach(origins::add);
 		}
-		return java.util.Arrays.stream(allowed.split(","))
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
+		return origins;
+	}
+
+	private boolean isAllowedOrigin(String origin) {
+		return getAllowedOrigins().stream()
 				.anyMatch(o -> o.equalsIgnoreCase(origin)
 						|| (o.contains("*") && origin.matches(o.replace(".", "\\.").replace("*", ".*"))));
 	}
 
 	private boolean isAllowedReferer(String referer) {
-		String allowed = properties.getCorsAllowedOrigin();
-		if (allowed == null || allowed.isBlank() || allowed.equals("*")) {
-			return true;
-		}
-		return java.util.Arrays.stream(allowed.split(","))
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
+		return getAllowedOrigins().stream()
 				.anyMatch(o -> referer.equalsIgnoreCase(o) || referer.startsWith(o + "/")
 						|| (o.contains("*") && referer.matches(o.replace(".", "\\.").replace("*", ".*") + ".*")));
 	}
