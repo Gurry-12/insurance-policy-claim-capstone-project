@@ -15,7 +15,7 @@ const Login = () => {
   const location = useLocation();
   const { login } = useAuth();
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm({
     defaultValues: { email: "", password: "" },
     mode: "onTouched"
   });
@@ -27,12 +27,6 @@ const Login = () => {
   // Watch email for the OTP modal
   // eslint-disable-next-line react-hooks/incompatible-library
   const emailValue = watch("email");
-
-  const fillCredentials = (email, password, roleName) => {
-    setValue("email", email, { shouldValidate: true });
-    setValue("password", password, { shouldValidate: true });
-    toast.success(`Filled ${roleName} credentials!`);
-  };
 
   const onSubmit = async (data) => {
     try {
@@ -66,41 +60,6 @@ const Login = () => {
             <div className="inner-form-card">
               <div className="mb-2 text-start">
                 <h1 className="form-display-title">Login</h1>
-              </div>
-
-              {/* Demo Credentials Quick Fill Box */}
-              <div className="p-2 mb-3 rounded-3" style={{ background: "rgba(59, 130, 246, 0.08)", border: "1px dashed rgba(59, 130, 246, 0.4)" }}>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1d4ed8" }}>
-                    <i className="bi bi-key-fill me-1" /> Quick Demo Fill:
-                  </span>
-                </div>
-                <div className="d-flex gap-1 flex-wrap">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary py-0 px-2"
-                    style={{ fontSize: "0.72rem", borderRadius: "6px" }}
-                    onClick={() => fillCredentials("admin@insurance.com", "Admin@123", "Admin")}
-                  >
-                    👑 Admin
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-info py-0 px-2"
-                    style={{ fontSize: "0.72rem", borderRadius: "6px" }}
-                    onClick={() => fillCredentials("staff@insurance.com", "Staff@123", "Staff")}
-                  >
-                    🛡️ Staff
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-success py-0 px-2"
-                    style={{ fontSize: "0.72rem", borderRadius: "6px" }}
-                    onClick={() => fillCredentials("customer@insurance.com", "Customer@123", "Customer")}
-                  >
-                    👤 Customer
-                  </button>
-                </div>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
