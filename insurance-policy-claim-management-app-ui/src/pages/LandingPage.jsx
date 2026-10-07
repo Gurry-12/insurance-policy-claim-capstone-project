@@ -587,181 +587,282 @@ const LandingPage = () => {
         </div>
       </footer>
 
-      {/* ── FLOATING RECRUITER / DEMO CREDENTIALS DOCK ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "24px",
-          right: "24px",
-          zIndex: 1080,
-          fontFamily: "'Inter', sans-serif"
-        }}
-      >
-        {!demoOpen ? (
-          <button
-            type="button"
-            onClick={() => setDemoOpen(true)}
-            className="d-flex align-items-center gap-2 px-3.5 py-2.5 rounded-pill shadow-lg text-white"
-            style={{
-              background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-              border: "1px solid rgba(255, 255, 255, 0.2)",
-              backdropFilter: "blur(12px)",
-              cursor: "pointer",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
-              boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.4)"
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#22c55e",
-                display: "inline-block",
-                boxShadow: "0 0 10px #22c55e"
-              }}
-            />
-            <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>⚡ Demo Credentials</span>
-            <i className="bi bi-chevron-up" style={{ fontSize: "0.75rem", opacity: 0.7 }} />
-          </button>
-        ) : (
+      {/* ── HIGH-END RECRUITER & DEMO ACCESS MODAL ── */}
+      {demoOpen && (
+        <div
+          className="lp-modal-backdrop"
+          onClick={() => setDemoOpen(false)}
+        >
           <div
-            className="p-3.5 text-white rounded-4 shadow-2xl"
-            style={{
-              width: "360px",
-              maxWidth: "calc(100vw - 32px)",
-              background: "rgba(15, 23, 42, 0.94)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
-              animation: "fadeInUp 0.25s ease-out"
-            }}
+            className="lp-demo-modal"
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-2.5 pb-2 border-bottom border-secondary border-opacity-25">
-              <div className="d-flex align-items-center gap-2">
-                <span className="badge rounded-pill px-2 py-1" style={{ background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa", fontSize: "0.72rem" }}>
-                  Demo Access
-                </span>
-                <span style={{ fontSize: "0.82rem", fontWeight: 700 }}>Test Accounts</span>
+            {/* Modal Header */}
+            <div
+              className="d-flex align-items-center justify-content-between px-4 px-md-5 py-4"
+              style={{
+                borderBottom: "1px solid #e2e8f0",
+                background: "linear-gradient(90deg, #eff6ff 0%, #ffffff 100%)"
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: "1.35rem",
+                    boxShadow: "0 8px 20px rgba(29, 78, 216, 0.35)",
+                    flexShrink: 0
+                  }}
+                >
+                  ⚡
+                </div>
+                <div>
+                  <h5 className="mb-1 fw-bold" style={{ fontSize: "1.25rem", color: "#0f172a" }}>
+                    Recruiter & Demo Access Personas
+                  </h5>
+                  <p className="mb-0 text-muted small" style={{ fontSize: "0.85rem" }}>
+                    Select any pre-configured persona below to test complete end-to-end workflows
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
+                className="btn-close ms-2"
                 onClick={() => setDemoOpen(false)}
-                className="btn-close btn-close-white"
-                style={{ fontSize: "0.65rem" }}
                 aria-label="Close"
+                style={{ padding: "0.75rem", fontSize: "0.9rem" }}
               />
             </div>
 
-            {/* Role Tabs */}
-            <div className="d-flex gap-1 p-1 mb-3 rounded-3" style={{ background: "rgba(255, 255, 255, 0.06)" }}>
-              {Object.entries(DEMO_ACCOUNTS).map(([key, acc]) => {
-                const isActive = selectedDemoRole === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelectedDemoRole(key)}
-                    className="btn btn-sm flex-fill py-1 px-1 rounded-2 text-capitalize"
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: isActive ? 700 : 500,
-                      background: isActive ? acc.badgeColor : "transparent",
-                      color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.65)",
-                      border: "none",
-                      transition: "all 0.15s ease"
-                    }}
-                  >
-                    {acc.badge}
-                  </button>
-                );
-              })}
+            {/* Modal Body - 3 Persona Cards with generous padding & margins */}
+            <div className="p-4 p-md-5" style={{ maxHeight: "75vh", overflowY: "auto" }}>
+              <div className="row g-4 g-lg-4">
+                {/* Admin Card */}
+                <div className="col-lg-4 col-md-12">
+                  <div className="lp-persona-card admin h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-between mb-3 pb-1">
+                        <span
+                          className="badge rounded-pill px-3 py-2"
+                          style={{ background: "#16a34a", color: "#ffffff", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.02em" }}
+                        >
+                          👑 Administrator
+                        </span>
+                        <span className="text-success fw-bold small" style={{ fontSize: "0.75rem" }}>
+                          Full Control
+                        </span>
+                      </div>
+                      <h6 className="fw-bold mb-2" style={{ color: "#14532d", fontSize: "1.1rem" }}>
+                        System Admin
+                      </h6>
+                      <p className="text-muted small mb-4" style={{ fontSize: "0.84rem", lineHeight: 1.5 }}>
+                        Manage products, plans, users, approve policies & issue claim decisions.
+                      </p>
+
+                      {/* Credentials Box */}
+                      <div className="p-3.5 rounded-3 my-3.5" style={{ background: "#ffffff", border: "1px solid #dcfce7", padding: "1rem" }}>
+                        <div className="d-flex justify-content-between align-items-center mb-2" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Email:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>admin@insurance.com</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-success ms-1"
+                              onClick={() => copyCred("admin@insurance.com", "Admin Email")}
+                              title="Copy Email"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Password:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>Admin@123</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-success ms-1"
+                              onClick={() => copyCred("Admin@123", "Admin Password")}
+                              title="Copy Password"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/login"
+                      onClick={() => {
+                        copyCred("admin@insurance.com", "Admin Credentials");
+                        setDemoOpen(false);
+                      }}
+                      className="btn w-100 py-2.5 mt-3 rounded-3 text-white fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      style={{ background: "#16a34a", border: "none", fontSize: "0.88rem", transition: "all 0.2s" }}
+                    >
+                      Sign In as Admin <i className="bi bi-arrow-right" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Staff Card */}
+                <div className="col-lg-4 col-md-12">
+                  <div className="lp-persona-card staff h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-between mb-3 pb-1">
+                        <span
+                          className="badge rounded-pill px-3 py-2"
+                          style={{ background: "#2563eb", color: "#ffffff", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.02em" }}
+                        >
+                          🛡️ Internal Staff
+                        </span>
+                        <span className="text-primary fw-bold small" style={{ fontSize: "0.75rem" }}>
+                          Health Specialist
+                        </span>
+                      </div>
+                      <h6 className="fw-bold mb-2" style={{ color: "#1e3a8a", fontSize: "1.1rem" }}>
+                        Staff Reviewer
+                      </h6>
+                      <p className="text-muted small mb-4" style={{ fontSize: "0.84rem", lineHeight: 1.5 }}>
+                        Review claims, inspect uploaded documents & recommend decisions.
+                      </p>
+
+                      {/* Credentials Box */}
+                      <div className="p-3.5 rounded-3 my-3.5" style={{ background: "#ffffff", border: "1px solid #dbeafe", padding: "1rem" }}>
+                        <div className="d-flex justify-content-between align-items-center mb-2" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Email:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>staff@insurance.com</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-primary ms-1"
+                              onClick={() => copyCred("staff@insurance.com", "Staff Email")}
+                              title="Copy Email"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Password:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>Staff@123</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-primary ms-1"
+                              onClick={() => copyCred("Staff@123", "Staff Password")}
+                              title="Copy Password"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/login"
+                      onClick={() => {
+                        copyCred("staff@insurance.com", "Staff Credentials");
+                        setDemoOpen(false);
+                      }}
+                      className="btn w-100 py-2.5 mt-3 rounded-3 text-white fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      style={{ background: "#2563eb", border: "none", fontSize: "0.88rem", transition: "all 0.2s" }}
+                    >
+                      Sign In as Staff <i className="bi bi-arrow-right" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Customer Card */}
+                <div className="col-lg-4 col-md-12">
+                  <div className="lp-persona-card customer h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-between mb-3 pb-1">
+                        <span
+                          className="badge rounded-pill px-3 py-2"
+                          style={{ background: "#7c3aed", color: "#ffffff", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.02em" }}
+                        >
+                          👤 Customer
+                        </span>
+                        <span className="fw-bold small" style={{ fontSize: "0.75rem", color: "#7c3aed" }}>
+                          Verified Profile
+                        </span>
+                      </div>
+                      <h6 className="fw-bold mb-2" style={{ color: "#581c87", fontSize: "1.1rem" }}>
+                        Policyholder
+                      </h6>
+                      <p className="text-muted small mb-4" style={{ fontSize: "0.84rem", lineHeight: 1.5 }}>
+                        Purchase policies, pay premiums, file claims & view real-time status.
+                      </p>
+
+                      {/* Credentials Box */}
+                      <div className="p-3.5 rounded-3 my-3.5" style={{ background: "#ffffff", border: "1px solid #f3e8ff", padding: "1rem" }}>
+                        <div className="d-flex justify-content-between align-items-center mb-2" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Email:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>customer@insurance.com</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-secondary ms-1"
+                              onClick={() => copyCred("customer@insurance.com", "Customer Email")}
+                              title="Copy Email"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted">Password:</span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            <span className="fw-bold font-monospace text-dark" style={{ fontSize: "0.82rem" }}>Customer@123</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link p-0 text-secondary ms-1"
+                              onClick={() => copyCred("Customer@123", "Customer Password")}
+                              title="Copy Password"
+                            >
+                              <i className="bi bi-clipboard" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/login"
+                      onClick={() => {
+                        copyCred("customer@insurance.com", "Customer Credentials");
+                        setDemoOpen(false);
+                      }}
+                      className="btn w-100 py-2.5 mt-3 rounded-3 text-white fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      style={{ background: "#7c3aed", border: "none", fontSize: "0.88rem", transition: "all 0.2s" }}
+                    >
+                      Sign In as Customer <i className="bi bi-arrow-right" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Active Role Content */}
-            {(() => {
-              const current = DEMO_ACCOUNTS[selectedDemoRole];
-              return (
-                <div>
-                  <div className="d-flex align-items-center justify-content-between mb-1.5">
-                    <span style={{ fontSize: "0.85rem", fontWeight: 700 }}>{current.title}</span>
-                  </div>
-                  <p className="text-muted small mb-2.5" style={{ fontSize: "0.75rem", lineHeight: 1.35, color: "#94a3b8" }}>
-                    {current.tagline}
-                  </p>
-
-                  {/* Credentials rows */}
-                  <div className="d-flex flex-column gap-1.5 mb-3 p-2 rounded-3" style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <div className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.78rem" }}>
-                      <span className="text-secondary small">Email:</span>
-                      <div className="d-flex align-items-center gap-1.5">
-                        <code className="text-info user-select-all">{current.email}</code>
-                        <button
-                          type="button"
-                          className="btn btn-link p-0 text-white opacity-75"
-                          onClick={() => copyCred(current.email, "Email")}
-                          title="Copy Email"
-                        >
-                          <i className="bi bi-clipboard" style={{ fontSize: "0.75rem" }} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center" style={{ fontSize: "0.78rem" }}>
-                      <span className="text-secondary small">Password:</span>
-                      <div className="d-flex align-items-center gap-1.5">
-                        <code className="text-warning user-select-all">{current.password}</code>
-                        <button
-                          type="button"
-                          className="btn btn-link p-0 text-white opacity-75"
-                          onClick={() => copyCred(current.password, "Password")}
-                          title="Copy Password"
-                        >
-                          <i className="bi bi-clipboard" style={{ fontSize: "0.75rem" }} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Capabilities List */}
-                  <div className="mb-3">
-                    <div className="text-secondary mb-1" style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Key Capabilities:
-                    </div>
-                    <ul className="list-unstyled mb-0 d-flex flex-column gap-1" style={{ fontSize: "0.73rem", color: "#cbd5e1" }}>
-                      {current.capabilities.map((cap, i) => (
-                        <li key={i} className="d-flex align-items-center gap-1.5">
-                          <i className="bi bi-check2-circle text-success" style={{ fontSize: "0.8rem" }} />
-                          <span>{cap}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Action Link */}
-                  <Link
-                    to="/login"
-                    onClick={() => {
-                      copyCred(current.email, "Email");
-                      setDemoOpen(false);
-                    }}
-                    className="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-2 py-1.5 rounded-3 fw-semibold text-white"
-                    style={{
-                      background: `linear-gradient(135deg, ${current.badgeColor} 0%, #1e40af 100%)`,
-                      border: "none",
-                      fontSize: "0.8rem"
-                    }}
-                  >
-                    Proceed to Sign In <i className="bi bi-arrow-right" />
-                  </Link>
-                </div>
-              );
-            })()}
+            {/* Modal Footer Tip */}
+            <div
+              className="px-4 px-md-5 py-3.5 text-center"
+              style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", fontSize: "0.84rem", color: "#64748b" }}
+            >
+              💡 <strong>Tip:</strong> Clicking any button automatically copies credentials and redirects you straight into the sign in portal.
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
