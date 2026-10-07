@@ -6,6 +6,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -24,16 +25,24 @@ public class CorsConfig {
 
 		String rawOrigins = properties.getCorsAllowedOrigin();
 		if (rawOrigins != null && !rawOrigins.isBlank()) {
-			configuration.setAllowedOrigins(List.of(rawOrigins.split("\\s*,\\s*")));
+			List<String> origins = Arrays.stream(rawOrigins.split(","))
+					.map(String::trim)
+					.filter(s -> !s.isEmpty())
+					.toList();
+			configuration.setAllowedOriginPatterns(origins);
 		} else {
-			configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+			configuration.setAllowedOriginPatterns(List.of("*"));
 		}
 
-		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
 
 		configuration.setAllowedHeaders(List.of("*"));
 
+		configuration.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count", "Content-Disposition"));
+
 		configuration.setAllowCredentials(true);
+
+		configuration.setMaxAge(3600L);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 

@@ -383,60 +383,84 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── PORTALS ── */}
-      <section className="lp-section lp-section-alt" id="portals">
+      {/* ── DEMO CREDENTIALS SECTION ── */}
+      <section className="lp-section" id="demo-credentials" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%)", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
         <div className="container">
-          <div className="text-center mb-5">
-            <div className="lp-badge mx-auto mb-3">Role-Based Portals</div>
-            <h2 className="lp-section-title">
-              Three portals,
-              <br />
-              one connected system.
+          <div className="text-center mb-4">
+            <div className="lp-badge mx-auto mb-2" style={{ background: "#dbeafe", color: "#1d4ed8", borderColor: "#93c5fd" }}>
+              ⚡ Recruiter & Demo Access
+            </div>
+            <h2 className="lp-section-title" style={{ fontSize: "1.85rem" }}>
+              Explore with Pre-configured Roles
             </h2>
-            <p className="lp-section-sub mx-auto" style={{ maxWidth: 500 }}>
-              Every role has a purpose-built experience - customers purchase,
-              staff process, admins decide.
+            <p className="lp-section-sub mx-auto" style={{ maxWidth: 540 }}>
+              Use these active demo credentials to test the entire policy purchase, claim review, and approval workflow immediately.
             </p>
           </div>
-          <div className="row g-4">
-            {portals.map((p, i) => (
-              <div className="col-md-4" key={i}>
-                <div
-                  className="lp-portal-card h-100"
-                  style={{
-                    background: p.highlight
-                      ? "linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%)"
-                      : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-                    border: p.highlight
-                      ? "none"
-                      : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <div className="lp-portal-icon" style={{ background: p.bg }}>
-                    {p.icon}
-                  </div>
-                  <h5>{p.title}</h5>
-                  <p>{p.desc}</p>
-                  <Link
-                    to={p.link}
-                    className={
-                      p.highlight ? "lp-btn-white" : "lp-btn-secondary"
-                    }
-                    style={
-                      p.highlight
-                        ? {}
-                        : {
-                            background: "rgba(255,255,255,0.08)",
-                            color: "#fff",
-                            borderColor: "rgba(255,255,255,0.2)",
-                          }
-                    }
-                  >
-                    {p.linkLabel} <i className="bi bi-arrow-right" />
-                  </Link>
+
+          <div className="row g-3 justify-content-center">
+            {/* Admin */}
+            <div className="col-md-4">
+              <div className="p-3 bg-white rounded-4 shadow-sm h-100 border text-start">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="badge bg-primary px-2.5 py-1.5" style={{ fontSize: "0.75rem" }}>👑 Admin Role</span>
+                  <span className="text-muted" style={{ fontSize: "0.75rem" }}>Full Access</span>
                 </div>
+                <div className="mb-2" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Email:</div>
+                  <code className="user-select-all fw-bold text-dark">admin@insurance.com</code>
+                </div>
+                <div className="mb-3" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Password:</div>
+                  <code className="user-select-all fw-bold text-dark">Admin@123</code>
+                </div>
+                <Link to="/login" className="btn btn-sm btn-outline-primary w-100 rounded-3">
+                  Log in as Admin <i className="bi bi-box-arrow-in-right ms-1" />
+                </Link>
               </div>
-            ))}
+            </div>
+
+            {/* Staff */}
+            <div className="col-md-4">
+              <div className="p-3 bg-white rounded-4 shadow-sm h-100 border text-start">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="badge bg-info text-dark px-2.5 py-1.5" style={{ fontSize: "0.75rem" }}>🛡️ Internal Staff</span>
+                  <span className="text-muted" style={{ fontSize: "0.75rem" }}>Claim Reviewer</span>
+                </div>
+                <div className="mb-2" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Email:</div>
+                  <code className="user-select-all fw-bold text-dark">staff@insurance.com</code>
+                </div>
+                <div className="mb-3" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Password:</div>
+                  <code className="user-select-all fw-bold text-dark">Staff@123</code>
+                </div>
+                <Link to="/login" className="btn btn-sm btn-outline-info w-100 rounded-3 text-dark">
+                  Log in as Staff <i className="bi bi-box-arrow-in-right ms-1" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Customer */}
+            <div className="col-md-4">
+              <div className="p-3 bg-white rounded-4 shadow-sm h-100 border text-start">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="badge bg-success px-2.5 py-1.5" style={{ fontSize: "0.75rem" }}>👤 Customer</span>
+                  <span className="text-muted" style={{ fontSize: "0.75rem" }}>Policy Buyer</span>
+                </div>
+                <div className="mb-2" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Email:</div>
+                  <code className="user-select-all fw-bold text-dark">customer@insurance.com</code>
+                </div>
+                <div className="mb-3" style={{ fontSize: "0.85rem" }}>
+                  <div className="text-muted small">Password:</div>
+                  <code className="user-select-all fw-bold text-dark">Customer@123</code>
+                </div>
+                <Link to="/login" className="btn btn-sm btn-outline-success w-100 rounded-3">
+                  Log in as Customer <i className="bi bi-box-arrow-in-right ms-1" />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>

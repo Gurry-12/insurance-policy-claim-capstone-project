@@ -65,12 +65,27 @@ public class CookieCsrfOriginFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isAllowedOrigin(String origin) {
-		return properties.getCorsAllowedOrigin().equalsIgnoreCase(origin);
+		String allowed = properties.getCorsAllowedOrigin();
+		if (allowed == null || allowed.isBlank() || allowed.equals("*")) {
+			return true;
+		}
+		return java.util.Arrays.stream(allowed.split(","))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.anyMatch(o -> o.equalsIgnoreCase(origin)
+						|| (o.contains("*") && origin.matches(o.replace(".", "\\.").replace("*", ".*"))));
 	}
 
 	private boolean isAllowedReferer(String referer) {
 		String allowed = properties.getCorsAllowedOrigin();
-		return referer.equalsIgnoreCase(allowed) || referer.startsWith(allowed + "/");
+		if (allowed == null || allowed.isBlank() || allowed.equals("*")) {
+			return true;
+		}
+		return java.util.Arrays.stream(allowed.split(","))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.anyMatch(o -> referer.equalsIgnoreCase(o) || referer.startsWith(o + "/")
+						|| (o.contains("*") && referer.matches(o.replace(".", "\\.").replace("*", ".*") + ".*")));
 	}
 
 	private void reject(HttpServletRequest request, HttpServletResponse response, String source) throws IOException {
