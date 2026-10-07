@@ -4,8 +4,6 @@ import java.time.Duration;
 
 import org.springframework.stereotype.Component;
 
-import com.insurance.demo.security.RefreshTokenService;
-
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

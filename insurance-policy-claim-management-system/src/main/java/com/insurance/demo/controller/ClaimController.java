@@ -24,7 +24,6 @@ import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.ClaimHistoryResponseDTO;
 import com.insurance.demo.dto.response.ClaimResponseDTO;
 import com.insurance.demo.dto.response.PageResponseDTO;
-import com.insurance.demo.service.ClaimDocumentService;
 import com.insurance.demo.service.ClaimService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,14 +62,16 @@ public class ClaimController {
 	@GetMapping
 	@PreAuthorize("hasAnyRole('ADMIN', 'INTERNAL_STAFF')")
 	@Operation(summary = "Get All Claims", description = "Retrieves a paginated list of all claims with filtering by policy, status, and dates.")
-	public ApiResponseDTO<PageResponseDTO<ClaimResponseDTO>> getAllClaims(@RequestParam(defaultValue = "0") int pageNumber,
+	public ApiResponseDTO<PageResponseDTO<ClaimResponseDTO>> getAllClaims(
+			@RequestParam(defaultValue = "0") int pageNumber,
 			@RequestParam(defaultValue = "10") int pageSize, @RequestParam(defaultValue = "createdDate") String sortBy,
 			@RequestParam(defaultValue = "desc") String sortDirection, @RequestParam(required = false) Long customerId,
 			@RequestParam(required = false) String status,
 			@RequestParam(required = false) Double minClaimAmount,
 			@RequestParam(required = false) Double maxClaimAmount) {
 
-		return claimService.getAllClaimsWithPagination(pageNumber, pageSize, sortBy, sortDirection, customerId, status, minClaimAmount, maxClaimAmount);
+		return claimService.getAllClaimsWithPagination(pageNumber, pageSize, sortBy, sortDirection, customerId, status,
+				minClaimAmount, maxClaimAmount);
 	}
 
 	@GetMapping("/{claimId}")

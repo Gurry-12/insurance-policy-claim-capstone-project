@@ -2,7 +2,6 @@ package com.insurance.demo.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.insurance.demo.enums.Role;
 import com.insurance.demo.enums.ProductType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 

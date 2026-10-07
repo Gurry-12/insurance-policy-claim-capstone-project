@@ -24,8 +24,6 @@ import com.insurance.demo.dto.response.UserResponseDTO;
 import com.insurance.demo.config.SecurityAuditLogger;
 import com.insurance.demo.enums.Role;
 import com.insurance.demo.exception.BadRequestException;
-import java.util.Base64;
-import java.nio.charset.StandardCharsets;
 import com.insurance.demo.exception.DuplicateResourceException;
 import com.insurance.demo.exception.ResourceNotFoundException;
 import com.insurance.demo.model.AppUser;

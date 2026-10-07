@@ -33,9 +33,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.Index;
-import jakarta.persistence.Table;
-
-import jakarta.persistence.Index; // Ensure this is imported
 
 @Entity
 @Table(name = "claims", indexes = { @Index(name = "idx_claim_status", columnList = "claim_status"),

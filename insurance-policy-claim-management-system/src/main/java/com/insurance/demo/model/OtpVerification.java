@@ -34,9 +34,11 @@ public class OtpVerification {
 
 	private boolean used;
 
+	@Builder.Default
 	@Column(name = "attempt_count")
 	private Integer attemptCount = 0;
 
+	@Builder.Default
 	@Column(nullable = false, columnDefinition = "int default 1")
 	private int sendCount = 1;
 

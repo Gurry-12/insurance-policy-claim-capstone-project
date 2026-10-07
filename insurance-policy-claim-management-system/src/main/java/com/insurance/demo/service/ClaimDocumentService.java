@@ -2,8 +2,6 @@ package com.insurance.demo.service;
 
 import com.insurance.demo.dto.response.ApiResponseDTO;
 import com.insurance.demo.dto.response.ClaimDocumentResponseDTO;
-import com.insurance.demo.model.ClaimDocument;
-
 import java.io.IOException;
 import java.util.List;
 

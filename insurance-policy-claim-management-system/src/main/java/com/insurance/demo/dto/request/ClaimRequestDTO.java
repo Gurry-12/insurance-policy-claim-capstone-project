@@ -2,8 +2,6 @@ package com.insurance.demo.dto.request;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-
 import com.insurance.demo.util.MessageConstants;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

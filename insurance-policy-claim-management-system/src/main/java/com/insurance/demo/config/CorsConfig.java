@@ -22,7 +22,12 @@ public class CorsConfig {
 
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(List.of(properties.getCorsAllowedOrigin()));
+		String rawOrigins = properties.getCorsAllowedOrigin();
+		if (rawOrigins != null && !rawOrigins.isBlank()) {
+			configuration.setAllowedOrigins(List.of(rawOrigins.split("\\s*,\\s*")));
+		} else {
+			configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+		}
 
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 

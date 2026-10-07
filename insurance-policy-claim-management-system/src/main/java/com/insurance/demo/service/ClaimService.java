@@ -7,8 +7,6 @@ import com.insurance.demo.dto.response.ClaimHistoryResponseDTO;
 import com.insurance.demo.dto.response.ClaimResponseDTO;
 import com.insurance.demo.dto.response.PageResponseDTO;
 
-import jakarta.validation.Valid;
-
 import java.io.IOException;
 import java.util.List;
 

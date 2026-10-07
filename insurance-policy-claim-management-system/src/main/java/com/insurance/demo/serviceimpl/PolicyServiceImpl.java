@@ -38,7 +38,6 @@ import com.insurance.demo.model.Quote;
 import com.insurance.demo.repository.AppUserRepository;
 import com.insurance.demo.repository.ClaimRepository;
 import com.insurance.demo.repository.CustomerRepository;
-import com.insurance.demo.repository.PolicyPlanRepository;
 import com.insurance.demo.repository.PolicyRepository;
 import com.insurance.demo.repository.QuoteRepository;
 import com.insurance.demo.service.PolicyService;
@@ -56,7 +55,6 @@ public class PolicyServiceImpl implements PolicyService {
 
 	private final PolicyRepository policyRepository;
 	private final ClaimRepository claimRepository;
-	private final PolicyPlanRepository policyPlanRepository;
 	private final CustomerRepository customerRepository;
 	private final AppUserRepository userRepository;
 	private final QuoteRepository quoteRepository;

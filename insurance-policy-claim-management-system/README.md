@@ -12,13 +12,13 @@ A Spring Boot REST API that simulates real-world insurance operations including 
 - **Twilio** for SMS OTP
 - **Gmail SMTP** for email OTP
 
-## Roles
+## Roles & Default Credentials
 
-| Role | Permissions |
-|---|---|
-| **ADMIN** | Manage products, plans, users, final claim decisions |
-| **INTERNAL_STAFF** | Review claims, recommend decisions, issue policies |
-| **CUSTOMER** | Purchase policies, make payments, raise claims |
+| Role | Email | Password | Permissions / Notes |
+|---|---|---|---|
+| **ADMIN** | `admin@insurance.com` | `Admin@123` | Manage products, plans, users, final claim decisions |
+| **INTERNAL_STAFF** | `staff@insurance.com` | `Staff@123` | Review claims, recommend decisions, issue policies *(Testing)* |
+| **CUSTOMER** | `customer@insurance.com` | `Customer@123` | Purchase policies, make payments, raise claims *(Testing)* |
 
 ## Quick Start
 
