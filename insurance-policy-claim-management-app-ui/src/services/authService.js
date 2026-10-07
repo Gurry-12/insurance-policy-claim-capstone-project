@@ -48,7 +48,7 @@ export const resetPasswordApi = async (payload) => {
 
 export const refreshSession = async () => {
   const response = await axiosInstance.post('/auth/refresh');
-  return response.data.accessToken;
+  return response.data?.accessToken || response.data?.token;
 };
 
 export const logout = async (token) => {
